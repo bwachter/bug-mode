@@ -39,6 +39,8 @@ Search for bugs with multiple criterias. Same query format as bz-search ###
 * RET - show single bug
 * q - kill buffer
 ### bz-single-mode ###
+* RET - open attachment with browse-url function
+* d - download attachment with w3m-download
 * u - execute query again
 * c - add comment
 * q - kill buffer

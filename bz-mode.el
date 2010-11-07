@@ -22,8 +22,26 @@
                        (interactive)
                        (kill-buffer (current-buffer)))))
 
+(defun bz-find-attachment-url ()
+  (save-excursion
+    (let ((end (re-search-forward "$" nil t)))
+      (move-beginning-of-line nil)
+      ;; FIXME: breaks if ; in filenames/descriptions.. heh
+      (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
+          (format "%s/attachment.cgi?id=%s" bz-url (match-string 1))
+        (error "No attachment near point")))))
+
 (defun bz-single-setup-keymap ()
   ;; There has to be a better way..
+  ;; FIXME: send credentials in these calls?
+  (local-set-key (kbd "RET") (lambda ()
+                               (interactive)
+                               (browse-url (bz-find-attachment-url))))
+  (local-set-key "d" (lambda ()
+                       (interactive)
+                       (w3m-download
+                        (bz-find-attachment-url)
+                        (expand-file-name (concat "~/" (match-string 3))))))
   (local-set-key "c" (lambda ()
                        (interactive)
                        (bz-comment bz-id)))
@@ -183,6 +201,8 @@
                        (format "%s: %s" (car prop) (cdr prop)))
                      bug "\n"))
   (bz-insert-hr)
+  (insert "\nATTACHMENTS:\n")
+  (bz-insert-hr)
   (insert "\nCOMMENTS:\n")
   (goto-char 0)
   (setq buffer-read-only t))
@@ -215,7 +235,6 @@
                 (delete-region (point) (point-max))
                 (insert "\n")
                 (insert (mapconcat (lambda (comment)
-                                     (message (format "%s" comment))
                                      (format "%s %s:\n%s"
                                              (cdr (assoc 'time comment))
                                              (cdr (assoc 'author comment))
@@ -223,6 +242,29 @@
                                    comments "\n\n"))
                 (setq buffer-read-only t))
             (error "Could not find area for comments in buffer"))))))
+
+(defun bz-handle-attachments-response (id response)
+  (if (and
+       (assoc 'result response)
+       (assoc 'bugs (assoc 'result response)))
+      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
+             (attachments (cdr (car bugs))))
+        (save-excursion
+          (switch-to-buffer (format "*bugzilla bug: %s*" id))
+          (setq buffer-read-only nil)
+          (goto-char 0)
+          (if (re-search-forward "^ATTACHMENTS:$" nil t)
+              (progn 
+                (insert "\n")
+                (insert (mapconcat (lambda (attachment)
+                                     (format "attachment %s: %s; %s; %s"
+                                             (cdr (assoc 'id attachment))
+                                             (cdr (assoc 'description attachment))
+                                             (cdr (assoc 'file_name attachment))
+                                             (cdr (assoc 'content_type attachment))))
+                                   attachments "\n"))
+                (setq buffer-read-only t))
+            (error "Could not find area for attachments in buffer"))))))
 
 (defun bz-login ()
   (interactive)
@@ -243,6 +285,7 @@
 (defun bz-get (id)
   (interactive "nid:")
   (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id))))
+  (bz-get-attachments id)
   (bz-get-comments id))
 
 (defun bz-comment-commit ()
@@ -276,6 +319,9 @@
 
 (defun bz-get-comments (id)
   (bz-handle-comments-response id (bz-rpc "Bug.comments" `(("ids" . ,id)))))
+
+(defun bz-get-attachments (id)
+  (bz-handle-attachments-response id (bz-rpc "Bug.attachments" `(("ids" . ,id)))))
 
 (defun bz-search-multiple ()
   (interactive)
