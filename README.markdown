@@ -1,7 +1,11 @@
 # Bugzilla mode #
 
+## Requirements ##
+* [json.el](http://cvs.savannah.gnu.org/viewvc/*checkout*/emacs/lisp/json.el?root=emacs)
+* Recent release of bugzilla, probably at least 3.6
+* JSON-RPC mode enabled for bugzilla
+
 ## Installing ##
-* Make sure your bugzilla installation has JSON-RPC enabled
 * Copy bz-mode.el to somewhere on your emacs load path
 * Edit your ~/.emacs or ~/.emacs.d/init.el:
 
