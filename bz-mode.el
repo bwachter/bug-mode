@@ -28,15 +28,19 @@
 
 (defun bz-single-setup-keymap ()
   ;; There has to be a better way..
-  ;; (local-set-key "c" (lambda ()
-  ;;                      (interactive)
-  ;;                      (bz-comment bz-id)))
+  (local-set-key "c" (lambda ()
+                       (interactive)
+                       (bz-comment bz-id)))
   (local-set-key "u" (lambda ()
                        (interactive)
                        (bz-get bz-id)))
   (local-set-key "q" (lambda ()
                        (interactive)
                        (kill-buffer (current-buffer)))))
+
+(defun bz-comment-setup-keymap ()
+  ;; There has to be a better way..
+  (local-set-key "\C-c\C-c" 'bz-comment-commit))
 
 (define-generic-mode
   'bz-list-mode
@@ -55,6 +59,15 @@
   '()
   '(bz-single-setup-keymap)
   "bugzilla single mode")
+
+(define-generic-mode
+  'bz-comment-mode
+  '()
+  '()
+  '()
+  '()
+  '(bz-comment-setup-keymap)
+  "bugzilla comment mode")
 
 (defmacro bz-debug (body)
   `(if (and (boundp 'bz-debug) bz-debug)
@@ -231,6 +244,35 @@
   (interactive "nid:")
   (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id))))
   (bz-get-comments id))
+
+(defun bz-comment-commit ()
+  (interactive)
+  (if (not (string= major-mode "bz-comment-mode"))
+      (error "not visisting a bugzilla comment buffer"))
+  (let ((params (make-hash-table :test 'equal)))
+    (puthash "id" bz-id params)
+    (save-excursion
+      (goto-char 0)
+      (while (re-search-forward "^\\([^:]*\\): ?\\(.*\\)$" nil t)
+        (puthash (match-string 1) (match-string 2) params))
+      (re-search-forward "^[^\n]" nil t)
+      (move-beginning-of-line nil)
+      (puthash "comment" (buffer-substring (point) (point-max)) params)
+      (let ((result (bz-rpc "Bug.add_comment" params)))
+        (message (format "comment id: %s" (cdr (cadr (car result)))))
+        (kill-buffer (current-buffer))))))
+  
+(defun bz-comment (id)
+  (interactive "nid:")
+  (switch-to-buffer (format "*bugzilla add comment: %s*" id))
+  (bz-comment-mode)
+  (make-local-variable 'bz-id)
+  (setq bz-id id)
+  (erase-buffer)
+  ;;(insert "is_private: false\n")
+  (insert "hours_worked: 0.0\n\n")
+  (goto-char (point-max)))
+
 
 (defun bz-get-comments (id)
   (bz-handle-comments-response id (bz-rpc "Bug.comments" `(("ids" . ,id)))))
