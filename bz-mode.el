@@ -12,8 +12,8 @@
                                (interactive)
                                (save-excursion
                                  (move-beginning-of-line nil)
-                                 (if (re-search-forward "^[0-9]+" nil t)
-                                     (bz-get (buffer-substring (match-beginning 0) (match-end 0)))
+                                 (if (re-search-forward "^\\([0-9]+\\)" nil t)
+                                     (bz-get (match-string 1))
                                    (error "WTF? No id in beginning?")))))
   (local-set-key "u" (lambda ()
                        (interactive)
