@@ -229,6 +229,10 @@
   (bz-rpc "User.login" `((login . ,bz-username) (password . ,bz-password) (remember . t)))
   "Login successful")
 
+(defun bz-logout ()
+  (interactive)
+  (bz-rpc "User.logout" '()))
+
 (defun bz-do-search (params)
   (bz-handle-search-response params (bz-rpc "Bug.search" params)))
 
