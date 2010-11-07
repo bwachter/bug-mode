@@ -6,10 +6,6 @@
 
 (require 'generic-x)
 
-;; (bz-json-response-from-buffer "search-result.json")
-;; (bz-json-response-from-buffer "search-result-single.json")
-;; (bz-handle-comments-response "2725" (bz-json-response-from-buffer "comments.json"))
-
 (defun bz-list-setup-keymap ()
   ;; There has to be a better way..
   (local-set-key (kbd "RET") (lambda ()
