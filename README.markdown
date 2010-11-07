@@ -1,8 +1,6 @@
-Bugzilla mode
-==============
+# Bugzilla mode #
 
-Installing
-----------
+## Installing ##
 * Make sure your bugzilla installation has JSON-RPC enabled
 * Copy bz-mode.el to somewhere on your emacs load path
 * Edit your ~/.emacs or ~/.emacs.d/init.el:
@@ -23,3 +21,22 @@ Installing
         ;; columns to show in list mode
         (setq bugzilla-columns '("id" "status" "summary"))
 
+## Functions ##
+### bz-login ###
+Use this to login.
+### bz-search ###
+Search for bugs. Query can be either free form text, key-value (e.g. "component:Test") or the name of a named search.
+### bz-search-multiple ###
+Search for bugs with multiple criterias. Same query format as bz-search ###
+
+## Modes/vies ##
+### bz-list-mode ###
+* u - execute query again
+* RET - show single bug
+* q - kill buffer
+### bz-single-mode ###
+* u - execute query again
+* c - add comment
+* q - kill buffer
+### bz-comment-mode ###
+* C-c C-c - commit comment
