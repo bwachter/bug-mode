@@ -1,5 +1,5 @@
 (setq bz-debug t)
-(setq bz-url "http://127.0.0.1/bugzilla3")
+(setq bz-url "http://127.0.0.1/bugzilla4")
 (setq bz-username "henrik@localhost.localdomain")
 (setq bz-password "qwerty")
 (setq bugzilla-columns '("id" "status" "summary"))
@@ -45,9 +45,22 @@
   (local-set-key "c" (lambda ()
                        (interactive)
                        (bz-comment bz-id)))
+  
   (local-set-key "u" (lambda ()
                        (interactive)
                        (bz-get bz-id)))
+
+  (local-set-key "r" (lambda ()
+                       (interactive)
+                       (let ((resolution (completing-read "resolution: "
+                                                          (filter (lambda (x)
+                                                                    (> (length x) 0))
+                                                                  (mapcar (lambda (x)
+                                                                            (cdr (assoc 'name x)))
+                                                                          (cdr (assoc 'values (gethash "resolution" bz-fields))))))))
+                         (bz-update bz-id `((status . "RESOLVED") (resolution . ,resolution))))
+                       (bz-get bz-id)))
+                 
   (local-set-key "q" (lambda ()
                        (interactive)
                        (kill-buffer (current-buffer)))))
@@ -92,7 +105,7 @@
            (insert "\n")))))
 
 (defun bz-rpc (method args)
-  (let* ((json-str (json-encode `((method . ,method) (params . [,args]) (id 1))))
+  (let* ((json-str (json-encode `((method . ,method) (params . [,args]) (id 11))))
          (url (concat bz-url "/jsonrpc.cgi"))
          (url-request-method "POST")
          (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?
@@ -195,10 +208,15 @@
   (bz-single-mode)
   (make-local-variable 'bz-id)
   (setq bz-id id)
+  (make-local-variable 'bz-bug)
+  (setq bz-bug bug)
   (setq buffer-read-only nil)
   (erase-buffer)
   (insert (mapconcat (lambda (prop)
-                       (format "%s: %s" (car prop) (cdr prop)))
+                       (format "%s: %s"
+                               (or (cdr (assoc 'display_name (gethash (symbol-name (car prop)) bz-fields)))
+                                   (car prop))
+                               (cdr prop)))
                      (filter (lambda (prop)
                                (not (string= (car prop) "internals"))) bug) "\n"))
   (bz-insert-hr)
@@ -270,7 +288,13 @@
 (defun bz-login ()
   (interactive)
   (bz-rpc "User.login" `((login . ,bz-username) (password . ,bz-password) (remember . t)))
-  "Login successful")
+  (setq bz-fields (make-hash-table :test 'equal))
+  (let ((fields (bz-rpc "Bug.fields" '())))
+    (mapcar (lambda (field)
+              (let ((key (cdr (assoc 'name field))))
+                (puthash key field bz-fields)))
+            (cdr (car (cdr (car fields))))))
+  (message "Login successful"))
 
 (defun bz-logout ()
   (interactive)
@@ -289,6 +313,12 @@
   (bz-get-attachments id)
   (bz-get-comments id))
 
+(defun bz-update (id fields)
+  (message (format "fields: %s" (append fields `((ids . ,id)))))
+  (bz-rpc "Bug.update" (append fields `((ids . ,id)))))
+
+(let ((fields '((status . "RESOLVED") (resolution . "FIXED"))))
+  (append fields '((id . "123"))))
 (defun bz-comment-commit ()
   (interactive)
   (if (not (string= major-mode "bz-comment-mode"))
@@ -304,7 +334,8 @@
       (puthash "comment" (buffer-substring (point) (point-max)) params)
       (let ((result (bz-rpc "Bug.add_comment" params)))
         (message (format "comment id: %s" (cdr (cadr (car result)))))
-        (kill-buffer (current-buffer))))))
+        (kill-buffer (current-buffer))))
+    (bz-get bz-id)))
   
 (defun bz-comment (id)
   (interactive "nid:")
