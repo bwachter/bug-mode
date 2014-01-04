@@ -45,7 +45,7 @@
   (local-set-key "c" (lambda ()
                        (interactive)
                        (bz-comment bz-id)))
-  
+
   (local-set-key "u" (lambda ()
                        (interactive)
                        (bz-get bz-id)))
@@ -60,7 +60,7 @@
                                                                           (cdr (assoc 'values (gethash "resolution" bz-fields))))))))
                          (bz-update bz-id `((status . "RESOLVED") (resolution . ,resolution))))
                        (bz-get bz-id)))
-                 
+
   (local-set-key "q" (lambda ()
                        (interactive)
                        (kill-buffer (current-buffer)))))
@@ -167,7 +167,7 @@
   (mapconcat (lambda (kv)
                (format "%s: %s" (car kv) (cdr kv)))
              kvs ", "))
-   
+
 (defun bz-show-list (query parsed)
   (switch-to-buffer (format "*bugzilla results: %s*" (pretty-kvs query)))
   (bz-list-mode)
@@ -200,7 +200,7 @@
 
 (defun bz-insert-hr ()
   (insert "\n")
-  (insert-char ?= (window-width))
+  (insert-char ?- (floor (/ (window-width) 1.5)))
   (insert "\n"))
 
 (defun bz-show-bug (id bug)
@@ -250,13 +250,14 @@
           (setq buffer-read-only nil)
           (goto-char 0)
           (if (re-search-forward "^COMMENTS:$" nil t)
-              (progn 
+              (progn
                 (delete-region (point) (point-max))
                 (insert "\n")
                 (insert (mapconcat (lambda (comment)
-                                     (format "%s %s:\n%s"
+                                     (format "[Comment #%s] %s %s:\n%s"
+                                             (cdr (assoc 'count comment))
                                              (cdr (assoc 'time comment))
-                                             (cdr (assoc 'author comment))
+                                             (cdr (assoc 'creator comment))
                                              (cdr (assoc 'text comment))))
                                    comments "\n\n"))
                 (setq buffer-read-only t))
@@ -273,7 +274,7 @@
           (setq buffer-read-only nil)
           (goto-char 0)
           (if (re-search-forward "^ATTACHMENTS:$" nil t)
-              (progn 
+              (progn
                 (insert "\n")
                 (insert (mapconcat (lambda (attachment)
                                      (format "attachment %s: %s; %s; %s"
@@ -336,7 +337,7 @@
         (message (format "comment id: %s" (cdr (cadr (car result)))))
         (kill-buffer (current-buffer))))
     (bz-get bz-id)))
-  
+
 (defun bz-comment (id)
   (interactive "nid:")
   (switch-to-buffer (format "*bugzilla add comment: %s*" id))
