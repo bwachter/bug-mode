@@ -1,3 +1,9 @@
+;; TODO
+;; - Handle instances properly when calling helper functions
+;;   Known issues are in
+;;   - Opening bugs from a list (goes to default instance)
+;;   - Commenting on bugs (goes to matching bug on default instance)
+
 (defvar bz-debug nil
   "Configure debugging to *bz-debug* buffer")
 
@@ -326,12 +332,12 @@ entered enough to get a match."
 (defun bz-login (&optional instance)
   (interactive
    (if current-prefix-arg
-       (list (read-string "instance: " nil nil t))))
+       (list (bz-query-instance))))
   (bz-rpc "User.login" `((login . ,(bz-instance-property :login instance))
                          (password . ,(bz-instance-property :password instance))
                          (remember . t)) instance)
   (setq bz-fields (make-hash-table :test 'equal))
-  (let ((fields (bz-rpc "Bug.fields" '())))
+  (let ((fields (bz-rpc "Bug.fields" '() instance)))
     (mapcar (lambda (field)
               (let ((key (cdr (assoc 'name field))))
                 (puthash key field bz-fields)))
@@ -341,30 +347,44 @@ entered enough to get a match."
 (defun bz-logout (&optional instance)
   (interactive
    (if current-prefix-arg
-       (list (read-string "instance: " nil nil t))))
+       (list (bz-query-instance))))
   (bz-rpc "User.logout" '() instance))
 
-(defun bz-do-search (params)
-  (bz-handle-search-response params (bz-rpc "Bug.search" params)))
+;; take hash table as params. todo: figure out format
+(defun bz-do-search (params &optional instance)
+  (bz-handle-search-response params (bz-rpc "Bug.search" params instance)))
 
-(defun bz-search (query)
-  (interactive "squery: ")
-  (bz-do-search `(,(bz-parse-query query))))
+(defun bz-search (query &optional instance)
+  (interactive
+   (if current-prefix-arg
+       (list
+        (read-string "Search query: " nil nil t)
+        (bz-query-instance))
+     (list (read-string "Search query: " nil nil t))))
+  (bz-do-search `(,(bz-parse-query query)) instance))
 
-(defun bz-get (id)
-  (interactive "nid:")
-  (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id))))
+(defun bz-get (id &optional instance)
+  (interactive
+   (if current-prefix-arg
+       (list
+        (read-string "Bug ID: " nil nil t)
+        (bz-query-instance))
+     (list (read-string "Bug ID: " nil nil t))))
+  (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id)) instance))
   (bz-get-attachments id)
   (bz-get-comments id))
 
-(defun bz-update (id fields)
+(defun bz-update (id fields &optional instance)
   (message (format "fields: %s" (append fields `((ids . ,id)))))
-  (bz-rpc "Bug.update" (append fields `((ids . ,id)))))
+  (bz-rpc "Bug.update" (append fields `((ids . ,id))) instance))
 
+;; TODO: make sure that a comment gets comitted to the bug on the right instance
 (let ((fields '((status . "RESOLVED") (resolution . "FIXED"))))
   (append fields '((id . "123"))))
-(defun bz-comment-commit ()
-  (interactive)
+(defun bz-comment-commit (&optional instance)
+  (interactive
+   (if current-prefix-arg
+       (list (bz-query-instance))))
   (if (not (string= major-mode "bz-comment-mode"))
       (error "not visisting a bugzilla comment buffer"))
   (let ((params (make-hash-table :test 'equal)))
@@ -376,11 +396,12 @@ entered enough to get a match."
       (re-search-forward "^[^\n]" nil t)
       (move-beginning-of-line nil)
       (puthash "comment" (buffer-substring (point) (point-max)) params)
-      (let ((result (bz-rpc "Bug.add_comment" params)))
+      (let ((result (bz-rpc "Bug.add_comment" params instance)))
         (message (format "comment id: %s" (cdr (cadr (car result)))))
         (kill-buffer (current-buffer))))
     (bz-get bz-id)))
 
+;; TODO: send to the right instance
 (defun bz-comment (id)
   (interactive "nid:")
   (switch-to-buffer (format "*bugzilla add comment: %s*" id))
@@ -393,14 +414,16 @@ entered enough to get a match."
   (goto-char (point-max)))
 
 
-(defun bz-get-comments (id)
-  (bz-handle-comments-response id (bz-rpc "Bug.comments" `(("ids" . ,id)))))
+(defun bz-get-comments (id &optional instance)
+  (bz-handle-comments-response id (bz-rpc "Bug.comments" `(("ids" . ,id)) instance)))
 
-(defun bz-get-attachments (id)
-  (bz-handle-attachments-response id (bz-rpc "Bug.attachments" `(("ids" . ,id)))))
+(defun bz-get-attachments (id &optional instance)
+  (bz-handle-attachments-response id (bz-rpc "Bug.attachments" `(("ids" . ,id)) instance)))
 
-(defun bz-search-multiple ()
-  (interactive)
+(defun bz-search-multiple (&optional instance)
+  (interactive
+   (if current-prefix-arg
+       (list (bz-query-instance))))
   (let ((terms (make-hash-table :test 'equal))
         (term nil))
     (while (not (string= term ""))
@@ -415,7 +438,7 @@ entered enough to get a match."
                     (puthash key (vconcat current (vector value)) terms)
                   (puthash key (vector current value) terms))
               (puthash key value terms)))))
-    (bz-do-search terms)))
+    (bz-do-search terms instance)))
 
 (defun bz-parse-query (query)
   (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
@@ -423,6 +446,5 @@ entered enough to get a match."
     (if (string-match "[:space:]*[0-9]+[:space:]*" query)
         `(id . ,(string-to-number query))
       `(summary . ,query))))
-
 
 (provide 'bz-mode)
