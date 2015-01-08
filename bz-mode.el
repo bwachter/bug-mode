@@ -130,6 +130,17 @@ instance if INSTANCE is empty"
          )
     (plist-get property-list property)))
 
+(defun bz-query-instance ()
+  "Query for a Bugzilla instance, providing completion with the instances configured in
+bz-instance-plist. Returns the entered Bugzilla instance. Instance name only needs to be
+entered enough to get a match."
+  (let ((completions
+         (remove-if nil
+                    (cl-loop for record in bz-instance-plist collect
+                             (unless (listp record)
+                               (replace-regexp-in-string "^:" "" (prin1-to-string record)))))))
+    (completing-read "Instance: " completions nil t)))
+
 (defun bz-rpc (method args &optional instance)
   (let* ((json-str (json-encode `((method . ,method) (params . [,args]) (id 11))))
          (url (concat (bz-instance-property :url instance) "/jsonrpc.cgi"))
