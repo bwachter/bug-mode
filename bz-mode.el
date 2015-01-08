@@ -1,8 +1,22 @@
-(setq bz-debug t)
-(setq bz-url "http://127.0.0.1/bugzilla4")
+(defvar bz-debug nil
+  "Configure debugging to *bz-debug* buffer")
+
+(defvar bz-default-instance
+  "The default bugzilla to use")
+
+(defvar bz-instance-plist nil
+  "A list of bugzilla instances to use.
+
+Example:
+'(:work (:url \"https://work.example.com\")
+  :fun  (:url \"https://fun.example.com\" :login \"username\" :password \"password\"))
+")
+
 (setq bz-username "henrik@localhost.localdomain")
 (setq bz-password "qwerty")
-(setq bugzilla-columns '("id" "status" "summary"))
+
+(defvar bugzilla-columns '("id" "status" "summary" "last_change_time")
+  "Default columns in search output")
 
 (require 'generic-x)
 
@@ -22,13 +36,13 @@
                        (interactive)
                        (kill-buffer (current-buffer)))))
 
-(defun bz-find-attachment-url ()
+(defun bz-find-attachment-url (&optional instance)
   (save-excursion
     (let ((end (re-search-forward "$" nil t)))
       (move-beginning-of-line nil)
       ;; FIXME: breaks if ; in filenames/descriptions.. heh
       (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
-          (format "%s/attachment.cgi?id=%s" bz-url (match-string 1))
+          (format "%s/attachment.cgi?id=%s" (bz-instance-property :url instance) (match-string 1))
         (error "No attachment near point")))))
 
 (defun bz-single-setup-keymap ()
@@ -104,9 +118,24 @@
            (insert str)
            (insert "\n")))))
 
-(defun bz-rpc (method args)
+(defun bz-instance-property (property &optional instance)
+  "Return the value for a PROPERTY of the instance INSTANCE, or the default
+instance if INSTANCE is empty"
+  (let* ( ; check if instance already is correct type, if not, check if it starts with :
+          ; if it does, just convert, otherwise prepend : and assume all is fine now
+          ; bz-default-instance is always assumed to be correct
+         (instance (if instance
+                       (cond ((symbolp instance) instance)
+                             ((string-match "^:" instance) (intern instance))
+                             (t (intern (concat ":" instance))))
+                     bz-default-instance))
+         (property-list (plist-get bz-instance-plist instance))
+         )
+    (plist-get property-list property)))
+
+(defun bz-rpc (method args &optional instance)
   (let* ((json-str (json-encode `((method . ,method) (params . [,args]) (id 11))))
-         (url (concat bz-url "/jsonrpc.cgi"))
+         (url (concat (bz-instance-property :url instance) "/jsonrpc.cgi"))
          (url-request-method "POST")
          (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?
          (url-request-extra-headers '(("Content-Type" . "application/json")))
