@@ -12,9 +12,6 @@ Example:
   :fun  (:url \"https://fun.example.com\" :login \"username\" :password \"password\"))
 ")
 
-(setq bz-username "henrik@localhost.localdomain")
-(setq bz-password "qwerty")
-
 (defvar bugzilla-columns '("id" "status" "summary" "last_change_time")
   "Default columns in search output")
 
@@ -315,9 +312,13 @@ instance if INSTANCE is empty"
                 (setq buffer-read-only t))
             (error "Could not find area for attachments in buffer"))))))
 
-(defun bz-login ()
-  (interactive)
-  (bz-rpc "User.login" `((login . ,bz-username) (password . ,bz-password) (remember . t)))
+(defun bz-login (&optional instance)
+  (interactive
+   (if current-prefix-arg
+       (list (read-string "instance: " nil nil t))))
+  (bz-rpc "User.login" `((login . ,(bz-instance-property :login instance))
+                         (password . ,(bz-instance-property :password instance))
+                         (remember . t)) instance)
   (setq bz-fields (make-hash-table :test 'equal))
   (let ((fields (bz-rpc "Bug.fields" '())))
     (mapcar (lambda (field)
@@ -326,9 +327,11 @@ instance if INSTANCE is empty"
             (cdr (car (cdr (car fields))))))
   (message "Login successful"))
 
-(defun bz-logout ()
-  (interactive)
-  (bz-rpc "User.logout" '()))
+(defun bz-logout (&optional instance)
+  (interactive
+   (if current-prefix-arg
+       (list (read-string "instance: " nil nil t))))
+  (bz-rpc "User.logout" '() instance))
 
 (defun bz-do-search (params)
   (bz-handle-search-response params (bz-rpc "Bug.search" params)))
