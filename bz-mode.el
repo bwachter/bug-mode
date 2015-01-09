@@ -4,6 +4,9 @@
 ;;   - Opening bugs from a list (goes to default instance)
 ;;   - Commenting on bugs (goes to matching bug on default instance)
 
+(require 'url-parse)
+(require 'netrc)
+
 (defvar bz-debug nil
   "Configure debugging to *bz-debug* buffer")
 
@@ -135,6 +138,30 @@ instance if INSTANCE is empty"
          (property-list (plist-get bz-instance-plist instance))
          )
     (plist-get property-list property)))
+
+(defun bz-credentials (&optional instance)
+  "Return credentials for the given Bugzilla instances, if set. The configuration data
+for the instance and authinfo files will be searched, with the configuration data
+taking precedence. Search order for authinfo is :authinfo property, ~/.authinfo
+
+The return value is a two element list (login password)
+"
+  (let* ((url (url-generic-parse-url (bz-instance-property :url instance)))
+         (host (url-host url))
+         (port (prin1-to-string (url-port url)))
+         (authinfo (netrc-parse
+                    (expand-file-name
+                     (if (bz-instance-property :authinfo instance)
+                         (bz-instance-property :authinfo instance) "~/.authinfo"))))
+         (authrecord (netrc-machine authinfo host port))
+         (login (if (bz-instance-property :login instance)
+                    (bz-instance-property :login instance)
+                  (netrc-get authrecord "login")))
+         (password (if (bz-instance-property :password instance)
+                       (bz-instance-property :password instance)
+                     (netrc-get authrecord "password")))
+         )
+    (list login password)))
 
 (defun bz-query-instance ()
   "Query for a Bugzilla instance, providing completion with the instances configured in
@@ -333,8 +360,8 @@ entered enough to get a match."
   (interactive
    (if current-prefix-arg
        (list (bz-query-instance))))
-  (bz-rpc "User.login" `((login . ,(bz-instance-property :login instance))
-                         (password . ,(bz-instance-property :password instance))
+  (bz-rpc "User.login" `((login . ,(car (bz-credentials instance)))
+                         (password . ,(cadr (bz-credentials instance)))
                          (remember . t)) instance)
   (setq bz-fields (make-hash-table :test 'equal))
   (let ((fields (bz-rpc "Bug.fields" '() instance)))
