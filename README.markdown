@@ -12,16 +12,20 @@
         ;; uncomment this to explicitly add the path to your load path:
         ;; (add-to-list 'load-path "~/.emacs.d/bz-mode/")
         (require 'bz-mode)
-        
+
         ;; settings
         ;; debug mode?
-        (setq bz-debug nil)
-        ;; base url
-        (setq bz-url "http://127.0.0.1/bugzilla3")
-        ;; username
-        (setq bz-username "henrik@localhost.localdomain")
-        ;; password
-        (setq bz-password "qwerty")
+        (setq bz-debug t)
+        ;; set up two bugzilla instances
+        ;; :work instance is either without auth, with auth-data in ~/.authinfo, or
+        ;;       behind basic auth with the url-package prompting for credentials
+        ;; :fun  instance uses regular bz auth, with credentials stored in ~/.netrc
+        ;;       it requires a call to (bz-login "fun") before you can modify bugs
+        (setq bz-instance-plist '(:work (:url "https://work-bz.example.com")
+                                  :fun  (:url "https://fun-bz.example.com" :authinfo "~/.netrc")))
+        ;; per default use the :work instance. All interactive functions use
+        ;; prefix argument to query for the instance to use
+        (setq bz-default-instance :work)
         ;; columns to show in list mode
         (setq bugzilla-columns '("id" "status" "summary"))
 
