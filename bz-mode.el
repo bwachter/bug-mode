@@ -33,11 +33,11 @@ Example:
                                (save-excursion
                                  (move-beginning-of-line nil)
                                  (if (re-search-forward "^\\([0-9]+\\)" nil t)
-                                     (bz-get (match-string 1))
+                                     (bz-get (match-string 1) bz-instance)
                                    (error "WTF? No id in beginning?")))))
   (local-set-key "u" (lambda ()
                        (interactive)
-                       (bz-do-search bz-query)))
+                       (bz-do-search bz-query bz-instance)))
   (local-set-key "q" (lambda ()
                        (interactive)
                        (kill-buffer (current-buffer)))))
@@ -56,19 +56,19 @@ Example:
   ;; FIXME: send credentials in these calls?
   (local-set-key (kbd "RET") (lambda ()
                                (interactive)
-                               (browse-url (bz-find-attachment-url))))
+                               (browse-url (bz-find-attachment-url bz-instance))))
   (local-set-key "d" (lambda ()
                        (interactive)
                        (w3m-download
-                        (bz-find-attachment-url)
+                        (bz-find-attachment-url bz-instance)
                         (expand-file-name (concat "~/" (match-string 3))))))
   (local-set-key "c" (lambda ()
                        (interactive)
-                       (bz-comment bz-id)))
+                       (bz-comment bz-id bz-instance)))
 
   (local-set-key "u" (lambda ()
                        (interactive)
-                       (bz-get bz-id)))
+                       (bz-get bz-id bz-instance)))
 
   (local-set-key "r" (lambda ()
                        (interactive)
@@ -78,8 +78,8 @@ Example:
                                                                   (mapcar (lambda (x)
                                                                             (cdr (assoc 'name x)))
                                                                           (cdr (assoc 'values (gethash "resolution" bz-fields))))))))
-                         (bz-update bz-id `((status . "RESOLVED") (resolution . ,resolution))))
-                       (bz-get bz-id)))
+                         (bz-update bz-id `((status . "RESOLVED") (resolution . ,resolution)) bz-instance))
+                       (bz-get bz-id bz-instance)))
 
   (local-set-key "q" (lambda ()
                        (interactive)
@@ -238,11 +238,13 @@ entered enough to get a match."
                (format "%s: %s" (car kv) (cdr kv)))
              kvs ", "))
 
-(defun bz-show-list (query parsed)
+(defun bz-show-list (query parsed &optional instance)
   (switch-to-buffer (format "*bugzilla results: %s*" (pretty-kvs query)))
   (bz-list-mode)
   (make-local-variable 'bz-query)
   (setq bz-query query)
+  (make-local-variable 'bz-instance)
+  (setq bz-instance instance)
   (setq buffer-read-only nil)
   (erase-buffer)
   (let* ((bugs (mapcar 'bz-bug-filtered-and-sorted-properties parsed)))
@@ -273,13 +275,15 @@ entered enough to get a match."
   (insert-char ?- (floor (/ (window-width) 1.5)))
   (insert "\n"))
 
-(defun bz-show-bug (id bug)
+(defun bz-show-bug (id bug &optional instance)
   (switch-to-buffer (format "*bugzilla bug: %s*" (cdr (assoc 'id bug))))
   (bz-single-mode)
   (make-local-variable 'bz-id)
   (setq bz-id id)
   (make-local-variable 'bz-bug)
   (setq bz-bug bug)
+  (make-local-variable 'bz-instance)
+  (setq bz-instance instance)
   (setq buffer-read-only nil)
   (erase-buffer)
   (insert (mapconcat (lambda (prop)
@@ -296,7 +300,7 @@ entered enough to get a match."
   (goto-char 0)
   (setq buffer-read-only t))
 
-(defun bz-handle-search-response (query response)
+(defun bz-handle-search-response (query response &optional instance)
   (if (and
        (assoc 'result response)
        (assoc 'bugs (assoc 'result response)))
@@ -304,10 +308,9 @@ entered enough to get a match."
         (if (= (length bugs) 0)
             (message "No results")
           (if (= (length bugs) 1)
-              (bz-show-bug query (aref bugs 0))
-            (bz-show-list query bugs))))
+              (bz-show-bug query (aref bugs 0) instance)
+            (bz-show-list query bugs instance))))
     response))
-
 
 (defun bz-handle-comments-response (id response)
   (if (and
@@ -379,7 +382,7 @@ entered enough to get a match."
 
 ;; take hash table as params. todo: figure out format
 (defun bz-do-search (params &optional instance)
-  (bz-handle-search-response params (bz-rpc "Bug.search" params instance)))
+  (bz-handle-search-response params (bz-rpc "Bug.search" params instance) instance))
 
 (defun bz-search (query &optional instance)
   (interactive
@@ -397,9 +400,9 @@ entered enough to get a match."
         (read-string "Bug ID: " nil nil t)
         (bz-query-instance))
      (list (read-string "Bug ID: " nil nil t))))
-  (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id)) instance))
-  (bz-get-attachments id)
-  (bz-get-comments id))
+  (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id)) instance) instance)
+  (bz-get-attachments id instance)
+  (bz-get-comments id instance))
 
 (defun bz-update (id fields &optional instance)
   (message (format "fields: %s" (append fields `((ids . ,id)))))
@@ -408,10 +411,11 @@ entered enough to get a match."
 ;; TODO: make sure that a comment gets comitted to the bug on the right instance
 (let ((fields '((status . "RESOLVED") (resolution . "FIXED"))))
   (append fields '((id . "123"))))
-(defun bz-comment-commit (&optional instance)
-  (interactive
-   (if current-prefix-arg
-       (list (bz-query-instance))))
+;; as that only should be run in the context of a bug the local
+;; variable bz-instance should be valid there, and instance
+;; query is not needed
+(defun bz-comment-commit ()
+  (interactive)
   (if (not (string= major-mode "bz-comment-mode"))
       (error "not visisting a bugzilla comment buffer"))
   (let ((params (make-hash-table :test 'equal)))
@@ -423,18 +427,20 @@ entered enough to get a match."
       (re-search-forward "^[^\n]" nil t)
       (move-beginning-of-line nil)
       (puthash "comment" (buffer-substring (point) (point-max)) params)
-      (let ((result (bz-rpc "Bug.add_comment" params instance)))
+      (let ((result (bz-rpc "Bug.add_comment" params bz-instance)))
         (message (format "comment id: %s" (cdr (cadr (car result)))))
         (kill-buffer (current-buffer))))
-    (bz-get bz-id)))
+    (bz-get bz-id bz-instance)))
 
 ;; TODO: send to the right instance
-(defun bz-comment (id)
+(defun bz-comment (id &optional instance)
   (interactive "nid:")
   (switch-to-buffer (format "*bugzilla add comment: %s*" id))
   (bz-comment-mode)
   (make-local-variable 'bz-id)
   (setq bz-id id)
+  (make-local-variable 'bz-instance)
+  (setq bz-instance instance)
   (erase-buffer)
   ;;(insert "is_private: false\n")
   (insert "hours_worked: 0.0\n\n")
