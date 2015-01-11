@@ -10,6 +10,7 @@
 ;; TODO: convert to autoloads
 (require 'bz-list-mode)
 (require 'bz-comment-mode)
+(require 'bz-bug-mode)
 
 (defvar bz-debug nil
   "Configure debugging to *bz-debug* buffer")
@@ -28,8 +29,6 @@ Example:
 (defvar bugzilla-columns '("id" "status" "summary" "last_change_time")
   "Default columns in search output")
 
-(require 'generic-x)
-
 (defun bz-find-attachment-url (&optional instance)
   (save-excursion
     (let ((end (re-search-forward "$" nil t)))
@@ -38,49 +37,6 @@ Example:
       (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
           (format "%s/attachment.cgi?id=%s" (bz-instance-property :url instance) (match-string 1))
         (error "No attachment near point")))))
-
-(defun bz-single-setup-keymap ()
-  ;; There has to be a better way..
-  ;; FIXME: send credentials in these calls?
-  (local-set-key (kbd "RET") (lambda ()
-                               (interactive)
-                               (browse-url (bz-find-attachment-url bz-instance))))
-  (local-set-key "d" (lambda ()
-                       (interactive)
-                       (w3m-download
-                        (bz-find-attachment-url bz-instance)
-                        (expand-file-name (concat "~/" (match-string 3))))))
-  (local-set-key "c" (lambda ()
-                       (interactive)
-                       (bz-comment bz-id bz-instance)))
-
-  (local-set-key "u" (lambda ()
-                       (interactive)
-                       (bz-get bz-id bz-instance)))
-
-  (local-set-key "r" (lambda ()
-                       (interactive)
-                       (let ((resolution (completing-read "resolution: "
-                                                          (filter (lambda (x)
-                                                                    (> (length x) 0))
-                                                                  (mapcar (lambda (x)
-                                                                            (cdr (assoc 'name x)))
-                                                                          (cdr (assoc 'values (gethash "resolution" bz-fields))))))))
-                         (bz-update bz-id `((status . "RESOLVED") (resolution . ,resolution)) bz-instance))
-                       (bz-get bz-id bz-instance)))
-
-  (local-set-key "q" (lambda ()
-                       (interactive)
-                       (kill-buffer (current-buffer)))))
-
-(define-generic-mode
-  'bz-single-mode
-  '()
-  '()
-  '()
-  '()
-  '(bz-single-setup-keymap)
-  "bugzilla single mode")
 
 (defmacro bz-debug (body)
   `(if (and (boundp 'bz-debug) bz-debug)
@@ -215,7 +171,7 @@ entered enough to get a match."
 
 (defun bz-show-bug (id bug &optional instance)
   (switch-to-buffer (format "*bugzilla bug: %s*" (cdr (assoc 'id bug))))
-  (bz-single-mode)
+  (bz-bug-mode)
   (make-local-variable 'bz-id)
   (setq bz-id id)
   (make-local-variable 'bz-bug)
