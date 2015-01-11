@@ -9,6 +9,7 @@
 
 ;; TODO: convert to autoloads
 (require 'bz-list-mode)
+(require 'bz-comment-mode)
 
 (defvar bz-debug nil
   "Configure debugging to *bz-debug* buffer")
@@ -72,10 +73,6 @@ Example:
                        (interactive)
                        (kill-buffer (current-buffer)))))
 
-(defun bz-comment-setup-keymap ()
-  ;; There has to be a better way..
-  (local-set-key "\C-c\C-c" 'bz-comment-commit))
-
 (define-generic-mode
   'bz-single-mode
   '()
@@ -84,15 +81,6 @@ Example:
   '()
   '(bz-single-setup-keymap)
   "bugzilla single mode")
-
-(define-generic-mode
-  'bz-comment-mode
-  '()
-  '()
-  '()
-  '()
-  '(bz-comment-setup-keymap)
-  "bugzilla comment mode")
 
 (defmacro bz-debug (body)
   `(if (and (boundp 'bz-debug) bz-debug)
@@ -359,45 +347,6 @@ entered enough to get a match."
 (defun bz-update (id fields &optional instance)
   (message (format "fields: %s" (append fields `((ids . ,id)))))
   (bz-rpc "Bug.update" (append fields `((ids . ,id))) instance))
-
-;; TODO: make sure that a comment gets comitted to the bug on the right instance
-(let ((fields '((status . "RESOLVED") (resolution . "FIXED"))))
-  (append fields '((id . "123"))))
-;; as that only should be run in the context of a bug the local
-;; variable bz-instance should be valid there, and instance
-;; query is not needed
-(defun bz-comment-commit ()
-  (interactive)
-  (if (not (string= major-mode "bz-comment-mode"))
-      (error "not visisting a bugzilla comment buffer"))
-  (let ((params (make-hash-table :test 'equal)))
-    (puthash "id" bz-id params)
-    (save-excursion
-      (goto-char 0)
-      (while (re-search-forward "^\\([^:]*\\): ?\\(.*\\)$" nil t)
-        (puthash (match-string 1) (match-string 2) params))
-      (re-search-forward "^[^\n]" nil t)
-      (move-beginning-of-line nil)
-      (puthash "comment" (buffer-substring (point) (point-max)) params)
-      (let ((result (bz-rpc "Bug.add_comment" params bz-instance)))
-        (message (format "comment id: %s" (cdr (cadr (car result)))))
-        (kill-buffer (current-buffer))))
-    (bz-get bz-id bz-instance)))
-
-;; TODO: send to the right instance
-(defun bz-comment (id &optional instance)
-  (interactive "nid:")
-  (switch-to-buffer (format "*bugzilla add comment: %s*" id))
-  (bz-comment-mode)
-  (make-local-variable 'bz-id)
-  (setq bz-id id)
-  (make-local-variable 'bz-instance)
-  (setq bz-instance instance)
-  (erase-buffer)
-  ;;(insert "is_private: false\n")
-  (insert "hours_worked: 0.0\n\n")
-  (goto-char (point-max)))
-
 
 (defun bz-get-comments (id &optional instance)
   (bz-handle-comments-response id (bz-rpc "Bug.comments" `(("ids" . ,id)) instance)))
