@@ -7,6 +7,9 @@
 (require 'url-parse)
 (require 'netrc)
 
+;; TODO: convert to autoloads
+(require 'bz-list-mode)
+
 (defvar bz-debug nil
   "Configure debugging to *bz-debug* buffer")
 
@@ -25,22 +28,6 @@ Example:
   "Default columns in search output")
 
 (require 'generic-x)
-
-(defun bz-list-setup-keymap ()
-  ;; There has to be a better way..
-  (local-set-key (kbd "RET") (lambda ()
-                               (interactive)
-                               (save-excursion
-                                 (move-beginning-of-line nil)
-                                 (if (re-search-forward "^\\([0-9]+\\)" nil t)
-                                     (bz-get (match-string 1) bz-instance)
-                                   (error "WTF? No id in beginning?")))))
-  (local-set-key "u" (lambda ()
-                       (interactive)
-                       (bz-do-search bz-query bz-instance)))
-  (local-set-key "q" (lambda ()
-                       (interactive)
-                       (kill-buffer (current-buffer)))))
 
 (defun bz-find-attachment-url (&optional instance)
   (save-excursion
@@ -88,15 +75,6 @@ Example:
 (defun bz-comment-setup-keymap ()
   ;; There has to be a better way..
   (local-set-key "\C-c\C-c" 'bz-comment-commit))
-
-(define-generic-mode
-  'bz-list-mode
-  '()
-  '()
-  '()
-  '()
-  '(bz-list-setup-keymap)
-  "bugzilla list mode")
 
 (define-generic-mode
   'bz-single-mode
@@ -238,34 +216,6 @@ entered enough to get a match."
                (format "%s: %s" (car kv) (cdr kv)))
              kvs ", "))
 
-(defun bz-show-list (query parsed &optional instance)
-  (switch-to-buffer (format "*bugzilla results: %s*" (pretty-kvs query)))
-  (bz-list-mode)
-  (make-local-variable 'bz-query)
-  (setq bz-query query)
-  (make-local-variable 'bz-instance)
-  (setq bz-instance instance)
-  (setq buffer-read-only nil)
-  (erase-buffer)
-  (let* ((bugs (mapcar 'bz-bug-filtered-and-sorted-properties parsed)))
-    (let* ((headers bugzilla-columns)
-           (header-widths (bz-header-widths bugs))
-           (header-item-length (/ (window-width) (length headers))))
-      (setq header-line-format
-            (let ((column 0)
-                  (header '()))
-              (mapconcat (lambda (heading)
-                           (let ((result (concat
-                                          (propertize " " 'display (list 'space :align-to column)
-                                                      'face 'fixed-pitch)
-                                          heading)))
-                             (setq column (+ column (cdr (assoc heading header-widths)) 1))
-                             result))
-                         headers "")))
-      (insert (mapconcat 'bz-bug-format bugs "\n")))
-    (goto-char 0)
-    (setq buffer-read-only t)))
-
 (defun bz-json-response-from-buffer (buffer)
   (with-current-buffer (get-buffer buffer)
     (bz-parse-rpc-response)))
@@ -309,7 +259,7 @@ entered enough to get a match."
             (message "No results")
           (if (= (length bugs) 1)
               (bz-show-bug query (aref bugs 0) instance)
-            (bz-show-list query bugs instance))))
+            (bz-list-mode-show query bugs instance))))
     response))
 
 (defun bz-handle-comments-response (id response)
@@ -359,6 +309,8 @@ entered enough to get a match."
                 (setq buffer-read-only t))
             (error "Could not find area for attachments in buffer"))))))
 
+;; TODO: Login is currently required for bz-fields to be set
+;;       which is required for single bug display
 (defun bz-login (&optional instance)
   (interactive
    (if current-prefix-arg
