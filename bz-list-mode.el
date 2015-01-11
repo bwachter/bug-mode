@@ -36,7 +36,7 @@
   "Operate on a list of bugzilla items"
   )
 
-(defun bz-list-mode-show (query parsed &optional instance)
+(defun bz-list-show (query parsed &optional instance)
   "Display the result of a Bugzilla search returning a list of bugs"
   (switch-to-buffer (format "*bugzilla results: %s*" (pretty-kvs query)))
   (bz-list-mode)
@@ -72,7 +72,7 @@
   (save-excursion
     (move-beginning-of-line nil)
     (if (re-search-forward "^\\([0-9]+\\)" nil t)
-        (bz-get (match-string 1) bz-instance)
+        (bz-bug (match-string 1) bz-instance)
       (error "WTF? No id in beginning?"))))
 
 ;;;###autoload

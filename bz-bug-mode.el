@@ -40,6 +40,46 @@
   )
 
 ;;;###autoload
+(defun bz-bug (id &optional instance)
+  "Retrieve and show a single bug"
+  (interactive
+   (if current-prefix-arg
+       (list
+        (read-string "Bug ID: " nil nil t)
+        (bz-query-instance))
+     (list (read-string "Bug ID: " nil nil t))))
+  (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id)) instance) instance)
+  (bz-get-attachments id instance)
+  (bz-get-comments id instance))
+
+;; TODO: only called via direct search, and does not load comments. Merge with bz-bug?
+(defun bz-bug-show (id bug &optional instance)
+  "Display an existing bugzilla bug buffer in bz-bug-mode"
+  (switch-to-buffer (format "*bugzilla bug: %s*" (cdr (assoc 'id bug))))
+  (bz-bug-mode)
+  (make-local-variable 'bz-id)
+  (setq bz-id id)
+  (make-local-variable 'bz-bug)
+  (setq bz-bug bug)
+  (make-local-variable 'bz-instance)
+  (setq bz-instance instance)
+  (setq buffer-read-only nil)
+  (erase-buffer)
+  (insert (mapconcat (lambda (prop)
+                       (format "%s: %s"
+                               (or (cdr (assoc 'display_name (gethash (symbol-name (car prop)) bz-fields)))
+                                   (car prop))
+                               (cdr prop)))
+                     (filter (lambda (prop)
+                               (not (string= (car prop) "internals"))) bug) "\n"))
+  (bz-insert-hr)
+  (insert "\nATTACHMENTS:\n")
+  (bz-insert-hr)
+  (insert "\nCOMMENTS:\n")
+  (goto-char 0)
+  (setq buffer-read-only t))
+
+;;;###autoload
 (defun bz-bug-mode-create-comment ()
   "Create a comment on the current bug"
   (interactive)
@@ -70,13 +110,13 @@
                                                        (cdr (assoc 'name x)))
                                                      (cdr (assoc 'values (gethash "resolution" bz-fields))))))))
     (bz-update bz-id `((status . "RESOLVED") (resolution . ,resolution)) bz-instance))
-  (bz-get bz-id bz-instance))
+  (bz-bug bz-id bz-instance))
 
 ;;;###autoload
 (defun bz-bug-mode-update-bug ()
   "Update the bug by reloading it from Bugzilla"
   (interactive)
-  (bz-get bz-id bz-instance))
+  (bz-bug bz-id bz-instance))
 
 (provide 'bz-bug-mode)
 ;;; bz-bug-mode.el ends here

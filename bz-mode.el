@@ -169,31 +169,6 @@ entered enough to get a match."
   (insert-char ?- (floor (/ (window-width) 1.5)))
   (insert "\n"))
 
-(defun bz-show-bug (id bug &optional instance)
-  (switch-to-buffer (format "*bugzilla bug: %s*" (cdr (assoc 'id bug))))
-  (bz-bug-mode)
-  (make-local-variable 'bz-id)
-  (setq bz-id id)
-  (make-local-variable 'bz-bug)
-  (setq bz-bug bug)
-  (make-local-variable 'bz-instance)
-  (setq bz-instance instance)
-  (setq buffer-read-only nil)
-  (erase-buffer)
-  (insert (mapconcat (lambda (prop)
-                       (format "%s: %s"
-                               (or (cdr (assoc 'display_name (gethash (symbol-name (car prop)) bz-fields)))
-                                   (car prop))
-                               (cdr prop)))
-                     (filter (lambda (prop)
-                               (not (string= (car prop) "internals"))) bug) "\n"))
-  (bz-insert-hr)
-  (insert "\nATTACHMENTS:\n")
-  (bz-insert-hr)
-  (insert "\nCOMMENTS:\n")
-  (goto-char 0)
-  (setq buffer-read-only t))
-
 (defun bz-handle-search-response (query response &optional instance)
   (if (and
        (assoc 'result response)
@@ -202,8 +177,8 @@ entered enough to get a match."
         (if (= (length bugs) 0)
             (message "No results")
           (if (= (length bugs) 1)
-              (bz-show-bug query (aref bugs 0) instance)
-            (bz-list-mode-show query bugs instance))))
+              (bz-bug-show query (aref bugs 0) instance)
+            (bz-list-show query bugs instance))))
     response))
 
 (defun bz-handle-comments-response (id response)
@@ -288,17 +263,6 @@ entered enough to get a match."
         (bz-query-instance))
      (list (read-string "Search query: " nil nil t))))
   (bz-do-search `(,(bz-parse-query query)) instance))
-
-(defun bz-get (id &optional instance)
-  (interactive
-   (if current-prefix-arg
-       (list
-        (read-string "Bug ID: " nil nil t)
-        (bz-query-instance))
-     (list (read-string "Bug ID: " nil nil t))))
-  (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id)) instance) instance)
-  (bz-get-attachments id instance)
-  (bz-get-comments id instance))
 
 (defun bz-update (id fields &optional instance)
   (message (format "fields: %s" (append fields `((ids . ,id)))))

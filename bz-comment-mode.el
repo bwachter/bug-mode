@@ -57,7 +57,7 @@
       (let ((result (bz-rpc "Bug.add_comment" params bz-instance)))
         (message (format "comment id: %s" (cdr (cadr (car result)))))
         (kill-buffer (current-buffer))))
-    (bz-get bz-id bz-instance)))
+    (bz-bug bz-id bz-instance)))
 
 ;; TODO: send to the right instance
 (defun bz-comment (id &optional instance)
