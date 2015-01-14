@@ -68,7 +68,7 @@
   (erase-buffer)
   (insert (mapconcat (lambda (prop)
                        (format "%s: %s"
-                               (or (cdr (assoc 'display_name (gethash (symbol-name (car prop)) bz-fields)))
+                               (or (cdr (assoc 'display_name (gethash (symbol-name (car prop)) (bz-get-fields instance))))
                                    (car prop))
                                (cdr prop)))
                      (filter (lambda (prop)
@@ -116,7 +116,7 @@
                                                (> (length x) 0))
                                              (mapcar (lambda (x)
                                                        (cdr (assoc 'name x)))
-                                                     (cdr (assoc 'values (gethash "resolution" bz-fields))))))))
+                                                     (cdr (assoc 'values (gethash "resolution" (bz-get-fields bz-instance)))))))))
     (bz-update bz-id `((status . "RESOLVED") (resolution . ,resolution)) bz-instance))
   (bz-bug bz-id bz-instance))
 

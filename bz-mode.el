@@ -29,6 +29,8 @@ Example:
 (defvar bugzilla-columns '("id" "status" "summary" "last_change_time")
   "Default columns in search output")
 
+(setq bz-field-cache nil)
+
 (defun bz-find-attachment-url (&optional instance)
   (save-excursion
     (let ((end (re-search-forward "$" nil t)))
@@ -255,6 +257,20 @@ entered enough to get a match."
    (if current-prefix-arg
        (list (bz-query-instance))))
   (bz-rpc "User.logout" '() instance))
+(defun bz-get-fields (&optional instance)
+  "Download fields used by this Bugzilla instance or returns them from cache"
+  (let* ((instance (bz-instance-to-symbolp instance))
+         (fields (if (plist-get bz-field-cache instance) nil (bz-rpc "Bug.fields" '() instance)))
+         (field-hash (make-hash-table :test 'equal)))
+    (if fields
+        (progn
+          (mapcar (lambda (field)
+                    (let ((key (cdr (assoc 'name field))))
+                      (puthash key field field-hash)))
+                  (cdr (car (cdr (car fields)))))
+          (setq bz-field-cache (plist-put bz-field-cache instance field-hash))
+          ))
+    (plist-get bz-field-cache instance)))
 
 ;; take hash table as params. todo: figure out format
 (defun bz-do-search (params &optional instance)
