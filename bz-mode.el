@@ -12,6 +12,7 @@
 (require 'bz-comment-mode)
 (require 'bz-bug-mode)
 (require 'bz-rpc)
+(require 'bz-search)
 
 (defvar bz-debug nil
   "Configure debugging to *bz-debug* buffer")
@@ -88,60 +89,8 @@ Example:
   (insert-char ?- (floor (/ (window-width) 1.5)))
   (insert "\n"))
 
-(defun bz-handle-search-response (query response &optional instance)
-  (if (and
-       (assoc 'result response)
-       (assoc 'bugs (assoc 'result response)))
-      (let ((bugs (cdr (assoc 'bugs (assoc 'result response)))))
-        (if (= (length bugs) 0)
-            (message "No results")
-          (if (= (length bugs) 1)
-              (bz-bug-show query (aref bugs 0) instance)
-            (bz-list-show query bugs instance))))
-    response))
-
-;; take hash table as params. todo: figure out format
-(defun bz-do-search (params &optional instance)
-  (bz-handle-search-response params (bz-rpc "Bug.search" params instance) instance))
-
-(defun bz-search (query &optional instance)
-  (interactive
-   (if current-prefix-arg
-       (list
-        (read-string "Search query: " nil nil t)
-        (bz-query-instance))
-     (list (read-string "Search query: " nil nil t))))
-  (bz-do-search `(,(bz-parse-query query)) instance))
-
 (defun bz-update (id fields &optional instance)
   (message (format "fields: %s" (append fields `((ids . ,id)))))
   (bz-rpc "Bug.update" (append fields `((ids . ,id))) instance))
-
-(defun bz-search-multiple (&optional instance)
-  (interactive
-   (if current-prefix-arg
-       (list (bz-query-instance))))
-  (let ((terms (make-hash-table :test 'equal))
-        (term nil))
-    (while (not (string= term ""))
-      (setq term (read-from-minibuffer "query term: "))
-      (if (not (string= term ""))
-          (let* ((parsed (bz-parse-query term))
-                 (key (car parsed))
-                 (value (cdr parsed))
-                 (current (gethash key terms)))
-            (if current
-                (if (vectorp current)
-                    (puthash key (vconcat current (vector value)) terms)
-                  (puthash key (vector current value) terms))
-              (puthash key value terms)))))
-    (bz-do-search terms instance)))
-
-(defun bz-parse-query (query)
-  (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
-      `(,(match-string 1 query) . ,(match-string 2 query))
-    (if (string-match "[:space:]*[0-9]+[:space:]*" query)
-        `(id . ,(string-to-number query))
-      `(summary . ,query))))
 
 (provide 'bz-mode)
