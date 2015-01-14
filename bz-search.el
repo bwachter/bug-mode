@@ -26,22 +26,9 @@
 ;;
 ;;; Code:
 
-(defun bz-do-search (params &optional instance)
-  "Execute a Bugzilla search query"
-  (bz-handle-search-response params (bz-rpc "Bug.search" params instance) instance))
-
-(defun bz-handle-search-response (query response &optional instance)
-  "Parse the result of a Bugzilla search and either show a single bug or a bug list"
-  (if (and
-       (assoc 'result response)
-       (assoc 'bugs (assoc 'result response)))
-      (let ((bugs (cdr (assoc 'bugs (assoc 'result response)))))
-        (if (= (length bugs) 0)
-            (message "No results")
-          (if (= (length bugs) 1)
-              (bz-bug-show query (aref bugs 0) instance)
-            (bz-list-show query bugs instance))))
-    response))
+(require 'bz-search-common)
+(require 'bz-list-mode)
+(require 'bz-bug-mode)
 
 ;;;###autoload
 (defun bz-search (query &optional instance)

@@ -28,6 +28,7 @@
 
 (require 'netrc)
 (require 'url-parse)
+(require 'bz-rpc)
 
 (defun bz-credentials (&optional instance)
   "Return credentials for the given Bugzilla instances, if set. The configuration data

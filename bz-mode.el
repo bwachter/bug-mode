@@ -1,16 +1,9 @@
 ;; TODO
 ;; - Handle instances properly when calling helper functions
 ;;   Known issues are in
-;;   - Opening bugs from a list (goes to default instance)
 ;;   - Commenting on bugs (goes to matching bug on default instance)
 
-;; TODO: convert to autoloads
-(require 'bz-auth)
-(require 'bz-list-mode)
-(require 'bz-comment-mode)
-(require 'bz-bug-mode)
-(require 'bz-rpc)
-(require 'bz-search)
+(require 'bz-autoloads)
 
 (defvar bz-debug nil
   "Configure debugging to *bz-debug* buffer")

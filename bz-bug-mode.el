@@ -26,6 +26,9 @@
 ;;
 ;;; Code:
 
+(require 'bz-rpc)
+(require 'bz-common-functions)
+
 (defvar bz-bug-mode-map (let ((keymap (copy-keymap special-mode-map)))
                           (define-key keymap (kbd "RET") 'bz-bug-mode-open-attachment)
                           (define-key keymap "b"         'bz-bug-mode-browse-bug)
@@ -49,9 +52,19 @@
         (read-string "Bug ID: " nil nil t)
         (bz-query-instance))
      (list (read-string "Bug ID: " nil nil t))))
-  (bz-handle-search-response id (bz-rpc "Bug.get" `(("ids" . ,id)) instance) instance)
-  (bz-get-attachments id instance)
-  (bz-get-comments id instance))
+  (let ((search-response (bz-rpc "Bug.get" `(("ids" . ,id)) instance)))
+    (if (and (assoc 'result search-response)
+             (assoc 'bugs (assoc 'result search-response)))
+        (let ((bugs (cdr (assoc 'bugs (assoc 'result search-response)))))
+          (cond
+           ((= (length bugs) 0)
+            (message (concat "Bug " id " not found.")))
+           ((= (length bugs) 1)
+            (bz-bug-show id (aref bugs 0) instance)
+            (bz-get-attachments id instance)
+            (bz-get-comments id instance)
+            )
+           (t (message "You should never see this message")))))))
 
 ;; TODO: only called via direct search, and does not load comments. Merge with bz-bug?
 (defun bz-bug-show (id bug &optional instance)

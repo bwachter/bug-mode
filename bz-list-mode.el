@@ -26,6 +26,10 @@
 ;;
 ;;; Code:
 
+(require 'bz-rpc)
+(require 'bz-search-common)
+(require 'bz-common-functions)
+
 (defvar bz-list-mode-map (let ((keymap (copy-keymap special-mode-map)))
                            (define-key keymap (kbd "RET") 'bz-list-mode-select-bug)
                            (define-key keymap "u"         'bz-list-mode-update-list)
@@ -67,10 +71,6 @@
 
 ;; layout/output control
 ;; TODO: properly document those
-(defun filter (condp lst)
-  (delq nil
-        (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
-
 (defun bz-header-widths (bugs)
   (mapcar* (lambda (x y)
              `(,x . ,y))

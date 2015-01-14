@@ -6,12 +6,12 @@
 * JSON-RPC mode enabled for bugzilla
 
 ## Installing ##
-* Copy bz-mode.el to somewhere on your emacs load path
+* call 'make' to generate autoloads
 * Edit your ~/.emacs or ~/.emacs.d/init.el:
 
-        ;; uncomment this to explicitly add the path to your load path:
-        ;; (add-to-list 'load-path "~/.emacs.d/bz-mode/")
         (require 'bz-mode)
+        ;; adjust the path to bz-mode
+        (add-to-list 'load-path "~/.emacs.d/bz-mode/")
 
         ;; settings
         ;; debug mode?

@@ -26,6 +26,8 @@
 ;;
 ;;; Code:
 
+(require 'bz-bug-mode)
+
 (defvar bz-comment-mode-map (let ((keymap (copy-keymap text-mode-map)))
                           (define-key keymap "\C-c\C-c"         'bz-comment-commit)
                           keymap)
