@@ -28,6 +28,7 @@
 
 (defvar bz-bug-mode-map (let ((keymap (copy-keymap special-mode-map)))
                           (define-key keymap (kbd "RET") 'bz-bug-mode-open-attachment)
+                          (define-key keymap "b"         'bz-bug-mode-browse-bug)
                           (define-key keymap "c"         'bz-bug-mode-create-comment)
                           (define-key keymap "d"         'bz-bug-mode-download-attachment)
                           (define-key keymap "r"         'bz-bug-mode-resolve-bug)
@@ -78,6 +79,13 @@
   (insert "\nCOMMENTS:\n")
   (goto-char 0)
   (setq buffer-read-only t))
+
+;;;###autoload
+(defun bz-bug-mode-browse-bug ()
+  "Open the current bug in browser"
+  (interactive)
+  (let ((url (concat (bz-instance-property :url bz-instance) "/show_bug.cgi?id=" bz-id)))
+    (browse-url url)))
 
 ;;;###autoload
 (defun bz-bug-mode-create-comment ()
