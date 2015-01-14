@@ -9,9 +9,9 @@
 * call 'make' to generate autoloads
 * Edit your ~/.emacs or ~/.emacs.d/init.el:
 
-        (require 'bz-mode)
         ;; adjust the path to bz-mode
         (add-to-list 'load-path "~/.emacs.d/bz-mode/")
+        (require 'bz)
 
         ;; settings
         ;; debug mode?
