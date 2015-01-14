@@ -32,15 +32,6 @@ Example:
 
 (setq bz-field-cache nil)
 
-(defun bz-find-attachment-url (&optional instance)
-  (save-excursion
-    (let ((end (re-search-forward "$" nil t)))
-      (move-beginning-of-line nil)
-      ;; FIXME: breaks if ; in filenames/descriptions.. heh
-      (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
-          (format "%s/attachment.cgi?id=%s" (bz-instance-property :url instance) (match-string 1))
-        (error "No attachment near point")))))
-
 (defmacro bz-debug (body)
   `(if (and (boundp 'bz-debug) bz-debug)
        (let ((str ,body))
@@ -109,53 +100,6 @@ Example:
             (bz-list-show query bugs instance))))
     response))
 
-(defun bz-handle-comments-response (id response)
-  (if (and
-       (assoc 'result response)
-       (assoc 'bugs (assoc 'result response)))
-      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
-             (comments (cdr (cadr (car bugs)))))
-        (save-excursion
-          (switch-to-buffer (format "*bugzilla bug: %s*" id))
-          (setq buffer-read-only nil)
-          (goto-char 0)
-          (if (re-search-forward "^COMMENTS:$" nil t)
-              (progn
-                (delete-region (point) (point-max))
-                (insert "\n")
-                (insert (mapconcat (lambda (comment)
-                                     (format "[Comment #%s] %s %s:\n%s"
-                                             (cdr (assoc 'count comment))
-                                             (cdr (assoc 'time comment))
-                                             (cdr (assoc 'creator comment))
-                                             (cdr (assoc 'text comment))))
-                                   comments "\n\n"))
-                (setq buffer-read-only t))
-            (error "Could not find area for comments in buffer"))))))
-
-(defun bz-handle-attachments-response (id response)
-  (if (and
-       (assoc 'result response)
-       (assoc 'bugs (assoc 'result response)))
-      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
-             (attachments (cdr (car bugs))))
-        (save-excursion
-          (switch-to-buffer (format "*bugzilla bug: %s*" id))
-          (setq buffer-read-only nil)
-          (goto-char 0)
-          (if (re-search-forward "^ATTACHMENTS:$" nil t)
-              (progn
-                (insert "\n")
-                (insert (mapconcat (lambda (attachment)
-                                     (format "attachment %s: %s; %s; %s"
-                                             (cdr (assoc 'id attachment))
-                                             (cdr (assoc 'description attachment))
-                                             (cdr (assoc 'file_name attachment))
-                                             (cdr (assoc 'content_type attachment))))
-                                   attachments "\n"))
-                (setq buffer-read-only t))
-            (error "Could not find area for attachments in buffer"))))))
-
 ;; take hash table as params. todo: figure out format
 (defun bz-do-search (params &optional instance)
   (bz-handle-search-response params (bz-rpc "Bug.search" params instance) instance))
@@ -172,12 +116,6 @@ Example:
 (defun bz-update (id fields &optional instance)
   (message (format "fields: %s" (append fields `((ids . ,id)))))
   (bz-rpc "Bug.update" (append fields `((ids . ,id))) instance))
-
-(defun bz-get-comments (id &optional instance)
-  (bz-handle-comments-response id (bz-rpc "Bug.comments" `(("ids" . ,id)) instance)))
-
-(defun bz-get-attachments (id &optional instance)
-  (bz-handle-attachments-response id (bz-rpc "Bug.attachments" `(("ids" . ,id)) instance)))
 
 (defun bz-search-multiple (&optional instance)
   (interactive

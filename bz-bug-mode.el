@@ -80,6 +80,37 @@
   (goto-char 0)
   (setq buffer-read-only t))
 
+(defun bz-get-comments (id &optional instance)
+  "Request comments for a bug and add it to an existing(!) bug buffer
+via bz-handle-comments-response"
+  (bz-handle-comments-response id (bz-rpc "Bug.comments" `(("ids" . ,id)) instance)))
+
+(defun bz-handle-comments-response (id response)
+  "Add received comments into an existing bug buffer"
+  (if (and
+       (assoc 'result response)
+       (assoc 'bugs (assoc 'result response)))
+      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
+             (comments (cdr (cadr (car bugs)))))
+        (save-excursion
+          (switch-to-buffer (format "*bugzilla bug: %s*" id))
+          (setq buffer-read-only nil)
+          (goto-char 0)
+          (if (re-search-forward "^COMMENTS:$" nil t)
+              (progn
+                (delete-region (point) (point-max))
+                (insert "\n")
+                (insert (mapconcat (lambda (comment)
+                                     (format "[Comment #%s] %s %s:\n%s"
+                                             (cdr (assoc 'count comment))
+                                             (cdr (assoc 'time comment))
+                                             (cdr (assoc 'creator comment))
+                                             (cdr (assoc 'text comment))))
+                                   comments "\n\n"))
+                (setq buffer-read-only t))
+            (error "Could not find area for comments in buffer"))))))
+
+;; functions usually called through keybindings in bz-bug-mode
 ;;;###autoload
 (defun bz-bug-mode-browse-bug ()
   "Open the current bug in browser"
@@ -125,6 +156,46 @@
   "Update the bug by reloading it from Bugzilla"
   (interactive)
   (bz-bug bz-id bz-instance))
+
+;; attachment handling functions
+(defun bz-get-attachments (id &optional instance)
+    "Request attachment details for a bug and add it to an existing(!) bug buffer
+via bz-handle-attachments-response"
+  (bz-handle-attachments-response id (bz-rpc "Bug.attachments" `(("ids" . ,id)) instance)))
+
+(defun bz-handle-attachments-response (id response)
+  "Add received attachment info into an existing bug buffer"
+  (if (and
+       (assoc 'result response)
+       (assoc 'bugs (assoc 'result response)))
+      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
+             (attachments (cdr (car bugs))))
+        (save-excursion
+          (switch-to-buffer (format "*bugzilla bug: %s*" id))
+          (setq buffer-read-only nil)
+          (goto-char 0)
+          (if (re-search-forward "^ATTACHMENTS:$" nil t)
+              (progn
+                (insert "\n")
+                (insert (mapconcat (lambda (attachment)
+                                     (format "attachment %s: %s; %s; %s"
+                                             (cdr (assoc 'id attachment))
+                                             (cdr (assoc 'description attachment))
+                                             (cdr (assoc 'file_name attachment))
+                                             (cdr (assoc 'content_type attachment))))
+                                   attachments "\n"))
+                (setq buffer-read-only t))
+            (error "Could not find area for attachments in buffer"))))))
+
+(defun bz-find-attachment-url (&optional instance)
+  "Construct the URL required to download an attachment"
+  (save-excursion
+    (let ((end (re-search-forward "$" nil t)))
+      (move-beginning-of-line nil)
+      ;; FIXME: breaks if ; in filenames/descriptions.. heh
+      (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
+          (format "%s/attachment.cgi?id=%s" (bz-instance-property :url instance) (match-string 1))
+        (error "No attachment near point")))))
 
 (provide 'bz-bug-mode)
 ;;; bz-bug-mode.el ends here
