@@ -46,9 +46,9 @@ Example:
            (insert str)
            (insert "\n")))))
 
-(defun bz-instance-property (property &optional instance)
-  "Return the value for a PROPERTY of the instance INSTANCE, or the default
-instance if INSTANCE is empty"
+(defun bz-instance-to-symbolp (instance)
+  "Make sure that the instance handle is symbolp; returns default instance
+if instance is nil"
   (let* ( ; check if instance already is correct type, if not, check if it starts with :
           ; if it does, just convert, otherwise prepend : and assume all is fine now
           ; bz-default-instance is always assumed to be correct
@@ -56,9 +56,14 @@ instance if INSTANCE is empty"
                        (cond ((symbolp instance) instance)
                              ((string-match "^:" instance) (intern instance))
                              (t (intern (concat ":" instance))))
-                     bz-default-instance))
-         (property-list (plist-get bz-instance-plist instance))
-         )
+                     bz-default-instance)))
+    instance))
+
+(defun bz-instance-property (property &optional instance)
+  "Return the value for a PROPERTY of the instance INSTANCE, or the default
+instance if INSTANCE is empty"
+  (let* ((instance(bz-instance-to-symbolp instance))
+         (property-list (plist-get bz-instance-plist instance)))
     (plist-get property-list property)))
 
 (defun bz-credentials (&optional instance)
