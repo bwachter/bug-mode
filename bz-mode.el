@@ -5,9 +5,9 @@
 ;;   - Commenting on bugs (goes to matching bug on default instance)
 
 (require 'url-parse)
-(require 'netrc)
 
 ;; TODO: convert to autoloads
+(require 'bz-auth)
 (require 'bz-list-mode)
 (require 'bz-comment-mode)
 (require 'bz-bug-mode)
@@ -67,30 +67,6 @@ instance if INSTANCE is empty"
   (let* ((instance(bz-instance-to-symbolp instance))
          (property-list (plist-get bz-instance-plist instance)))
     (plist-get property-list property)))
-
-(defun bz-credentials (&optional instance)
-  "Return credentials for the given Bugzilla instances, if set. The configuration data
-for the instance and authinfo files will be searched, with the configuration data
-taking precedence. Search order for authinfo is :authinfo property, ~/.authinfo
-
-The return value is a two element list (login password)
-"
-  (let* ((url (url-generic-parse-url (bz-instance-property :url instance)))
-         (host (url-host url))
-         (port (prin1-to-string (url-port url)))
-         (authinfo (netrc-parse
-                    (expand-file-name
-                     (if (bz-instance-property :authinfo instance)
-                         (bz-instance-property :authinfo instance) "~/.authinfo"))))
-         (authrecord (netrc-machine authinfo host port))
-         (login (if (bz-instance-property :login instance)
-                    (bz-instance-property :login instance)
-                  (netrc-get authrecord "login")))
-         (password (if (bz-instance-property :password instance)
-                       (bz-instance-property :password instance)
-                     (netrc-get authrecord "password")))
-         )
-    (list login password)))
 
 (defun bz-query-instance ()
   "Query for a Bugzilla instance, providing completion with the instances configured in
@@ -235,28 +211,6 @@ entered enough to get a match."
                 (setq buffer-read-only t))
             (error "Could not find area for attachments in buffer"))))))
 
-;; TODO: Login is currently required for bz-fields to be set
-;;       which is required for single bug display
-(defun bz-login (&optional instance)
-  (interactive
-   (if current-prefix-arg
-       (list (bz-query-instance))))
-  (bz-rpc "User.login" `((login . ,(car (bz-credentials instance)))
-                         (password . ,(cadr (bz-credentials instance)))
-                         (remember . t)) instance)
-  (setq bz-fields (make-hash-table :test 'equal))
-  (let ((fields (bz-rpc "Bug.fields" '() instance)))
-    (mapcar (lambda (field)
-              (let ((key (cdr (assoc 'name field))))
-                (puthash key field bz-fields)))
-            (cdr (car (cdr (car fields))))))
-  (message "Login successful"))
-
-(defun bz-logout (&optional instance)
-  (interactive
-   (if current-prefix-arg
-       (list (bz-query-instance))))
-  (bz-rpc "User.logout" '() instance))
 (defun bz-get-fields (&optional instance)
   "Download fields used by this Bugzilla instance or returns them from cache"
   (let* ((instance (bz-instance-to-symbolp instance))
