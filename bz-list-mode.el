@@ -65,6 +65,52 @@
     (goto-char 0)
     (setq buffer-read-only t)))
 
+;; layout/output control
+;; TODO: properly document those
+(defun filter (condp lst)
+  (delq nil
+        (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
+
+(defun bz-header-widths (bugs)
+  (mapcar* (lambda (x y)
+             `(,x . ,y))
+           bugzilla-columns
+           (reduce (lambda (l1 l2)
+                     (mapcar* 'max l1 l2))
+                   (mapcar (lambda (bug)
+                             (mapcar (lambda (prop) (+ (length (format "%s" (cdr prop))) 5)) bug))
+                           bugs))))
+
+(defun bz-bug-sort-properties (bug)
+  (sort bug
+        (lambda (a b)
+          (< (position (symbol-name (car a)) bugzilla-columns :test 'string=)
+             (position (symbol-name (car b)) bugzilla-columns :test 'string=)))))
+
+(defun bz-bug-format (bug)
+  (mapconcat (lambda (property)
+               (let ((hw (cdr (assoc (symbol-name (car property)) header-widths))))
+                 (format (format "%%-%d.%ds"
+                                 hw
+                                 hw) (cdr property))))
+             bug " "))
+
+(defun bz-bug-filtered-and-sorted-properties (bug)
+  (bz-bug-sort-properties (filter (lambda (property) (member (symbol-name (car property)) bugzilla-columns)) bug)))
+
+(defun pretty-kvs (kvs)
+  (if (hash-table-p kvs)
+      (setq kvs (ht-to-alist kvs)))
+  (mapconcat (lambda (kv)
+               (format "%s: %s" (car kv) (cdr kv)))
+             kvs ", "))
+
+(defun ht-to-alist (ht)
+  (let (result)
+    (maphash (lambda (key val) (setq result (cons `(,key . ,val) result))) ht)
+    result))
+
+;; functions usually called through keybindings in bz-list-mode
 ;;;###autoload
 (defun bz-list-mode-select-bug ()
   "Open the bug at point in the list"

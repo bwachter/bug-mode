@@ -26,6 +26,8 @@
 ;;
 ;;; Code:
 
+(setq bz-field-cache nil)
+
 (defun bz-instance-to-symbolp (instance)
   "Make sure that the instance handle is symbolp; returns default instance
 if instance is nil"

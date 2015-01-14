@@ -80,6 +80,11 @@
   (goto-char 0)
   (setq buffer-read-only t))
 
+(defun bz-update (id fields &optional instance)
+  "Update fields in the bug on Bugzilla"
+  (message (format "fields: %s" (append fields `((ids . ,id)))))
+  (bz-rpc "Bug.update" (append fields `((ids . ,id))) instance))
+
 (defun bz-get-comments (id &optional instance)
   "Request comments for a bug and add it to an existing(!) bug buffer
 via bz-handle-comments-response"
@@ -196,6 +201,12 @@ via bz-handle-attachments-response"
       (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
           (format "%s/attachment.cgi?id=%s" (bz-instance-property :url instance) (match-string 1))
         (error "No attachment near point")))))
+
+;; layout. should get dropped eventually
+(defun bz-insert-hr ()
+  (insert "\n")
+  (insert-char ?- (floor (/ (window-width) 1.5)))
+  (insert "\n"))
 
 (provide 'bz-bug-mode)
 ;;; bz-bug-mode.el ends here

@@ -27,6 +27,7 @@
 ;;; Code:
 
 (require 'netrc)
+(require 'url-parse)
 
 (defun bz-credentials (&optional instance)
   "Return credentials for the given Bugzilla instances, if set. The configuration data
@@ -52,12 +53,14 @@ The return value is a two element list (login password)
          )
     (list login password)))
 
+;;;###autoload
 (defun bz-logout (&optional instance)
   (interactive
    (if current-prefix-arg
        (list (bz-query-instance))))
   (bz-rpc "User.logout" '() instance))
 
+;;;###autoload
 (defun bz-login (&optional instance)
   (interactive
    (if current-prefix-arg
