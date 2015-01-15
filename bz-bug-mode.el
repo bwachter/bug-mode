@@ -60,10 +60,7 @@
            ((= (length bugs) 0)
             (message (concat "Bug " id " not found.")))
            ((= (length bugs) 1)
-            (bz-bug-show id (aref bugs 0) instance)
-            (bz-get-attachments id instance)
-            (bz-get-comments id instance)
-            )
+            (bz-bug-show id (aref bugs 0) instance))
            (t (message "You should never see this message")))))))
 
 ;; TODO: only called via direct search, and does not load comments. Merge with bz-bug?
@@ -90,6 +87,8 @@
   (insert "\nATTACHMENTS:\n")
   (bz-insert-hr)
   (insert "\nCOMMENTS:\n")
+  (bz-get-attachments id instance)
+  (bz-get-comments id instance)
   (goto-char 0)
   (setq buffer-read-only t))
 

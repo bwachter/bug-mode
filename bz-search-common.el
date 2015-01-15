@@ -40,7 +40,7 @@
         (if (= (length bugs) 0)
             (message "No results")
           (if (= (length bugs) 1)
-              (bz-bug-show query (aref bugs 0) instance)
+              (bz-bug-show (cdr (assoc 'id (aref bugs 0))) (aref bugs 0) instance)
             (bz-list-show query bugs instance))))
     response))
 
