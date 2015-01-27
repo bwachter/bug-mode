@@ -67,7 +67,7 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
   :type 'string
   :group 'bz)
 
-(defvar bz-data-file (concat bz-data-directory "/data")
+(defvar bz-data-file (concat bz-data-directory "data")
   "The file containing saved searches and similar user data. Change bz-data-directory if you don't like the storage location")
 
 (defmacro bz-debug (body)
@@ -77,6 +77,24 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
            (goto-char (point-max))
            (insert str)
            (insert "\n")))))
+
+(setq bz-bug-remember-list (make-hash-table :test 'equal))
+
+(defun bz-write-data-file ()
+  "Write user data to disk"
+  (with-temp-buffer
+    (insert ";; Foo\n")
+    (insert "(setq bz-bug-remember-list ")
+    (pp bz-bug-remember-list (current-buffer))
+    (insert ")\n")
+    (write-file bz-data-file)))
+
+(defun bz-read-data-file ()
+  "Restore user data from disk"
+  (if (file-exists-p bz-data-file)
+      (load (expand-file-name bz-data-file))))
+
+(bz-read-data-file)
 
 (provide 'bz)
 ;;; bz.el ends here)

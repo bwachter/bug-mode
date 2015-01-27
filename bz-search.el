@@ -31,6 +31,25 @@
 (require 'bz-bug-mode)
 
 ;;;###autoload
+(defun bz-stored-bugs (list-name &optional instance)
+  "Display a stored list of bugs"
+  (interactive
+   (if current-prefix-arg
+       (list (read-string "Name: ") (bz-query-instance))
+     (list
+      (read-string "Name: "))))
+  (let* ((instance (bz-instance-to-symbolp instance))
+         (lists-for-instance (gethash instance bz-bug-remember-list))
+         (list-entries (if lists-for-instance
+                           (gethash list-name lists-for-instance))))
+    (if list-entries
+        (let ((query (make-hash-table :test 'equal)))
+          (puthash "id" list-entries query)
+          (bz-do-search query instance))
+      (message (concat "List " list-name " not found")))
+  ))
+
+;;;###autoload
 (defun bz-search (query &optional instance)
   "Take a search query from the minibuffer and execute it"
   (interactive

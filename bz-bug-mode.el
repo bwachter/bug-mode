@@ -34,7 +34,9 @@
                           (define-key keymap "b"         'bz-bug-mode-browse-bug)
                           (define-key keymap "c"         'bz-bug-mode-create-comment)
                           (define-key keymap "d"         'bz-bug-mode-download-attachment)
-                          (define-key keymap "r"         'bz-bug-mode-resolve-bug)
+                          (define-key keymap "r"         'bz-bug-mode-remember-bug)
+                          ;; TODO: this should change to 'status change' instead of 'resolve'
+                          (define-key keymap "s"         'bz-bug-mode-resolve-bug)
                           (define-key keymap "u"         'bz-bug-mode-update-bug)
                           keymap)
   "Keymap for BZ bug mode")
@@ -154,6 +156,33 @@ via bz-handle-comments-response"
   "Open the current attachment in the web browser"
   (interactive)
   (browse-url (bz-find-attachment-url bz-instance)))
+
+;;;###autoload
+(defun bz-bug-mode-remember-bug (list-name &optional id instance)
+  "Remember the current bug in a local search"
+  (interactive
+   (if (and (boundp 'bz-id) (boundp 'bz-bug))
+       (list
+        (read-string "Name: " nil nil t))
+     (list
+      (read-string "Name: " nil nil t)
+      (read-string "Bug: " nil nil t)
+      (if current-prefix-arg (bz-query-instance)))))
+  (let* ((instance (bz-instance-to-symbolp instance))
+         (lists-for-instance (gethash instance bz-bug-remember-list))
+         (list-entries (if lists-for-instance
+                           (gethash list-name lists-for-instance)))
+         (bz-id (if (boundp 'bz-id) bz-id id))
+         (bz-instance (if (boundp 'bz-instance) bz-instance instance)))
+    (add-to-list 'list-entries bz-id)
+    (delete-dups list-entries)
+    (if lists-for-instance
+        (puthash list-name list-entries lists-for-instance)
+      (let ((lists-for-instance (make-hash-table :test 'equal)))
+        (puthash list-name list-entries lists-for-instance)
+        (puthash instance lists-for-instance bz-bug-remember-list)
+        ))
+    (bz-write-data-file)))
 
 ;;;###autoload
 (defun bz-bug-mode-resolve-bug ()

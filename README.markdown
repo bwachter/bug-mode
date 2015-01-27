@@ -6,33 +6,39 @@
 * JSON-RPC mode enabled for bugzilla
 
 ## Installing ##
-* call 'make' to generate autoloads
+* call `make` to generate autoloads
 * Edit your ~/.emacs or ~/.emacs.d/init.el:
 
         ;; adjust the path to bz-mode
         (add-to-list 'load-path "~/.emacs.d/bz-mode/")
         (require 'bz)
 
-* M-x customize-group RET bz and adjust at least the the list of instances and the name of the default instance
+* `M-x customize-group RET bz` and adjust at least the the list of instances and the name of the default instance
 
 ## Functions ##
 ### bz-login ###
 Use this to login.
+### bz-bug ###
+Open a single bug
 ### bz-search ###
 Search for bugs. Query can be either free form text, key-value (e.g. "component:Test") or the name of a named search.
 ### bz-search-multiple ###
 Search for bugs with multiple criterias. Same query format as bz-search ###
+### bz-stored-bugs ###
+Open a list of locally stored bugs
 
 ## Modes/vies ##
 ### bz-list-mode ###
 * u - execute query again
 * RET - show single bug
 * q - kill buffer
-### bz-single-mode ###
+### bz-bug-mode ###
 * RET - open attachment with browse-url function
-* d - download attachment with w3m-download
-* u - execute query again
+* b - open bug in default browser
 * c - add comment
+* d - download attachment with w3m-download
+* r - remember the bug in a locally stored list
+* u - execute query again
 * q - kill buffer
 ### bz-comment-mode ###
 * C-c C-c - commit comment
