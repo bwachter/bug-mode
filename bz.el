@@ -28,22 +28,47 @@
 
 (require 'bz-autoloads)
 
-(defvar bz-debug nil
-  "Configure debugging to *bz-debug* buffer")
+(defgroup bz nil "Bugzilla related settings")
 
-(defvar bz-default-instance
-  "The default bugzilla to use")
+(defcustom bz-debug nil
+  "Configure debugging to *bz-debug* buffer"
+  :type 'string
+  :group 'bz)
 
-(defvar bz-instance-plist nil
+(defcustom bz-default-instance ""
+  "The default bugzilla to use"
+  :type 'string
+  :group 'bz)
+
+(defcustom bz-instance-plist nil
   "A list of bugzilla instances to use.
 
 Example:
-'(:work (:url \"https://work.example.com\")
-  :fun  (:url \"https://fun.example.com\" :login \"username\" :password \"password\"))
-")
+'(:work   (:url \"https://work.example.com\")
+  :secure (:url \"https://secure.example.com\" :authinfo \"~/.netrc\")
+  :fun    (:url \"https://fun.example.com\" :login \"username\" :password \"password\"))
 
-(defvar bugzilla-columns '("id" "status" "summary" "last_change_time")
-  "Default columns in search output")
+The :work instance is either without auth, with auth-data in ~/.authinfo, or behind basic auth with the url-package prompting for credentials
+
+The :secure instance uses regular bz auth, with credentials stored in ~/.netrc. It requires a call to (bz-login \"secure\") before you can modify bugs
+
+The :fun instance uses regular bz auth, with credentials stored inside the configuration, which you should try to avoid for security reasons. It also requires a call to (bz-login \"fun\") before you can modify bugs
+"
+  :type 'sexp
+  :group 'bz)
+
+(defcustom bugzilla-columns '("id" "status" "summary" "last_change_time")
+  "Default columns in search output"
+  :type 'sexp
+  :group 'bz)
+
+(defcustom bz-data-directory (locate-user-emacs-file "bz/")
+  "The directory containing data files for the bz package"
+  :type 'string
+  :group 'bz)
+
+(defvar bz-data-file (concat bz-data-directory "/data")
+  "The file containing saved searches and similar user data. Change bz-data-directory if you don't like the storage location")
 
 (defmacro bz-debug (body)
   `(if (and (boundp 'bz-debug) bz-debug)
