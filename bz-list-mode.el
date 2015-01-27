@@ -51,7 +51,7 @@
   (setq buffer-read-only nil)
   (erase-buffer)
   (let* ((bugs (mapcar 'bz-bug-filtered-and-sorted-properties parsed)))
-    (let* ((headers bugzilla-columns)
+    (let* ((headers bz-list-columns)
            (header-widths (bz-header-widths bugs))
            (header-item-length (/ (window-width) (length headers))))
       (setq header-line-format
@@ -74,7 +74,7 @@
 (defun bz-header-widths (bugs)
   (mapcar* (lambda (x y)
              `(,x . ,y))
-           bugzilla-columns
+           bz-list-columns
            (reduce (lambda (l1 l2)
                      (mapcar* 'max l1 l2))
                    (mapcar (lambda (bug)
@@ -84,8 +84,8 @@
 (defun bz-bug-sort-properties (bug)
   (sort bug
         (lambda (a b)
-          (< (position (symbol-name (car a)) bugzilla-columns :test 'string=)
-             (position (symbol-name (car b)) bugzilla-columns :test 'string=)))))
+          (< (position (symbol-name (car a)) bz-list-columns :test 'string=)
+             (position (symbol-name (car b)) bz-list-columns :test 'string=)))))
 
 (defun bz-bug-format (bug)
   (mapconcat (lambda (property)
@@ -96,7 +96,7 @@
              bug " "))
 
 (defun bz-bug-filtered-and-sorted-properties (bug)
-  (bz-bug-sort-properties (filter (lambda (property) (member (symbol-name (car property)) bugzilla-columns)) bug)))
+  (bz-bug-sort-properties (filter (lambda (property) (member (symbol-name (car property)) bz-list-columns)) bug)))
 
 (defun pretty-kvs (kvs)
   (if (hash-table-p kvs)

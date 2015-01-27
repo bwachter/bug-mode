@@ -57,7 +57,7 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
   :type 'sexp
   :group 'bz)
 
-(defcustom bugzilla-columns '("id" "status" "summary" "last_change_time")
+(defcustom bz-list-columns '("id" "status" "summary" "last_change_time")
   "Default columns in search output"
   :type 'sexp
   :group 'bz)
