@@ -35,9 +35,9 @@
   "Display a stored list of bugs"
   (interactive
    (if current-prefix-arg
-       (list (read-string "Name: ") (bz-query-instance))
+       (list (bz-query-remembered-lists) (bz-query-instance))
      (list
-      (read-string "Name: "))))
+      (bz-query-remembered-lists))))
   (let* ((instance (bz-instance-to-symbolp instance))
          (lists-for-instance (gethash instance bz-bug-remember-list))
          (list-entries (if lists-for-instance

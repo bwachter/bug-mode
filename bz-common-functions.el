@@ -30,5 +30,30 @@
   (delq nil
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
+(defun bz-query-instance ()
+  "Query for a Bugzilla instance, providing completion with the instances configured in
+bz-instance-plist. Returns the entered Bugzilla instance. Instance name only needs to be
+entered enough to get a match."
+  (let ((completions
+         (remove-if nil
+                    (cl-loop for record in bz-instance-plist collect
+                             (unless (listp record)
+                               (replace-regexp-in-string "^:" "" (prin1-to-string record)))))))
+    (completing-read "Instance: " completions nil t)))
+
+(defun bz-query-remembered-lists ()
+  "Query for the name of a locally remembered bug list. Completion is seeded with names of lists across all Bugzilla instances"
+  (let ((instance-keys) (category-keys))
+    ;; first read the instance keys from highlevel hash
+    (maphash #'(lambda (key value)
+                 (push key instance-keys)) bz-bug-remember-list)
+    (dolist (instance instance-keys)
+      (let ((lists-for-instance (gethash instance bz-bug-remember-list)))
+        ;; now read all keys from the lists for each instance
+        (maphash #'(lambda (key value)
+                     (push key category-keys)) lists-for-instance)))
+    (delete-dups category-keys)
+    (completing-read "List name: " category-keys nil nil)))
+
 (provide 'bz-common-functions)
 ;;; bz-common-functions.el ends here

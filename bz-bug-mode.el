@@ -163,9 +163,9 @@ via bz-handle-comments-response"
   (interactive
    (if (and (boundp 'bz-id) (boundp 'bz-bug))
        (list
-        (read-string "Name: " nil nil t))
+        (bz-query-remembered-lists))
      (list
-      (read-string "Name: " nil nil t)
+      (bz-query-remembered-lists)
       (read-string "Bug: " nil nil t)
       (if current-prefix-arg (bz-query-instance)))))
   (let* ((instance (bz-instance-to-symbolp instance))
