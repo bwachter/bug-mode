@@ -62,6 +62,16 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
   :type 'sexp
   :group 'bz)
 
+(defcustom bz-autoload-attachments nil
+  "Controls autoloading of attachments when opening a bug"
+  :type 'sexp
+  :group 'bz)
+
+(defcustom bz-autoload-comments t
+  "Controls autoloading of comments when opening a bug"
+  :type 'sexp
+  :group 'bz)
+
 (defcustom bz-data-directory (locate-user-emacs-file "bz/")
   "The directory containing data files for the bz package"
   :type 'string

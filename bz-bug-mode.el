@@ -89,8 +89,10 @@
   (insert "\nATTACHMENTS:\n")
   (bz-insert-hr)
   (insert "\nCOMMENTS:\n")
-  (bz-get-attachments id instance)
-  (bz-get-comments id instance)
+  (if bz-autoload-attachments
+      (bz-get-attachments id instance))
+  (if bz-autoload-comments
+      (bz-get-comments id instance))
   (goto-char 0)
   (setq buffer-read-only t))
 
