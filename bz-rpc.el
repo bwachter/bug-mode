@@ -49,18 +49,13 @@ instance if INSTANCE is empty"
     (plist-get property-list property)))
 
 (defun bz-rpc (method args &optional instance)
-  "Send an RPC response to the given (or default) Bugzilla instance and return the
+  "Send an RPC response to the given (or default) bugtracker instance and return the
 parsed response as alist"
-  (let* ((json-str (json-encode `((method . ,method) (params . [,args]) (id 11))))
-         (url (concat (bz-instance-property :url instance) "/jsonrpc.cgi"))
-         (url-request-method "POST")
-         (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?
-         (url-request-extra-headers '(("Content-Type" . "application/json")))
-         (url-request-data json-str))
-    (bz-debug (concat "request " url "\n" json-str "\n"))
-    (with-current-buffer (url-retrieve-synchronously url)
-      (bz-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
-      (bz-parse-rpc-response))))
+  (let* ((type (bz-instance-property :type instance)))
+         (cond
+          ((string= type "rally")
+           (bz--rpc-rally method args instance))
+          (t (bz--rpc-bz method args instance)))))
 
 (defun bz-parse-rpc-response ()
   "Parse a JSON response from buffer and return it as alist"

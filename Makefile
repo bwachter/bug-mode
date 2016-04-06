@@ -4,6 +4,7 @@ SOURCES = bz.el
 SOURCES = bz-auth.el bz-bug-mode.el bz-comment-mode.el 
 SOURCES += bz-list-mode.el bz-rpc.el bz-search.el
 SOURCES += bz-search-common.el bz-common-functions.el
+SOURCES += bz-rpc-bz.el
 ELC = $(SOURCES:.el=.elc)
 
 %.elc: %.el
