@@ -61,10 +61,12 @@ parsed response as alist"
   "Parse a JSON response from buffer and return it as alist"
   (goto-char 0)
   (if (re-search-forward "\n\n" nil t)
-      (let ((response (json-read-from-string (decode-coding-string (buffer-substring (point) (point-max)) 'utf-8))))
-        (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
-            (error (cdr (assoc 'message (assoc 'error response)))))
-        response)
+      (let ((response (json-read-from-string (decode-coding-string (buffer-substring (point) (point-max)) 'utf-8)))
+            (type (bz-instance-property :type instance)))
+        (cond
+         ((string= type "rally")
+          (bz--rpc-rally-handle-error response))
+         (t (bz--rpc-bz-handle-error response))))
     (error "Failed to parse http response")))
 
 (defun bz-get-fields (&optional instance)

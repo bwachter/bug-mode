@@ -41,5 +41,12 @@ parsed response as alist"
       (bz-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
       (bz-parse-rpc-response))))
 
+;;;###autoload
+(defun bz--rpc-bz-handle-error (response)
+  "Check data returned from Bugzilla for errors"
+  (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
+      (error (cdr (assoc 'message (assoc 'error response)))))
+  response)
+
 (provide 'bz-rpc-bz)
-;;; bz-rpc.el ends here
+;;; bz-rpc-bz.el ends here
