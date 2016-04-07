@@ -29,7 +29,14 @@
 
 (defun bz-do-search (params &optional instance)
   "Execute a Bugzilla search query"
-  (bz-handle-search-response params (bz-rpc "Bug.search" params instance) instance))
+  (let* ((type (bz-instance-property :type instance)))
+    (cond
+     ((string= type "rally")
+      (bz--do-rally-search params instance))
+     (t
+      (bz-handle-search-response params
+                                 (bz-rpc "Bug.search" params instance)
+                                 instance)))))
 
 (defun bz-handle-search-response (query response &optional instance)
   "Parse the result of a Bugzilla search and either show a single bug or a bug list"

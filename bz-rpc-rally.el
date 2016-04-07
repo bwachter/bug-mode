@@ -111,8 +111,10 @@ object-id for read (or any other call requiring an object-id):
 ;;;###autoload
 (defun bz--rpc-rally-handle-error (response)
   "Check data returned from Rally for errors"
-  (let* ((return-document (cdr (car response)))
-         (error-messages (assoc 'Errors return-document))         )
+  (let* (; the errors are inside the returned object, for error handling
+         ; it's easiest to just throw away the outer layer
+         (return-document (cdr (car response)))
+         (error-messages (assoc 'Errors return-document)))
     (if (>= (length (cdr error-messages)) 1)
         (error (aref (cdr error-messages) 0)))
     response))
