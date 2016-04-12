@@ -63,8 +63,8 @@ pagesize, ...) can't be supplied:
           (if (= bugs 1)
               ;; this should display the bug...
               (let* ((bug (aref (cdr (assoc 'Results query-result)) 0))
-                     (bug-id (assoc '_refObjectUUID bug)))
-                (bz-bug-show bug-id bug instance))
+                     (bug-id (cdr (assoc '_refObjectUUID bug))))
+                (bz-bug bug-id instance))
             ;; ... and this should display a list
             (let ((results
                    (cdr (assoc 'Results query-result))))
