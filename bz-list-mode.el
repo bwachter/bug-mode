@@ -50,10 +50,12 @@
   (setq bz-instance instance)
   (setq buffer-read-only nil)
   (erase-buffer)
-  (let* ((bugs (mapcar 'bz-bug-filtered-and-sorted-properties parsed)))
-    (let* ((headers bz-list-columns)
-           (header-widths (bz-header-widths bugs))
-           (header-item-length (/ (window-width) (length headers))))
+  (let* ((list-columns (bz-list-columns instance))
+         (bugs (mapcar (lambda (bug)
+                         (bz-bug-filtered-and-sorted-properties bug list-columns))
+                         parsed)))
+    (let* ((header-widths (bz-header-widths bugs list-columns))
+           (header-item-length (/ (window-width) (length list-columns))))
       (setq header-line-format
             (let ((column 0)
                   (header '()))
@@ -64,28 +66,28 @@
                                           heading)))
                              (setq column (+ column (cdr (assoc heading header-widths)) 1))
                              result))
-                         headers "")))
+                         list-columns "")))
       (insert (mapconcat 'bz-bug-format bugs "\n")))
     (goto-char 0)
     (setq buffer-read-only t)))
 
 ;; layout/output control
 ;; TODO: properly document those
-(defun bz-header-widths (bugs)
+(defun bz-header-widths (bugs list-columns)
   (mapcar* (lambda (x y)
              `(,x . ,y))
-           bz-list-columns
+           list-columns
            (reduce (lambda (l1 l2)
                      (mapcar* 'max l1 l2))
                    (mapcar (lambda (bug)
                              (mapcar (lambda (prop) (+ (length (format "%s" (cdr prop))) 5)) bug))
                            bugs))))
 
-(defun bz-bug-sort-properties (bug)
+(defun bz-bug-sort-properties (bug list-columns)
   (sort bug
         (lambda (a b)
-          (< (position (symbol-name (car a)) bz-list-columns :test 'string=)
-             (position (symbol-name (car b)) bz-list-columns :test 'string=)))))
+          (< (position (symbol-name (car a)) list-columns :test 'string=)
+             (position (symbol-name (car b)) list-columns :test 'string=)))))
 
 (defun bz-bug-format (bug)
   (mapconcat (lambda (property)
@@ -95,8 +97,10 @@
                                  hw) (cdr property))))
              bug " "))
 
-(defun bz-bug-filtered-and-sorted-properties (bug)
-  (bz-bug-sort-properties (filter (lambda (property) (member (symbol-name (car property)) bz-list-columns)) bug)))
+(defun bz-bug-filtered-and-sorted-properties (bug list-columns)
+  (bz-bug-sort-properties (filter (lambda (property)
+                                    (member (symbol-name (car property)) list-columns))
+                                  bug) list-columns))
 
 (defun pretty-kvs (kvs)
   (if (hash-table-p kvs)

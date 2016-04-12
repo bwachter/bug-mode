@@ -57,11 +57,6 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
   :type 'sexp
   :group 'bz)
 
-(defcustom bz-list-columns '("id" "status" "summary" "last_change_time")
-  "Default columns in search output"
-  :type 'sexp
-  :group 'bz)
-
 (defcustom bz-autoload-attachments nil
   "Controls autoloading of attachments when opening a bug"
   :type 'sexp
@@ -103,6 +98,21 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
   "Restore user data from disk"
   (if (file-exists-p bz-data-file)
       (load (expand-file-name bz-data-file))))
+
+(defun bz-list-columns (&optional instance)
+  "Read the list headers for a bugtracker instance.
+
+If the given instance does not have a :list-columns property defaults
+are used.
+"
+  (let ((type (bz-instance-property :type instance)))
+    (if (bz-instance-property :list-columns instance)
+        (bz-instance-property :list-columns instance)
+      (cond
+       ((string= type "rally")
+        '("_type" "_refObjectName"))
+       (t
+        '("id" "status" "summary" "last_change_time"))))))
 
 (bz-read-data-file)
 
