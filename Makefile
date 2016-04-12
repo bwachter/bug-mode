@@ -6,6 +6,7 @@ SOURCES += bz-list-mode.el bz-rpc.el bz-search.el
 SOURCES += bz-search-common.el bz-common-functions.el
 SOURCES += bz-rpc-bz.el bz-rpc-rally.el
 SOURCES += bz-search-rally.el bz-search-bz.el
+SOURCES += bz-bug-mode-bz.el bz-bug-mode-rally.el
 ELC = $(SOURCES:.el=.elc)
 
 %.elc: %.el

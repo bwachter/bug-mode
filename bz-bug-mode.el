@@ -54,16 +54,11 @@
         (read-string "Bug ID: " nil nil t)
         (bz-query-instance))
      (list (read-string "Bug ID: " nil nil t))))
-  (let ((search-response (bz-rpc "Bug.get" `(("ids" . ,id)) instance)))
-    (if (and (assoc 'result search-response)
-             (assoc 'bugs (assoc 'result search-response)))
-        (let ((bugs (cdr (assoc 'bugs (assoc 'result search-response)))))
-          (cond
-           ((= (length bugs) 0)
-            (message (concat "Bug " id " not found.")))
-           ((= (length bugs) 1)
-            (bz-bug-show id (aref bugs 0) instance))
-           (t (message "You should never see this message")))))))
+  (let* ((type (bz-instance-property :type instance))
+         (bug-content (cond ((string= type "rally")
+                             (bz--fetch-rally-bug id instance))
+                            (t (bz--fetch-bz-bug id instance)))))
+    (if bug-content (bz-bug-show id bug-content instance))))
 
 ;; TODO: only called via direct search, and does not load comments. Merge with bz-bug?
 (defun bz-bug-show (id bug &optional instance)
