@@ -1,4 +1,4 @@
-;; bz-search-rally.el -- rally specific search functions
+;; bz-search-rally.el --- rally specific search functions
 ;;
 ;; Copyright (c) 2010-2015 bz-mode developers
 ;;
@@ -43,12 +43,14 @@ pagesize, ...) can't be supplied:
                        `((query-data . ((query ,params)))))
                       ((listp params)
                        (if (assoc 'query-data params)
-                           params)
-                       (error "Parameter list needs 'query-data' member"))
+                           params
+                       (error "Parameter list needs 'query-data' member")))
                       (t (error "Invalid type for search parameters")))))
     (bz--handle-rally-search-response query (bz-rpc "artifact.query" query instance))))
 
-
+;; TODO: Rally strips the letters, and just queries the number, leading to
+;;       duplicate results. Check the query if we were searching for a single
+;;       bug, and break it down, if necessary
 (defun bz--handle-rally-search-response (query response &optional instance)
   "Parse the result of a Rally search"
   (if (and
@@ -68,6 +70,23 @@ pagesize, ...) can't be supplied:
                    (cdr (assoc 'Results query-result))))
               (bz-list-show query results instance)))))
     response))
+
+;;;###autoload
+(defun bz--parse-rally-search-query (query)
+  "Parse search query from minibuffer for rally"
+  (cond ;; for userfriendly rally IDs, open bug directly
+   ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)
+    `((query-data . (( query ,(format "( FormattedID = \"%s\" )" query))))))
+   ;; string contains parentheses -> assume it's a complex rally expression
+   ((string-match "\\((\\|)\\)" query)
+    `((query-data . ((query ,query)))))
+   ;; search Name, Notes, Description
+   ;; TODO: searching discussion seems to be problematic
+   (t
+    `((query-data . (( query
+                       ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
+                                query query query))))))))
+
 
 (provide 'bz-search-rally)
 ;;; bz-search-rally.el ends here

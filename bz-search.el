@@ -47,7 +47,7 @@
           (puthash "id" list-entries query)
           (bz-do-search query instance))
       (message (concat "List " list-name " not found")))
-  ))
+    ))
 
 ;;;###autoload
 (defun bz-search (query &optional instance)
@@ -58,7 +58,10 @@
         (read-string "Search query: " nil nil t)
         (bz-query-instance))
      (list (read-string "Search query: " nil nil t))))
-  (bz-do-search `(,(bz-parse-query query)) instance))
+  (let* ((type (bz-instance-property :type instance)))
+    (cond ((string= type "rally")
+           (bz-do-search (bz--parse-rally-search-query query) instance))
+          (t (bz-do-search `(,(bz--parse-bz-search-query query)) instance)))))
 
 ;;;###autoload
 (defun bz-search-multiple (&optional instance)
