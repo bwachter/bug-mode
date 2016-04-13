@@ -40,13 +40,16 @@ pagesize, ...) can't be supplied:
 (bz--do-rally-search \"( FormattedID = \"US1234\" )\")
 "
   (let* ((query (cond ((stringp params)
-                       `((query-data . ((query ,params)))))
+                       `((query ,params)))
                       ((listp params)
-                       (if (assoc 'query-data params)
+                       (if (assoc 'query params)
                            params
-                       (error "Parameter list needs 'query-data' member")))
+                         (error "Parameter list needs 'query' member")))
                       (t (error "Invalid type for search parameters")))))
-    (bz--handle-rally-search-response query (bz-rpc "artifact.query" query instance))))
+    (bz--handle-rally-search-response
+     query
+     (bz-rpc "artifact.query"
+             `((query-data . ,query)) instance))))
 
 ;; TODO: Rally strips the letters, and just queries the number, leading to
 ;;       duplicate results. Check the query if we were searching for a single
@@ -76,16 +79,16 @@ pagesize, ...) can't be supplied:
   "Parse search query from minibuffer for rally"
   (cond ;; for userfriendly rally IDs, open bug directly
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)
-    `((query-data . (( query ,(format "( FormattedID = \"%s\" )" query))))))
+    `(( query ,(format "( FormattedID = \"%s\" )" query))))
    ;; string contains parentheses -> assume it's a complex rally expression
    ((string-match "\\((\\|)\\)" query)
-    `((query-data . ((query ,query)))))
+    `((query ,query)))
    ;; search Name, Notes, Description
    ;; TODO: searching discussion seems to be problematic
    (t
-    `((query-data . (( query
-                       ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
-                                query query query))))))))
+    `(( query
+        ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
+                 query query query))))))
 
 
 (provide 'bz-search-rally)

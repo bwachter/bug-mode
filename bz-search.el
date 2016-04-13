@@ -61,7 +61,7 @@
   (let* ((type (bz-instance-property :type instance)))
     (cond ((string= type "rally")
            (bz-do-search (bz--parse-rally-search-query query) instance))
-          (t (bz-do-search `(,(bz--parse-bz-search-query query)) instance)))))
+          (t (bz-do-search (bz--parse-bz-search-query query) instance)))))
 
 ;;;###autoload
 (defun bz-search-multiple (&optional instance)
