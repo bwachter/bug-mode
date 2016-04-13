@@ -119,5 +119,28 @@ object-id for read (or any other call requiring an object-id):
         (error (aref (cdr error-messages) 0)))
     response))
 
+;;;###autoload
+(defun bz--rpc-rally-get-fields ()
+    "Return a static list of valid field names for rally
+
+Unlike Bugzilla Rally does not have an API call to retrieve a list of
+supported fields, so this function parses a json file containing field
+definitions.
+
+The syntax of the file follows the Bugzilla field definition response
+as described here:
+ https://www.bugzilla.org/docs/3.6/en/html/api/Bugzilla/WebService/Bug.html#Utility_Functions
+
+The following additions are supported for Rally:
+
+- type 8 for rally objects
+"
+    (let ((rally-fields-file (concat
+                              bz-json-data-dir
+                              "/rally-fields.json")))
+      (if (file-exists-p rally-fields-file)
+          (json-read-file rally-fields-file)
+        (error "Field definition file for Rally not found"))))
+
 (provide 'bz-rpc-rally)
 ;;; bz-rpc-rally.el ends here

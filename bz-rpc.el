@@ -72,7 +72,12 @@ parsed response as alist"
 (defun bz-get-fields (&optional instance)
   "Download fields used by this Bugzilla instance or returns them from cache"
   (let* ((instance (bz-instance-to-symbolp instance))
-         (fields (if (plist-get bz-field-cache instance) nil (bz-rpc "Bug.fields" '() instance)))
+         (type (bz-instance-property :type instance))
+         (fields (if (plist-get bz-field-cache instance) nil
+                   (cond
+                    ((string= type "rally")
+                     (bz--rpc-rally-get-fields))
+                    (t (bz-rpc "Bug.fields" '() instance)))))
          (field-hash (make-hash-table :test 'equal)))
     (if fields
         (progn

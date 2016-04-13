@@ -85,6 +85,12 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
 
 (setq bz-bug-remember-list (make-hash-table :test 'equal))
 
+(defconst bz-json-data-dir
+  (concat
+   (file-name-directory (or load-file-name (buffer-file-name)))
+   "/json")
+  "Location of additional JSON data files used by bz.")
+
 (defun bz-write-data-file ()
   "Write user data to disk"
   (with-temp-buffer

@@ -1,0 +1,17 @@
+{
+    "result": {
+        "fields": [
+            {
+                "visibility_field": null,
+                "id": 1,
+                "type": 0,
+                "is_on_bug_entry": false,
+                "visibility_values": [],
+                "is_custom": false,
+                "display_name": "ID",
+                "name": "FormattedID",
+                "is_mandatory": false
+            }
+        ]
+    }
+}
