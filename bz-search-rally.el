@@ -28,7 +28,7 @@
 
 
 ;;;###autoload
-(defun bz--do-rally-search (params &optional instance)
+(defun bz--do-rally-search (params &optional instance method)
   "Execute a search query in Rally
 
 This function takes either a query string in Rallys query string syntax,
@@ -48,7 +48,7 @@ pagesize, ...) can't be supplied:
                       (t (error "Invalid type for search parameters")))))
     (bz--handle-rally-search-response
      query
-     (bz-rpc "artifact.query"
+     (bz-rpc (or method "artifact.query")
              `((query-data . ,query)) instance))))
 
 ;; TODO: Rally strips the letters, and just queries the number, leading to
