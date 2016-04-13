@@ -125,9 +125,13 @@
   (interactive)
   (save-excursion
     (move-beginning-of-line nil)
-    (if (re-search-forward "^\\([0-9]+\\)" nil t)
-        (bz-bug (match-string 1) bz-instance)
-      (error "WTF? No id in beginning?"))))
+    (let ((type (bz-instance-property :type bz-instance)))
+      (cond
+       ((string= type "rally")
+        (if (re-search-forward "^\\(\\(F\\|DE\\|TA\\|US\\)[0-9]+\\)" nil t)
+            (bz-search (match-string 1) bz-instance)))
+       (t (if (re-search-forward "^\\([0-9]+\\)" nil t)
+              (bz-bug (match-string 1) bz-instance)))))))
 
 ;;;###autoload
 (defun bz-list-mode-update-list ()
