@@ -116,7 +116,7 @@ are used.
         (bz-instance-property :list-columns instance)
       (cond
        ((string= type "rally")
-        '("_type" "_refObjectName"))
+        '("FormattedID" "Name" "LastUpdateDate"))
        (t
         '("id" "status" "summary" "last_change_time"))))))
 

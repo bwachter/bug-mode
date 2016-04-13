@@ -37,7 +37,7 @@ or an alist as documented for bz--rpc-rally.
 When providing just the query string additional options (like fetch, order,
 pagesize, ...) can't be supplied:
 
-(bz--do-rally-search \"( FormattedID = \"US1234\" )\")
+ (bz--do-rally-search \"( FormattedID = \"US1234\" )\")
 "
   (let* ((query (cond ((stringp params)
                        `((query ,params)))
@@ -46,6 +46,10 @@ pagesize, ...) can't be supplied:
                            params
                          (error "Parameter list needs 'query' member")))
                       (t (error "Invalid type for search parameters")))))
+    (unless (assoc 'pagesize query)
+      (add-to-list 'query '(pagesize 100)))
+    (unless (assoc 'fetch query)
+      (add-to-list 'query '(fetch "FormattedID,LastUpdateDate,TaskStatus,Name")))
     (bz--handle-rally-search-response
      query
      (bz-rpc (or method "artifact.query")
