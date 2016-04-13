@@ -42,7 +42,11 @@
 
 (defun bz-list-show (query parsed &optional instance)
   "Display the result of a Bugzilla search returning a list of bugs"
-  (switch-to-buffer (format "*bugzilla results: %s*" (pretty-kvs query)))
+  (let ((type (bz-instance-property :type instance)))
+    (cond
+     ((string= type "rally")
+      (switch-to-buffer (format "*rally results: %s*" (pretty-kvs query))))
+     (t (switch-to-buffer (format "*bugzilla results: %s*" (pretty-kvs query))))))
   (bz-list-mode)
   (make-local-variable 'bz-query)
   (setq bz-query query)
