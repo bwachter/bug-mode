@@ -73,13 +73,6 @@
   (setq bz-instance instance)
   (setq buffer-read-only nil)
   (erase-buffer)
-  (insert (mapconcat (lambda (prop)
-                       (format "%s: %s"
-                               (or (cdr (assoc 'display_name (gethash (symbol-name (car prop)) (bz-get-fields instance))))
-                                   (car prop))
-                               (cdr prop)))
-                     (filter (lambda (prop)
-                               (not (string= (car prop) "internals"))) bug) "\n"))
   (bz-insert-hr)
   (insert "\nATTACHMENTS:\n")
   (bz-insert-hr)
@@ -90,6 +83,21 @@
       (bz-get-comments id instance))
   (goto-char 0)
   (setq buffer-read-only t))
+    (insert
+     (mapconcat
+      (lambda (prop)
+        (concat
+         (propertize
+          (prin1-to-string (or
+                            (cdr (assoc 'display_name
+                                        (gethash (symbol-name (car prop))
+                                                 (bz-get-fields instance))))
+                            (car prop)) t)
+          'face 'bold)
+         ": "
+         (prin1-to-string (cdr prop) t)))
+      (filter (lambda (prop)
+                (not (string= (car prop) "internals"))) bug) "\n"))
 
 (defun bz-update (id fields &optional instance)
   "Update fields in the bug on Bugzilla"
