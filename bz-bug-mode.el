@@ -94,14 +94,21 @@
          (prin1-to-string (cdr prop) t)))
       (filter (lambda (prop)
                 (not (string= (car prop) "internals"))) bug) "\n"))
-    (bz-insert-hr)
-    (insert "\nATTACHMENTS:\n")
-    (bz-insert-hr)
-    (insert "\nCOMMENTS:\n")
-    (if bz-autoload-attachments
-        (bz-get-attachments id instance))
-    (if bz-autoload-comments
-        (bz-get-comments id instance))
+
+    (unless (string= type "rally")
+      ;; TODO: Rally has multiple objects which need to be loaded separately,
+      ;;       the bugzilla style loading of attachements and comments won't
+      ;;       scale for that.
+      ;;       Additionally it'd be better to select the insertion points by
+      ;;       using text properties.
+      (bz-insert-hr)
+      (insert "\nATTACHMENTS:\n")
+      (bz-insert-hr)
+      (insert "\nCOMMENTS:\n")
+      (if bz-autoload-attachments
+          (bz-get-attachments id instance))
+      (if bz-autoload-comments
+          (bz-get-comments id instance)))
     (goto-char 0)
     (setq buffer-read-only t)))
 
