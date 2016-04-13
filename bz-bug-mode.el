@@ -60,29 +60,25 @@
                             (t (bz--fetch-bz-bug id instance)))))
     (if bug-content (bz-bug-show id bug-content instance))))
 
-;; TODO: only called via direct search, and does not load comments. Merge with bz-bug?
 (defun bz-bug-show (id bug &optional instance)
-  "Display an existing bugzilla bug buffer in bz-bug-mode"
-  (switch-to-buffer (format "*bugzilla bug: %s*" (cdr (assoc 'id bug))))
-  (bz-bug-mode)
-  (make-local-variable 'bz-id)
-  (setq bz-id id)
-  (make-local-variable 'bz-bug)
-  (setq bz-bug bug)
-  (make-local-variable 'bz-instance)
-  (setq bz-instance instance)
-  (setq buffer-read-only nil)
-  (erase-buffer)
-  (bz-insert-hr)
-  (insert "\nATTACHMENTS:\n")
-  (bz-insert-hr)
-  (insert "\nCOMMENTS:\n")
-  (if bz-autoload-attachments
-      (bz-get-attachments id instance))
-  (if bz-autoload-comments
-      (bz-get-comments id instance))
-  (goto-char 0)
-  (setq buffer-read-only t))
+  "Display an existing bug buffer in bz-bug-mode"
+  (let ((type (bz-instance-property :type instance)))
+
+    (cond ((string= type "rally")
+           (switch-to-buffer (format "*rally bug: %s*"
+                                     (cdr (assoc 'FormattedID bug)))))
+          (t
+           (switch-to-buffer (format "*bugzilla bug: %s*" (cdr (assoc 'id bug))))))
+
+    (bz-bug-mode)
+    (make-local-variable 'bz-id)
+    (setq bz-id id)
+    (make-local-variable 'bz-bug)
+    (setq bz-bug bug)
+    (make-local-variable 'bz-instance)
+    (setq bz-instance instance)
+    (setq buffer-read-only nil)
+    (erase-buffer)
     (insert
      (mapconcat
       (lambda (prop)
@@ -98,6 +94,16 @@
          (prin1-to-string (cdr prop) t)))
       (filter (lambda (prop)
                 (not (string= (car prop) "internals"))) bug) "\n"))
+    (bz-insert-hr)
+    (insert "\nATTACHMENTS:\n")
+    (bz-insert-hr)
+    (insert "\nCOMMENTS:\n")
+    (if bz-autoload-attachments
+        (bz-get-attachments id instance))
+    (if bz-autoload-comments
+        (bz-get-comments id instance))
+    (goto-char 0)
+    (setq buffer-read-only t)))
 
 (defun bz-update (id fields &optional instance)
   "Update fields in the bug on Bugzilla"
