@@ -26,6 +26,12 @@
 ;;
 ;;; Code:
 
+(add-to-list 'load-path
+             (directory-file-name
+              (concat
+               (file-name-directory (or load-file-name (buffer-file-name)))
+               "lisp")))
+
 (require 'bz-autoloads)
 
 (defgroup bz nil "Bugzilla related settings")

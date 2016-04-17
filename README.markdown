@@ -14,9 +14,7 @@ A mode to interface with Bugzilla and other bugtracking systems from within Emac
 * call `make` to generate autoloads
 * Edit your ~/.emacs or ~/.emacs.d/init.el:
 
-        ;; adjust the path to bz-mode
-        (add-to-list 'load-path "~/.emacs.d/bz-mode/")
-        (require 'bz)
+        (load-file "/path/to/bz-mode/bz.el")
 
 * `M-x customize-group RET bz` and adjust at least the the list of instances and the name of the default instance. The instance plist configuration could look like this:
 
