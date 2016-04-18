@@ -18,6 +18,7 @@ compile: $(ELC)
 
 clean:
 	@$(RM) *.elc
+	@$(RM) bz-autoloads.el
 
 bz-autoloads.el: $(SOURCES)
 	emacs -batch -Q -L . -eval "(progn\

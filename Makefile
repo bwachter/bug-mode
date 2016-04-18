@@ -11,7 +11,7 @@ clean:
 lisp:
 	@$(MAKE) -C lisp
 
-test:
+test: lisp
 	@emacs -batch -Q --eval "(progn\
 	(load-file \"t/bz-tests.el\")\
 	(ert-run-tests-batch-and-exit))"
