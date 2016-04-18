@@ -134,6 +134,8 @@ as described here:
 The following additions are supported for Rally:
 
 - type 8 for rally objects
+- type 9 for HTML objects
+- is_readonly to mark read-only fields (defaults to 'false')
 "
     (let ((rally-fields-file (concat
                               bz-json-data-dir

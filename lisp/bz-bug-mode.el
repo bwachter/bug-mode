@@ -94,6 +94,10 @@
          (prin1-to-string (cdr prop) t)))
       (filter (lambda (prop)
                 (and (not (equal :json-false (bz--bug-get-field-property (car prop) 'is_visible)))
+                     ;; TODO: implement retrieval of additional rally objects
+                     ;;       until it's implemented just hide them to avoid
+                     ;;       polluting the bug buffer
+                     (not (equal 8 (bz--bug-get-field-property (car prop) 'type)))
                      (not (string= (car prop) "internals")))) bug) "\n"))
 
     (unless (string= type "rally")
