@@ -93,7 +93,8 @@
          ": "
          (prin1-to-string (cdr prop) t)))
       (filter (lambda (prop)
-                (not (string= (car prop) "internals"))) bug) "\n"))
+                (and (not (equal :json-false (bz--bug-get-field-property (car prop) 'is_visible)))
+                     (not (string= (car prop) "internals")))) bug) "\n"))
 
     (unless (string= type "rally")
       ;; TODO: Rally has multiple objects which need to be loaded separately,
