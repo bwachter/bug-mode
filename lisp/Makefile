@@ -1,5 +1,7 @@
 ALL: bz-autoloads.el
 
+.PHONY: clean
+
 SOURCES = bz.el
 SOURCES = bz-auth.el bz-bug-mode.el bz-comment-mode.el
 SOURCES += bz-list-mode.el bz-rpc.el bz-search.el
@@ -11,6 +13,11 @@ ELC = $(SOURCES:.el=.elc)
 
 %.elc: %.el
 	emacs -batch -Q -L . -f batch-byte-compile $<
+
+compile: $(ELC)
+
+clean:
+	@$(RM) *.elc
 
 bz-autoloads.el: $(SOURCES)
 	emacs -batch -Q -L . -eval "(progn\

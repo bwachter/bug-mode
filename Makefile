@@ -1,11 +1,17 @@
 ALL: lisp
 
-.PHONY: lisp
+.PHONY: clean lisp tests
 
-ELC = $(SOURCES:.el=.elc)
+clean:
+	@$(MAKE) -C lisp clean
 
 %.elc: %.el
 	emacs -batch -Q -L . -f batch-byte-compile $<
 
 lisp:
 	@$(MAKE) -C lisp
+
+test:
+	@emacs -batch -Q --eval "(progn\
+	(load-file \"t/bz-tests.el\")\
+	(ert-run-tests-batch-and-exit))"

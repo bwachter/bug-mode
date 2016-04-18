@@ -129,4 +129,4 @@ are used.
 (bz-read-data-file)
 
 (provide 'bz)
-;;; bz.el ends here)
+;;; bz.el ends here
