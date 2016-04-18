@@ -100,7 +100,7 @@ object-id for read (or any other call requiring an object-id):
                         ((string= operation "query")
                          (concat object "?" query-string))
                         (t (concat object "/" object-id))))
-         (url (concat "https://rally1.rallydev.com/slm/webservice/v2.0/" url-str))
+         (url (concat bz-rally-url url-str))
          (url-request-extra-headers `(("Content-Type" . "application/json")
                                       ,(bz--rpc-rally-auth-header instance))))
     (bz-debug (concat "request " url "\n" object-id "\n"))

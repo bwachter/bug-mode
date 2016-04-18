@@ -81,6 +81,10 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
 (defvar bz-data-file (concat bz-data-directory "data")
   "The file containing saved searches and similar user data. Change bz-data-directory if you don't like the storage location")
 
+(defvar bz-rally-url "https://rally1.rallydev.com/slm/webservice/v2.0/"
+  "The URL to use for rally. This should only be changed if a different port is
+required for proxy circumvention")
+
 (defmacro bz-debug (body)
   `(if (and (boundp 'bz-debug) bz-debug)
        (let ((str ,body))
