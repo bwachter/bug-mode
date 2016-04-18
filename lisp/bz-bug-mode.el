@@ -71,6 +71,7 @@
            (switch-to-buffer (format "*bugzilla bug: %s*" (cdr (assoc 'id bug))))))
 
     (bz-bug-mode)
+    (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))
     (make-local-variable 'bz-id)
     (setq bz-id id)
     (make-local-variable 'bz-bug)
