@@ -86,10 +86,9 @@
         (concat
          (propertize
           (prin1-to-string (or
-                            (cdr (assoc 'display_name
-                                        (gethash (symbol-name (car prop))
-                                                 (bz-get-fields instance))))
-                            (car prop)) t)
+                            (bz--bug-get-field-property
+                             (car prop) 'display_name instance)
+                            `(,(car prop))) t)
           'face 'bold)
          ": "
          (prin1-to-string (cdr prop) t)))
@@ -112,6 +111,16 @@
           (bz-get-comments id instance)))
     (goto-char 0)
     (setq buffer-read-only t)))
+
+(defun bz--bug-get-field-property (field-name property &optional instance)
+  "Return a property for a bug field from the field definition.
+
+For example, to find the display name for the field 'foo' you could do
+the following:
+ (bz--bug-get-field-property 'foo 'display_name instance)"
+  (cdr
+   (assoc property
+          (gethash (symbol-name field-name) (bz-get-fields instance)))))
 
 (defun bz-update (id fields &optional instance)
   "Update fields in the bug on Bugzilla"
