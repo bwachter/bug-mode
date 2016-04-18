@@ -34,8 +34,8 @@
             "../bz.el"))
 
 (defmacro bz-with-dummy-config (&rest body)
-  `(let ((bz-instance-plist '(:bz-1 (:url "https://bz1.example.com")
-                                    :bz-2 (:url "https://bz2.example.com")
+  `(let ((bz-instance-plist '(:bz-1 (:url "https://bz.tracker1.example")
+                                    :bz-2 (:url "https://bz.tracker2.example")
                                     :rally-1 (:api-key "thisIsNotAnApiKey"
                                                        :type "rally")
                                      ))
@@ -56,9 +56,9 @@
    (should (equal (bz-instance-to-symbolp ":foo") :foo))
    ;; check retrieving a non-default property
    (should (equal (bz-instance-property :url :bz-1)
-                  "https://bz1.example.com"))
+                  "https://bz.tracker1.example"))
    (should (equal (bz-instance-property :url "bz-1")
-                  "https://bz1.example.com"))
+                  "https://bz.tracker1.example"))
    ;; check if retrieving default properties works
    (should (equal (bz-instance-property :url)
                   (bz-instance-property :url :bz-2)))))

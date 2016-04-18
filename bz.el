@@ -50,9 +50,9 @@
   "A list of bugzilla instances to use.
 
 Example:
-'(:work   (:url \"https://work.example.com\")
-  :secure (:url \"https://secure.example.com\" :authinfo \"~/.netrc\")
-  :fun    (:url \"https://fun.example.com\" :login \"username\" :password \"password\"))
+'(:work   (:url \"https://bz.work.example\")
+  :secure (:url \"https://bz.secure.example\" :authinfo \"~/.netrc\")
+  :fun    (:url \"https://bz.fun.example\" :login \"username\" :password \"password\"))
 
 The :work instance is either without auth, with auth-data in ~/.authinfo, or behind basic auth with the url-package prompting for credentials
 
