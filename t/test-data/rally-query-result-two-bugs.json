@@ -1,0 +1,39 @@
+{
+  "QueryResult": {
+    "Results": [
+      {
+        "_type": "Task",
+        "Name": "Duis sit amet viverra felis.",
+        "LastUpdateDate": "2015-12-01T11:21:09.572Z",
+        "FormattedID": "TA815",
+        "_refObjectName": "Duis sit amet viverra felis.",
+        "_objectVersion": "2",
+        "_refObjectUUID": "e03a5208-7508-8011-e410-4c2d718c61e0",
+          "_ref": "https:\/\/rally1.rallydev.com\/slm\/webservice\/v2.0\/task\/68481633083",
+        "_rallyAPIMinor": "0",
+        "_rallyAPIMajor": "2"
+      },
+      {
+        "_type": "HierarchicalRequirement",
+        "TaskStatus": "IN_PROGRESS",
+        "Name": "Aenean egestas ligula id ullamcorper.",
+        "LastUpdateDate": "2016-04-12T08:43:26.437Z",
+        "DirectChildrenCount": 0,
+        "FormattedID": "US815",
+        "_refObjectName": "Aenean egestas ligula id ullamcorper.",
+        "_objectVersion": "22",
+        "_refObjectUUID": "ad527a38-bdd3-e669-bcab-1eae8769106c",
+        "_ref": "https:\/\/rally1.rallydev.com\/slm\/webservice\/v2.0\/hierarchicalrequirement\/16518136386",
+        "_rallyAPIMinor": "0",
+        "_rallyAPIMajor": "2"
+      }
+    ],
+    "PageSize": 100,
+    "StartIndex": 1,
+    "TotalResultCount": 2,
+    "Warnings": [],
+    "Errors": [],
+    "_rallyAPIMinor": "0",
+    "_rallyAPIMajor": "2"
+  }
+}
