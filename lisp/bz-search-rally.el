@@ -26,6 +26,7 @@
 ;;
 ;;; Code:
 
+(require 'bz-common-functions)
 
 ;;;###autoload
 (defun bz--do-rally-search (params &optional instance method)
@@ -73,9 +74,31 @@ pagesize, ...) can't be supplied:
                      (bug-id (cdr (assoc '_refObjectUUID bug))))
                 (bz-bug bug-id instance))
             ;; ... and this should display a list
-            (let ((results
-                   (cdr (assoc 'Results query-result))))
-              (bz-list-show query results instance)))))
+            (let* ((results
+                    (cdr (assoc 'Results query-result)))
+                   (stripped-query
+                    (replace-regexp-in-string
+                     "[ ()\"]" ""
+                     (cadr (assoc 'query query)))))
+              ;; check if the query was for a single bug
+              (if (string-match
+                   "^FormattedID=\\(\\(F\\|DE\\|TA\\|US\\)\\{1\\}[0-9]+\\)$"
+                   stripped-query)
+                  ;; if so, check if the bug is present in the results
+                  (let* ((formatted-id (match-string 1 stripped-query))
+                         (bug-position
+                          (bz-bug-position-in-array
+                           results 'FormattedID formatted-id)))
+                    ;; if the bug was found, return it as single bug, otherwise,
+                    ;; just show the list (which shouldn't happen)
+                    (if bug-position
+                        (let ((bug (aref results bug-position)))
+                          (bz-bug (cdr (assoc '_refObjectUUID bug)) instance))
+                      (bz-list-show query results instance)))
+                ;; search was not for a single bug, so show the list
+                (bz-list-show query results instance))))))
+    ;; response didn't contain QueryResult and TotalResultCount, so just
+    ;; return the response for debugging, as that should not happen.
     response))
 
 ;;;###autoload
