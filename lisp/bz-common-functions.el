@@ -71,5 +71,15 @@ entered enough to get a match."
     (delete-dups category-keys)
     (completing-read "List name: " category-keys nil nil)))
 
+(defun bz--format-time-date (date-string &optional long)
+  "Return a formatted time/date string, using customizable format strings. If
+'long' is nil a short string will be returned, otherwise a long one.
+
+No adjustments for the local timezone are made."
+  (let ((format-string (if long bz-time-date-format-long
+                         bz-time-date-format-short)))
+    (format-time-string format-string
+                        (date-to-time date-string) t)))
+
 (provide 'bz-common-functions)
 ;;; bz-common-functions.el ends here
