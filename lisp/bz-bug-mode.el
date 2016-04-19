@@ -36,6 +36,7 @@
                           (define-key keymap "c"         'bz--bug-mode-create-comment)
                           (define-key keymap "d"         'bz--bug-mode-download-attachment)
                           (define-key keymap "e"         'bz--bug-mode-edit-field)
+                          (define-key keymap "i"         'bz--bug-mode-info)
                           (define-key keymap "r"         'bz--bug-mode-remember-bug)
                           ;; TODO: this should change to 'status change' instead of 'resolve'
                           (define-key keymap "s"         'bz--bug-mode-resolve-bug)
@@ -263,6 +264,24 @@ via bz-handle-comments-response"
   "Edit the bug field at or near point"
   (interactive)
   ())
+
+;;;###autoload
+(defun bz--bug-mode-info ()
+  "Display some information about thing at or near point
+
+This is mostly useful for debugging text properties"
+  (interactive)
+  (let ((text-property (get-text-property (point) 'bz-bug-field-name))
+        (content-type (get-text-property (point) 'bz-bug-field-type)))
+    (message
+     (concat
+      "type = "
+      (prin1-to-string content-type)
+      "; "
+      (prin1-to-string text-property)
+      " = "
+      (prin1-to-string (cdr (assoc text-property bz-bug)))
+      ))))
 
 ;;;###autoload
 (defun bz--bug-mode-remember-bug (list-name &optional id instance)
