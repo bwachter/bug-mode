@@ -34,7 +34,11 @@
 
 (require 'bz-autoloads)
 
-(defgroup bz nil "Bugzilla related settings")
+;;;;;;
+;; Customizable variables for bz-mode
+;; Use M-x customize-group <ret> bz <ret> to customize
+
+(defgroup bz nil "bz-mode related settings")
 
 (defcustom bz-debug nil
   "Configure debugging to *bz-debug* buffer"
@@ -78,12 +82,99 @@ The :fun instance uses regular bz auth, with credentials stored inside the confi
   :type 'string
   :group 'bz)
 
+(defcustom bz-time-date-format-short "%m.%d.%Y %T"
+  "Format string describing a short time/date string (for example,
+for use in a list view).
+
+For allowed variables, see
+https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
+"
+  :type 'string
+  :group 'bz)
+
+(defcustom bz-time-date-format-long "%a %b %e %T %Y"
+  "Format string describing a long time/date string (for example,
+for use in a bug view).
+
+For allowed variables, see
+https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
+"
+  :type 'string
+  :group 'bz)
+
+;;;;;;
+;; Customizable faces for bz-mode
+;; Use M-x customize-group <ret> bz-faces <ret> to customize
+
+(defgroup bz-faces nil "Face configuration for bz-mode")
+
+(defface bz-bug-field-description
+  '((((class color) (background light)) :foreground "SkyBlue4")
+    (((class color) (background dark))  :foreground "LightSkyBlue1"))
+  "Face used for field names in bz-bug-mode"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-0
+  '((t :inherit default))
+  "Face used for unspecified field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-1
+  '((t :inherit bz-bug-field-type-0))
+  "Face used for free text field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-2
+  '((t :inherit bz-bug-field-type-0))
+  "Face used for drop down field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-3
+  '((t :inherit bz-bug-field-type-0))
+  "Face used for multiple selection field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-4
+  '((t :inherit bz-bug-field-type-0))
+  "Face used for large text field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-5
+  '((t :inherit bz-bug-field-type-0))
+  "Face used for date/time field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-6
+  '((((class color) (background light)) :box t :foreground "DarkOliveGreen4")
+    (((class color) (background dark))  :box t :foreground "DarkSeaGreen2"))
+  "Face used for bug ID field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-7
+  '((t :inherit bz-bug-field-type-0))
+  "Face used for bug url / 'see also' field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-98
+  '((t :inherit bz-bug-field-type-0))
+  "Face used for rally object field values"
+  :group 'bz-faces)
+
+(defface bz-bug-field-type-99
+  '((((class color) (background light)) :background "grey95")
+    (((class color) (background dark))  :background "grey20"))
+  "Face used for HTML field values"
+  :group 'bz-faces)
+
 (defvar bz-data-file (concat bz-data-directory "data")
   "The file containing saved searches and similar user data. Change bz-data-directory if you don't like the storage location")
 
 (defvar bz-rally-url "https://rally1.rallydev.com/slm/webservice/v2.0/"
   "The URL to use for rally. This should only be changed if a different port is
 required for proxy circumvention")
+
+;;;;;;
+;; Debug helpers
 
 (defmacro bz-debug (body)
   `(if (and (boundp 'bz-debug) bz-debug)
@@ -137,6 +228,8 @@ descriptive string"
                      (bz-debug "No measurement started"))
                (setq bz-debug-last-timestamp (current-time))))))
 
+;;;;;;
+;; helper functions and variables for reading static data and user settings
 (setq bz-bug-remember-list (make-hash-table :test 'equal))
 
 (defconst bz-json-data-dir
@@ -174,6 +267,8 @@ are used.
        (t
         '("id" "status" "summary" "last_change_time"))))))
 
+;;;;;;
+;; startup code to read persistent data
 (bz-read-data-file)
 
 (provide 'bz)
