@@ -35,6 +35,7 @@
                           ;; TODO: change this to a 'change bug' popup
                           (define-key keymap "c"         'bz--bug-mode-create-comment)
                           (define-key keymap "d"         'bz--bug-mode-download-attachment)
+                          (define-key keymap "e"         'bz--bug-mode-edit-field)
                           (define-key keymap "r"         'bz--bug-mode-remember-bug)
                           ;; TODO: this should change to 'status change' instead of 'resolve'
                           (define-key keymap "s"         'bz--bug-mode-resolve-bug)
@@ -258,6 +259,11 @@ via bz-handle-comments-response"
   (browse-url (bz-find-attachment-url bz-instance)))
 
 ;;;###autoload
+(defun bz--bug-mode-edit-field ()
+  "Edit the bug field at or near point"
+  (interactive)
+  ())
+
 ;;;###autoload
 (defun bz--bug-mode-remember-bug (list-name &optional id instance)
   "Remember the current bug in a local search"
