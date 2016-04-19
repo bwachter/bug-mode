@@ -27,7 +27,7 @@
             {
                 "visibility_field": null,
                 "id": 3,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -72,7 +72,7 @@
             {
                 "visibility_field": null,
                 "id": 7,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -83,7 +83,7 @@
             {
                 "visibility_field": null,
                 "id": 8,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -119,7 +119,7 @@
             {
                 "visibility_field": null,
                 "id": 11,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -131,7 +131,7 @@
             {
                 "visibility_field": null,
                 "id": 12,
-                "type": 9,
+                "type": 99,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -154,7 +154,7 @@
             {
                 "visibility_field": null,
                 "id": 14,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -313,7 +313,7 @@
             {
                 "visibility_field": null,
                 "id": 27,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -335,7 +335,7 @@
             {
                 "visibility_field": null,
                 "id": 29,
-                "type": 9,
+                "type": 99,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -430,7 +430,7 @@
             {
                 "visibility_field": null,
                 "id": 37,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -441,7 +441,7 @@
             {
                 "visibility_field": null,
                 "id": 38,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -486,7 +486,7 @@
             {
                 "visibility_field": null,
                 "id": 42,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -497,7 +497,7 @@
             {
                 "visibility_field": null,
                 "id": 43,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -533,7 +533,7 @@
             {
                 "visibility_field": null,
                 "id": 46,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -544,7 +544,7 @@
             {
                 "visibility_field": null,
                 "id": 47,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -603,7 +603,7 @@
             {
                 "visibility_field": null,
                 "id": 52,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -639,7 +639,7 @@
             {
                 "visibility_field": null,
                 "id": 55,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -662,7 +662,7 @@
             {
                 "visibility_field": null,
                 "id": 57,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,
@@ -805,7 +805,7 @@
             {
                 "visibility_field": null,
                 "id": 69,
-                "type": 8,
+                "type": 98,
                 "is_on_bug_entry": false,
                 "visibility_values": [],
                 "is_custom": false,

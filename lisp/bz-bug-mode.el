@@ -114,7 +114,7 @@
                      ;; TODO: implement retrieval of additional rally objects
                      ;;       until it's implemented just hide them to avoid
                      ;;       polluting the bug buffer
-                     (not (equal 8 (bz--bug-get-field-property (car prop) 'type)))
+                     (not (equal 98 (bz--bug-get-field-property (car prop) 'type)))
                      (not (equal (cdr prop) nil))
                      (not (string= (car prop) "internals")))) bug) "\n"))
 
