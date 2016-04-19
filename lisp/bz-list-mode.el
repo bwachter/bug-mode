@@ -36,7 +36,7 @@
                            keymap)
   "Keymap for BZ list mode")
 
-(define-derived-mode bz-list-mode special-mode "Bugzilla list"
+(define-derived-mode bz-list-mode tabulated-list-mode "Bugzilla list"
   "Operate on a list of bugzilla items"
   )
 
@@ -54,59 +54,54 @@
   (make-local-variable 'bz-instance)
   (setq bz-instance instance)
   (setq buffer-read-only nil)
-  (erase-buffer)
+
   (let* ((list-columns (bz-list-columns instance))
          (bugs (mapcar (lambda (bug)
-                         (bz-bug-filtered-and-sorted-properties bug list-columns))
-                         parsed)))
-    (let* ((header-widths (bz-header-widths bugs list-columns))
-           (header-item-length (/ (window-width) (length list-columns))))
-      (setq header-line-format
-            (let ((column 0)
-                  (header '()))
-              (mapconcat (lambda (heading)
-                           (let ((result (concat
-                                          (propertize " " 'display (list 'space :align-to column)
-                                                      'face 'fixed-pitch)
-                                          heading)))
-                             (setq column (+ column (cdr (assoc heading header-widths)) 1))
-                             result))
-                         list-columns "")))
-      (insert (mapconcat 'bz-bug-format bugs "\n")))
-    (goto-char 0)
-    (setq buffer-read-only t)
+                         (bz-bug-to-filtered-vector bug list-columns))
+                       parsed)))
+    ;; populate header
+    ;; as all entries are strings list can be sorted by any column
+    ;; TODO: propertize the header
+    (setq tabulated-list-format
+          (make-vector (length (bz-list-columns instance)) nil))
+    (let ((count 0)
+          (header-widths (bz-header-widths bugs list-columns)))
+      (dolist (element list-columns)
+        (aset tabulated-list-format count
+              `(,element ,(cdr (assoc element header-widths)) t))
+        (setq count (+ 1 count))))
+    (tabulated-list-init-header)
+
+    ;; populate list entries
+    (dolist (element bugs)
+      (add-to-list 'tabulated-list-entries `(nil ,element)))
+    (tabulated-list-print t)
     (bz-debug-log-time "stop")))
 
-;; layout/output control
-;; TODO: properly document those
+(defun bz-bug-to-filtered-vector (bug list-columns)
+  "Extract fields listed in the header from bug and return a vector suitable
+for inclusion in tabulated-list-entries"
+  (let ((data (make-vector (length list-columns) ""))
+        (count 0))
+    (dolist (header-item (bz-list-columns instance))
+      (aset data count (or
+                    ;; TODO: properly parse and print datatypes
+                    ;;       propertize the whole thing
+                    (prin1-to-string (cdr (assoc (intern header-item) (cdr bug))) t) ""))
+      (setq count (+ 1 count)))
+    data))
+
 (defun bz-header-widths (bugs list-columns)
+  "Check the longest field for each header entries in a list of bug and return
+an alist with (type . length) cells containing the longest length"
   (mapcar* (lambda (x y)
              `(,x . ,y))
            list-columns
            (reduce (lambda (l1 l2)
                      (mapcar* 'max l1 l2))
                    (mapcar (lambda (bug)
-                             (mapcar (lambda (prop) (+ (length (format "%s" (cdr prop))) 5)) bug))
+                             (mapcar (lambda (prop) (+ (length (format "%s" prop)) 5)) bug))
                            bugs))))
-
-(defun bz-bug-sort-properties (bug list-columns)
-  (sort bug
-        (lambda (a b)
-          (< (position (symbol-name (car a)) list-columns :test 'string=)
-             (position (symbol-name (car b)) list-columns :test 'string=)))))
-
-(defun bz-bug-format (bug)
-  (mapconcat (lambda (property)
-               (let ((hw (cdr (assoc (symbol-name (car property)) header-widths))))
-                 (format (format "%%-%d.%ds"
-                                 hw
-                                 hw) (cdr property))))
-             bug " "))
-
-(defun bz-bug-filtered-and-sorted-properties (bug list-columns)
-  (bz-bug-sort-properties (filter (lambda (property)
-                                    (member (symbol-name (car property)) list-columns))
-                                  bug) list-columns))
 
 (defun pretty-kvs (kvs)
   (if (hash-table-p kvs)
