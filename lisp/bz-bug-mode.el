@@ -99,7 +99,7 @@
                      ;;       polluting the bug buffer
                      (not (equal 98 (bz--bug-get-field-property (car prop) 'type)))
                      (not (equal (cdr prop) nil))
-                     (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr prop))))
+                     (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr prop) t)))
                      (not (string= (car prop) "internals")))) bug) "\n"))
 
     (unless (string= type "rally")
@@ -168,7 +168,7 @@ cell as argument"
             (assoc '_refObjectName (cdr field)))
        (propertize
         (concat "-> "
-                (prin1-to-string (cdr (assoc '_refObjectName (cdr field)))))
+                (prin1-to-string (cdr (assoc '_refObjectName (cdr field))) t))
         'face 'bz-bug-field-type-98))
       ((equal content-type 5)
        (propertize (bz--format-time-date (cdr field) t)
