@@ -42,6 +42,7 @@
 
 (defun bz-list-show (query parsed &optional instance)
   "Display the result of a Bugzilla search returning a list of bugs"
+  (bz-debug-log-time "bz-list-show")
   (let ((type (bz-instance-property :type instance)))
     (cond
      ((string= type "rally")
@@ -73,7 +74,8 @@
                          list-columns "")))
       (insert (mapconcat 'bz-bug-format bugs "\n")))
     (goto-char 0)
-    (setq buffer-read-only t)))
+    (setq buffer-read-only t)
+    (bz-debug-log-time "stop")))
 
 ;; layout/output control
 ;; TODO: properly document those

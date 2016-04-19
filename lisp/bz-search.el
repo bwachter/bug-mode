@@ -58,6 +58,7 @@
         (read-string "Search query: " nil nil t)
         (bz-query-instance))
      (list (read-string "Search query: " nil nil t))))
+  (bz-debug-log-time "start")
   (let* ((type (bz-instance-property :type instance)))
     (cond ((string= type "rally")
            (bz-do-search (bz--parse-rally-search-query query) instance))

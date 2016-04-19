@@ -59,6 +59,7 @@ parsed response as alist"
 
 (defun bz-parse-rpc-response ()
   "Parse a JSON response from buffer and return it as alist"
+  (bz-debug-log-time "RPC done")
   (goto-char 0)
   (if (re-search-forward "\n\n" nil t)
       (let ((response (json-read-from-string (decode-coding-string (buffer-substring (point) (point-max)) 'utf-8)))

@@ -75,7 +75,7 @@ args is an alist, whith the following keys:
 The call to search for US1234 and return additional fields Name, Description,
 Type and FormattedID would look like this:
 
-(bz--rpc-rally \"hierarchicalrequirement.query\"
+ (bz--rpc-rally \"hierarchicalrequirement.query\"
                '((query-data .
                              ((query \"( FormattedID = \"US1234\" )\")
                               (fetch \"Name,Description,Type,FormattedID\")))))
@@ -83,7 +83,7 @@ Type and FormattedID would look like this:
 To get the full details, extract _refObjectUUID from a query, and use it as
 object-id for read (or any other call requiring an object-id):
 
-(bz--rpc-rally \"hierarchicalrequirement.read\"
+ (bz--rpc-rally \"hierarchicalrequirement.read\"
                '((object-id . \"1a23bc45-abcd-6e78-f901-g2345hij678k\")))
 "
   (let* ((object (car (split-string method "\\." t)))
@@ -104,6 +104,7 @@ object-id for read (or any other call requiring an object-id):
          (url-request-extra-headers `(("Content-Type" . "application/json")
                                       ,(bz--rpc-rally-auth-header instance))))
     (bz-debug (concat "request " url "\n" object-id "\n"))
+    (bz-debug-log-time "RPC init")
     (with-current-buffer (url-retrieve-synchronously url)
       (bz-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
       (bz-parse-rpc-response))))

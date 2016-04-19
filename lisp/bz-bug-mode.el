@@ -62,6 +62,7 @@
 
 (defun bz-bug-show (id bug &optional instance)
   "Display an existing bug buffer in bz-bug-mode"
+  (bz-debug-log-time "bz-bug-show")
   (let ((type (bz-instance-property :type instance)))
 
     (cond ((string= type "rally")
@@ -122,7 +123,8 @@
       (if bz-autoload-comments
           (bz-get-comments id instance)))
     (goto-char 0)
-    (setq buffer-read-only t)))
+    (setq buffer-read-only t)
+    (bz-debug-log-time "stop")))
 
 (defun bz--bug-format-html (html &optional base-url)
   "Parse an HTML string and return it formatted suitable for inserting

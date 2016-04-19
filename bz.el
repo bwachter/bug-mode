@@ -93,6 +93,50 @@ required for proxy circumvention")
            (insert str)
            (insert "\n")))))
 
+(defun bz-debug-log-time (stamp)
+  "Log timestamps to debug buffer if debugging is enabled
+
+Measurement needs to be started with passing \"start\" as argument, and may be
+explicitely stopped by passing \"stop\". For measurements in between use a
+descriptive string"
+  (if (and (boundp 'bz-debug) bz-debug)
+      (cond ((string= stamp "start")
+             (setq bz-debug-timestamp (current-time))
+             (setq bz-debug-last-timestamp nil)
+             (bz-debug
+              (format "Starting new measurement at %s"
+                      (current-time-string bz-debug-timestamp))))
+            ((string= stamp "stop")
+             (if bz-debug-timestamp
+                 (bz-debug
+                  (format "Stopping measurement at %s, %f seconds after start"
+                          (current-time-string)
+                          (time-to-seconds
+                           (time-subtract (current-time) bz-debug-timestamp))))
+               (bz-debug "No measurement started"))
+             (setq bz-debug-timestamp nil)
+             (setq bz-debug-last-timestamp nil))
+            (t (if bz-debug-timestamp
+                   (let ((format-string
+                          (if (and (boundp 'bz-debug-last-timestamp)
+                                   bz-debug-last-timestamp)
+                              (format "Reached '%s' after %f seconds, %f after last"
+                                      stamp
+                                      (time-to-seconds
+                                       (time-subtract (current-time)
+                                                      bz-debug-timestamp))
+                                      (time-to-seconds
+                                       (time-subtract (current-time)
+                                                      bz-debug-last-timestamp)))
+                            (format "Reached '%s' after %f seconds"
+                                    stamp
+                                    (time-to-seconds
+                                     (time-subtract (current-time)
+                                                    bz-debug-timestamp))))))
+                         (bz-debug format-string))
+                     (bz-debug "No measurement started"))
+               (setq bz-debug-last-timestamp (current-time))))))
+
 (setq bz-bug-remember-list (make-hash-table :test 'equal))
 
 (defconst bz-json-data-dir
