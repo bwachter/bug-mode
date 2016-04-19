@@ -91,7 +91,14 @@
                             `(,(car prop))) t)
           'face 'bold)
          ": "
-         (prin1-to-string (cdr prop) t)))
+         (let ((content-type (bz--bug-get-field-property
+                              (car prop) 'type instance)))
+           (cond ((equal content-type 8)
+                  ())
+                 ((equal content-type 9)
+                  (bz--bug-format-html (cdr prop)))
+                 (t
+                  (prin1-to-string (cdr prop) t))))))
       (filter (lambda (prop)
                 (and (not (equal :json-false (bz--bug-get-field-property (car prop) 'is_visible)))
                      ;; TODO: implement retrieval of additional rally objects
@@ -116,6 +123,20 @@
           (bz-get-comments id instance)))
     (goto-char 0)
     (setq buffer-read-only t)))
+
+(defun bz--bug-format-html (html &optional base-url)
+  "Parse an HTML string and return it formatted suitable for inserting
+into the buffer. If HTML parsing is not possible the unparsed HTML is
+returned as string."
+  (if (fboundp 'libxml-parse-html-region)
+      (with-temp-buffer
+        (insert html)
+        (let ((parsed-html
+               (libxml-parse-html-region (point-min) (point-max) base-url)))
+          (with-temp-buffer
+            (shr-insert-document parsed-html)
+            (buffer-string))))
+    html))
 
 (defun bz--bug-get-field-property (field-name property &optional instance)
   "Return a property for a bug field from the field definition.
