@@ -94,12 +94,21 @@
          ": "
          (let ((content-type (bz--bug-get-field-property
                               (car prop) 'type instance)))
-           (cond ((equal content-type 8)
-                  ())
-                 ((equal content-type 9)
-                  (bz--bug-format-html (cdr prop)))
-                 (t
-                  (prin1-to-string (cdr prop) t))))))
+           (cond
+            ;; some rally objects in a bug contain _refObjectName, which is
+            ;; enough information to display -> just display that to save
+            ;; an RPC call
+            ;; TODO: save object attributes to allow querying the object
+            ((and (listp (cdr prop))
+                  (assoc '_refObjectName (cdr prop)))
+             (concat "-> "
+                     (prin1-to-string (cdr (assoc '_refObjectName (cdr prop))))))
+            ((equal content-type 8)
+             ())
+            ((equal content-type 9)
+             (bz--bug-format-html (cdr prop)))
+            (t
+             (prin1-to-string (cdr prop) t))))))
       (filter (lambda (prop)
                 (and (not (equal :json-false (bz--bug-get-field-property (car prop) 'is_visible)))
                      ;; TODO: implement retrieval of additional rally objects
