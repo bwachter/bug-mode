@@ -179,7 +179,8 @@ cell as argument"
       ((equal content-type 98)
        ())
       ((equal content-type 99)
-       (propertize (bz--bug-format-html (cdr field))
+       (propertize (replace-regexp-in-string "[[:space:]]*$" ""
+                                             (bz--bug-format-html (cdr field)))
                    'face 'bz-bug-field-type-99))
       (t
        (prin1-to-string (cdr field) t)))
