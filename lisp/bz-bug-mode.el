@@ -80,36 +80,16 @@
     (setq bz-bug bug)
     (make-local-variable 'bz-instance)
     (setq bz-instance instance)
+    (make-local-variable 'bz-changed-data)
+    (setq bz-changed-data nil)
     (setq buffer-read-only nil)
     (erase-buffer)
     (insert
      (mapconcat
       (lambda (prop)
         (concat
-         (propertize
-          (prin1-to-string (or
-                            (bz--bug-get-field-property
-                             (car prop) 'display_name instance)
-                            `(,(car prop))) t)
-          'face 'bold)
-         ": "
-         (let ((content-type (bz--bug-get-field-property
-                              (car prop) 'type instance)))
-           (cond
-            ;; some rally objects in a bug contain _refObjectName, which is
-            ;; enough information to display -> just display that to save
-            ;; an RPC call
-            ;; TODO: save object attributes to allow querying the object
-            ((and (listp (cdr prop))
-                  (assoc '_refObjectName (cdr prop)))
-             (concat "-> "
-                     (prin1-to-string (cdr (assoc '_refObjectName (cdr prop))))))
-            ((equal content-type 8)
-             ())
-            ((equal content-type 9)
-             (bz--bug-format-html (cdr prop)))
-            (t
-             (prin1-to-string (cdr prop) t))))))
+         (bz--bug-format-field-name (car prop) instance)
+         (bz--bug-format-field-value prop instance)))
       (filter (lambda (prop)
                 (and (not (equal :json-false (bz--bug-get-field-property (car prop) 'is_visible)))
                      ;; TODO: implement retrieval of additional rally objects
@@ -117,6 +97,7 @@
                      ;;       polluting the bug buffer
                      (not (equal 98 (bz--bug-get-field-property (car prop) 'type)))
                      (not (equal (cdr prop) nil))
+                     (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr prop))))
                      (not (string= (car prop) "internals")))) bug) "\n"))
 
     (unless (string= type "rally")
@@ -150,6 +131,58 @@ returned as string."
             (shr-insert-document parsed-html)
             (buffer-string))))
     html))
+
+(defun bz--bug-format-field-name (field-name &optional instance)
+  "Format a bug field name for display, taking into account instance
+specific field descriptions."
+  (propertize
+   (concat
+    (prin1-to-string (or
+                      (bz--bug-get-field-property
+                       field-name 'display_name instance)
+                      `(,field-name)) t)
+    ": ")
+    'face 'bz-bug-field-description
+    'bz-bug-field-name field-name))
+
+(defun bz--bug-format-field-value (field &optional instance)
+  "Format a bug field value for display, taking into account instance
+specific field descriptions. Unlike bz--bug-format-field-name this function
+requires both field name and content, therefore taking the complete cons
+cell as argument"
+  (let ((content-type (bz--bug-get-field-property
+                       (car field) 'type instance)))
+    (propertize
+     (cond
+      ((equal :json-false (cdr field))
+       "No")
+      ((equal :json-true (cdr field))
+       "Yes")
+      ;; some rally objects in a bug contain _refObjectName, which is
+      ;; enough information to display -> just display that to save
+      ;; an RPC call
+      ;; TODO: save object attributes to allow querying the object
+      ((and (listp (cdr field))
+            (assoc '_refObjectName (cdr field)))
+       (propertize
+        (concat "-> "
+                (prin1-to-string (cdr (assoc '_refObjectName (cdr field)))))
+        'face 'bz-bug-field-type-98))
+      ((equal content-type 5)
+       (propertize (bz--format-time-date (cdr field) t)
+                   'face 'bz-bug-field-type-5))
+      ((equal content-type 6)
+       (propertize (prin1-to-string (cdr field) t)
+                   'face 'bz-bug-field-type-6))
+      ((equal content-type 98)
+       ())
+      ((equal content-type 99)
+       (propertize (bz--bug-format-html (cdr field))
+                   'face 'bz-bug-field-type-99))
+      (t
+       (prin1-to-string (cdr field) t)))
+     'bz-bug-field-type content-type
+     'bz-bug-field-name (car field))))
 
 (defun bz--bug-get-field-property (field-name property &optional instance)
   "Return a property for a bug field from the field definition.
