@@ -30,14 +30,15 @@
 (require 'bz-common-functions)
 
 (defvar bz-bug-mode-map (let ((keymap (copy-keymap special-mode-map)))
-                          (define-key keymap (kbd "RET") 'bz-bug-mode-open-attachment)
-                          (define-key keymap "b"         'bz-bug-mode-browse-bug)
-                          (define-key keymap "c"         'bz-bug-mode-create-comment)
-                          (define-key keymap "d"         'bz-bug-mode-download-attachment)
-                          (define-key keymap "r"         'bz-bug-mode-remember-bug)
+                          (define-key keymap (kbd "RET") 'bz--bug-mode-open-attachment)
+                          (define-key keymap "b"         'bz--bug-mode-browse-bug)
+                          ;; TODO: change this to a 'change bug' popup
+                          (define-key keymap "c"         'bz--bug-mode-create-comment)
+                          (define-key keymap "d"         'bz--bug-mode-download-attachment)
+                          (define-key keymap "r"         'bz--bug-mode-remember-bug)
                           ;; TODO: this should change to 'status change' instead of 'resolve'
-                          (define-key keymap "s"         'bz-bug-mode-resolve-bug)
-                          (define-key keymap "u"         'bz-bug-mode-update-bug)
+                          (define-key keymap "s"         'bz--bug-mode-resolve-bug)
+                          (define-key keymap "u"         'bz--bug-mode-update-bug)
                           keymap)
   "Keymap for BZ bug mode")
 
@@ -197,20 +198,20 @@ via bz-handle-comments-response"
 
 ;; functions usually called through keybindings in bz-bug-mode
 ;;;###autoload
-(defun bz-bug-mode-browse-bug ()
+(defun bz--bug-mode-browse-bug ()
   "Open the current bug in browser"
   (interactive)
   (let ((url (concat (bz-instance-property :url bz-instance) "/show_bug.cgi?id=" bz-id)))
     (browse-url url)))
 
 ;;;###autoload
-(defun bz-bug-mode-create-comment ()
+(defun bz--bug-mode-create-comment ()
   "Create a comment on the current bug"
   (interactive)
   (bz-comment bz-id bz-instance))
 
 ;;;###autoload
-(defun bz-bug-mode-download-attachment ()
+(defun bz--bug-mode-download-attachment ()
   "Download the current attachment to the home directory"
   (interactive)
   (w3m-download
@@ -218,13 +219,14 @@ via bz-handle-comments-response"
    (expand-file-name (concat "~/" (match-string 3)))))
 
 ;;;###autoload
-(defun bz-bug-mode-open-attachment ()
+(defun bz--bug-mode-open-attachment ()
   "Open the current attachment in the web browser"
   (interactive)
   (browse-url (bz-find-attachment-url bz-instance)))
 
 ;;;###autoload
-(defun bz-bug-mode-remember-bug (list-name &optional id instance)
+;;;###autoload
+(defun bz--bug-mode-remember-bug (list-name &optional id instance)
   "Remember the current bug in a local search"
   (interactive
    (if (and (boundp 'bz-id) (boundp 'bz-bug))
@@ -251,7 +253,7 @@ via bz-handle-comments-response"
     (bz-write-data-file)))
 
 ;;;###autoload
-(defun bz-bug-mode-resolve-bug ()
+(defun bz--bug-mode-resolve-bug ()
   "Resolve the current bug"
   (interactive)
   (let ((resolution (completing-read "resolution: "
@@ -264,7 +266,7 @@ via bz-handle-comments-response"
   (bz-bug bz-id bz-instance))
 
 ;;;###autoload
-(defun bz-bug-mode-update-bug ()
+(defun bz--bug-mode-update-bug ()
   "Update the bug by reloading it from Bugzilla"
   (interactive)
   (bz-bug bz-id bz-instance))
