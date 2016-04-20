@@ -1,9 +1,9 @@
-;;; bz-list-mode.el --- handle a list of bugzilla bugs
+;;; bug-list-mode.el --- handle a list of bugs
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -21,7 +21,7 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;; TODO:
@@ -35,50 +35,51 @@
 ;;
 ;;; Code:
 
-(require 'bz-rpc)
-(require 'bz-search-common)
-(require 'bz-common-functions)
+(require 'bug-rpc)
+(require 'bug-search-common)
+(require 'bug-common-functions)
 
-(defvar bz-list-mode-map (let ((keymap (copy-keymap special-mode-map)))
-                           (define-key keymap (kbd "RET") 'bz--list-mode-select-bug)
-                           (define-key keymap "i"         'bz--list-mode-info)
-                           (define-key keymap "u"         'bz--list-mode-update-list)
-                           (define-key keymap "q"         'bz--list-mode-quit-window)
-                           keymap)
+(defvar bug-list-mode-map
+  (let ((keymap (copy-keymap special-mode-map)))
+    (define-key keymap (kbd "RET") 'bug--list-mode-select-bug)
+    (define-key keymap "i"         'bug--list-mode-info)
+    (define-key keymap "u"         'bug--list-mode-update-list)
+    (define-key keymap "q"         'bug--list-mode-quit-window)
+    keymap)
   "Keymap for BZ list mode")
 
-(define-derived-mode bz-list-mode tabulated-list-mode "Bugzilla list"
-  "Operate on a list of bugzilla items"
+(define-derived-mode bug-list-mode tabulated-list-mode "Bug list"
+  "Operate on a list of bugs"
   )
 
-(defun bz-list-show (query parsed &optional instance)
-  "Display the result of a Bugzilla search returning a list of bugs"
-  (bz-debug-log-time "bz-list-show")
-  (let ((type (bz-instance-property :type instance)))
+(defun bug-list-show (query parsed &optional instance)
+  "Display the result of a bug search returning a list of bugs"
+  (bug-debug-log-time "bug-list-show")
+  (let ((type (bug-instance-property :type instance)))
     (cond
      ((string= type "rally")
       (switch-to-buffer (format "*rally results: %s*" (pretty-kvs query))))
      (t (switch-to-buffer (format "*bugzilla results: %s*" (pretty-kvs query))))))
-  (bz-list-mode)
-  (make-local-variable 'bz-query)
-  (setq bz-query query)
-  (make-local-variable 'bz-instance)
-  (setq bz-instance instance)
+  (bug-list-mode)
+  (make-local-variable 'bug---query)
+  (setq bug---query query)
+  (make-local-variable 'bug---instance)
+  (setq bug---instance instance)
   (setq buffer-read-only nil)
 
-  (let* ((list-columns (bz-list-columns instance))
+  (let* ((list-columns (bug-list-columns instance))
          (bugs (mapcar (lambda (bug)
-                         (bz-bug-to-filtered-vector bug list-columns))
+                         (bug-to-filtered-vector bug list-columns))
                        parsed)))
     ;; populate header
     ;; as all entries are strings list can be sorted by any column
     (setq tabulated-list-format
-          (make-vector (length (bz-list-columns instance)) nil))
+          (make-vector (length (bug-list-columns instance)) nil))
     (let ((count 0)
-          (header-widths (bz-header-widths bugs list-columns)))
+          (header-widths (bug-header-widths bugs list-columns)))
       (dolist (element list-columns)
         (aset tabulated-list-format count
-              `(,(bz--list-format-header-field element instance)
+              `(,(bug--list-format-header-field element instance)
                 ,(cdr (assoc element header-widths)) t))
         (setq count (+ 1 count))))
     (tabulated-list-init-header)
@@ -87,19 +88,19 @@
     (dolist (element bugs)
       (add-to-list 'tabulated-list-entries `(nil ,element)))
     (tabulated-list-print t)
-    (bz-debug-log-time "stop")))
+    (bug-debug-log-time "stop")))
 
-(defun bz--list-format-header-field (header-field &optional instance)
+(defun bug--list-format-header-field (header-field &optional instance)
   "Format a header field name for display, taking into account instance
 specific field descriptions."
   (propertize
    (prin1-to-string (or
-                     (bz--bug-get-field-property
+                     (bug--bug-get-field-property
                       (intern header-field) 'display_name instance)
                      header-field) t)
-    'face 'bz-bug-header-field))
+    'face 'bug-header-field))
 
-(defun bz-bug-to-filtered-vector (bug list-columns)
+(defun bug-to-filtered-vector (bug list-columns)
   "Extract fields listed in the header from bug and return a vector suitable
 for inclusion in tabulated-list-entries"
   (let ((data (make-vector (length list-columns) ""))
@@ -107,17 +108,17 @@ for inclusion in tabulated-list-entries"
     (dolist (header-item list-columns)
       (let* ((field (assoc (intern header-item) (cdr bug)))
              (value (or (cdr field) ""))
-             (bug-id (cdr (assoc (bz--uuid-field-name bz-instance) (cdr bug))))
+             (bug-id (cdr (assoc (bug--uuid-field-name bug---instance) (cdr bug))))
              (formatted-string))
         (setq formatted-string
               (propertize
-               (bz--bug-format-field-value field bz-instance)
-               'bz-bug-id bug-id))
+               (bug--bug-format-field-value field bug---instance)
+               'bug-id bug-id))
         (aset data count formatted-string))
       (setq count (+ 1 count)))
     data))
 
-(defun bz-header-widths (bugs list-columns)
+(defun bug-header-widths (bugs list-columns)
   "Check the longest field for each header entries in a list of bug and return
 an alist with (type . length) cells containing the longest length"
   (mapcar* (lambda (x y)
@@ -141,14 +142,14 @@ an alist with (type . length) cells containing the longest length"
     (maphash (lambda (key val) (setq result (cons `(,key . ,val) result))) ht)
     result))
 
-;; functions usually called through keybindings in bz-list-mode
+;; functions usually called through keybindings in bug-list-mode
 ;;;###autoload
-(defun bz--list-mode-info ()
+(defun bug--list-mode-info ()
   "Display some information about thing at or near point
 
 This is mostly useful for debugging text properties"
   (interactive)
-  (let ((bug-id (get-text-property (point) 'bz-bug-id)))
+  (let ((bug-id (get-text-property (point) 'bug-id)))
     (message
      (concat
       "ID = "
@@ -157,30 +158,30 @@ This is mostly useful for debugging text properties"
       ))))
 
 ;;;###autoload
-(defun bz--list-mode-select-bug ()
+(defun bug--list-mode-select-bug ()
   "Open the current bug from the list. The bug identifier is read from text
 properties at point, or -- if that fails -- from the beginning of the current
 line"
   (interactive)
-  (let ((bug-id (or (get-text-property (point) 'bz-bug-id)
+  (let ((bug-id (or (get-text-property (point) 'bug-id)
                     (save-excursion
                       (forward-line 0)
-                      (get-text-property (point) 'bz-bug-id)))))
+                      (get-text-property (point) 'bug-id)))))
     (if bug-id
-        (bz-bug bug-id bz-instance)
+        (bug-open bug-id bug---instance)
       (message "No bug ID found. Misconfigured bug UUID property?"))))
 
 ;;;###autoload
-(defun bz--list-mode-update-list ()
+(defun bug--list-mode-update-list ()
   "Update the list by running the original search query again"
   (interactive)
-  (bz-do-search bz-query bz-instance))
+  (bug-do-search bug---query bug---instance))
 
 ;;;###autoload
-(defun bz--list-mode-quit-window ()
+(defun bug--list-mode-quit-window ()
   "Close the search result window"
   (interactive)
   (quit-window t))
 
-(provide 'bz-list-mode)
-;;; bz-list-mode.el ends here
+(provide 'bug-list-mode)
+;;; bug-list-mode.el ends here

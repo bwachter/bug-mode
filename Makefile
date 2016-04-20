@@ -13,5 +13,5 @@ lisp:
 
 test: lisp
 	@emacs -batch -Q --eval "(progn\
-	(load-file \"t/bz-tests.el\")\
+	(load-file \"t/bug-tests.el\")\
 	(ert-run-tests-batch-and-exit))"

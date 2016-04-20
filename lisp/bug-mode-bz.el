@@ -1,10 +1,10 @@
-;; bz-bug-mode-bz.el --- bug mode backend for Bugzilla
+;; bug-mode-bz.el --- bug mode backend for Bugzilla
 ;; (c) 2016 Bernd Wachter <bwachter@lart.info>
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -22,15 +22,15 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
 
 ;;;###autoload
-(defun bz--fetch-bz-bug (id &optional instance)
+(defun bug--fetch-bz-bug (id &optional instance)
   "Retrieve a single bug from Bugzilla"
-  (let ((search-response (bz-rpc "Bug.get" `(("ids" . ,id)) instance)))
+  (let ((search-response (bug-rpc "Bug.get" `(("ids" . ,id)) instance)))
     (if (and (assoc 'result search-response)
              (assoc 'bugs (assoc 'result search-response)))
         (let ((bugs (cdr (assoc 'bugs (assoc 'result search-response)))))
@@ -41,5 +41,5 @@
             (aref bugs 0))
            (t (message "You should never see this message")))))))
 
-(provide 'bz-bug-mode-bz)
-;;; bz-bug-mode-bz.el ends here
+(provide 'bug-mode-bz)
+;;; bug-mode-bz.el ends here

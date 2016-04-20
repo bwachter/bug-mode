@@ -1,7 +1,7 @@
 Authors
 =======
 
-See also: https://github.com/bwachter/bz-mode/graphs/contributors
+See also: https://github.com/bwachter/bug-mode/graphs/contributors
 
 Author
 ------

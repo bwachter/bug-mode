@@ -1,9 +1,9 @@
-;; bz-rpc-rally.el --- RPC functions for Rally
+;; bug-rpc-rally.el --- RPC functions for Rally
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -21,7 +21,7 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
@@ -30,15 +30,15 @@
 ;;   https://rally1.rallydev.com/slm/doc/webservice/
 ;; For some reason accessing the documentation requires a subscription.
 
-(defun bz--rpc-rally-auth-header (&optional instance)
+(defun bug--rpc-rally-auth-header (&optional instance)
   "Generate an auth header for rally, either by using an API key, or -- if
 no API key is configured -- by using basic auth with username and password"
-  (if (bz-instance-property :api-key instance)
-      (cons "zsessionid" (bz-instance-property :api-key instance))
+  (if (bug-instance-property :api-key instance)
+      (cons "zsessionid" (bug-instance-property :api-key instance))
     (cons "Authorization" (concat "Basic "
                                   (base64-encode-string
-                                   (concat (car (bz-credentials instance))
-                                           ":" (cadr (bz-credentials instance))))))))
+                                   (concat (car (bug-credentials instance))
+                                           ":" (cadr (bug-credentials instance))))))))
 
 ;; TODO: POSTing data is currently not implemented
 ;;
@@ -59,7 +59,7 @@ no API key is configured -- by using basic auth with username and password"
 ;; +--------+--------+--------------------------+
 
 ;;;###autoload
-(defun bz--rpc-rally (method args &optional instance)
+(defun bug--rpc-rally (method args &optional instance)
   "Send an RPC response to the given (or default) Rally instance and return the
 parsed response as alist.
 
@@ -75,7 +75,7 @@ args is an alist, whith the following keys:
 The call to search for US1234 and return additional fields Name, Description,
 Type and FormattedID would look like this:
 
- (bz--rpc-rally \"hierarchicalrequirement.query\"
+ (bug--rpc-rally \"hierarchicalrequirement.query\"
                '((query-data .
                              ((query \"( FormattedID = \"US1234\" )\")
                               (fetch \"Name,Description,Type,FormattedID\")))))
@@ -83,7 +83,7 @@ Type and FormattedID would look like this:
 To get the full details, extract _refObjectUUID from a query, and use it as
 object-id for read (or any other call requiring an object-id):
 
- (bz--rpc-rally \"hierarchicalrequirement.read\"
+ (bug--rpc-rally \"hierarchicalrequirement.read\"
                '((object-id . \"1a23bc45-abcd-6e78-f901-g2345hij678k\")))
 "
   (let* ((object (car (split-string method "\\." t)))
@@ -100,17 +100,17 @@ object-id for read (or any other call requiring an object-id):
                         ((string= operation "query")
                          (concat object "?" query-string))
                         (t (concat object "/" object-id))))
-         (url (concat bz-rally-url url-str))
+         (url (concat bug-rally-url url-str))
          (url-request-extra-headers `(("Content-Type" . "application/json")
-                                      ,(bz--rpc-rally-auth-header instance))))
-    (bz-debug (concat "request " url "\n" object-id "\n"))
-    (bz-debug-log-time "RPC init")
+                                      ,(bug--rpc-rally-auth-header instance))))
+    (bug-debug (concat "request " url "\n" object-id "\n"))
+    (bug-debug-log-time "RPC init")
     (with-current-buffer (url-retrieve-synchronously url)
-      (bz-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
-      (bz-parse-rpc-response))))
+      (bug-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug-parse-rpc-response))))
 
 ;;;###autoload
-(defun bz--rpc-rally-handle-error (response)
+(defun bug--rpc-rally-handle-error (response)
   "Check data returned from Rally for errors"
   (let* (; the errors are inside the returned object, for error handling
          ; it's easiest to just throw away the outer layer
@@ -121,7 +121,7 @@ object-id for read (or any other call requiring an object-id):
     response))
 
 ;;;###autoload
-(defun bz--rpc-rally-get-fields ()
+(defun bug--rpc-rally-get-fields ()
     "Return a static list of valid field names for rally
 
 Unlike Bugzilla Rally does not have an API call to retrieve a list of
@@ -139,11 +139,11 @@ The following additions are supported for Rally:
 - is_readonly to mark read-only fields (defaults to 'false')
 "
     (let ((rally-fields-file (concat
-                              bz-json-data-dir
+                              bug-json-data-dir
                               "/rally-fields.json")))
       (if (file-exists-p rally-fields-file)
           (json-read-file rally-fields-file)
         (error "Field definition file for Rally not found"))))
 
-(provide 'bz-rpc-rally)
-;;; bz-rpc-rally.el ends here
+(provide 'bug-rpc-rally)
+;;; bug-rpc-rally.el ends here

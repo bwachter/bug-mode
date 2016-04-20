@@ -1,6 +1,8 @@
-# Bugzilla mode #
+# bug-mode #
 
-A mode to interface with Bugzilla and other bug tracking systems from within Emacs. Currently somewhat working bug trackers are:
+A mode to interface with bug/issue tracking systems from within Emacs. This mode started out as bz-mode, but got renamed to bug-mode after work was done to support additional bug trackers.
+
+Currently somewhat working bug trackers are:
 
 - [Bugzilla](https://www.bugzilla.org/)
 - [Rally](https://www.rallydev.com/)
@@ -14,23 +16,24 @@ A mode to interface with Bugzilla and other bug tracking systems from within Ema
 * call `make` to generate autoloads
 * Edit your ~/.emacs or ~/.emacs.d/init.el:
 
-        (load-file "/path/to/bz-mode/bz.el")
+        (load-file "/path/to/bug-mode/bug.el")
 
-* `M-x customize-group RET bz` and adjust at least the the list of instances and the name of the default instance. The instance plist configuration could look like this:
+* `M-x customize-group RET bug` and adjust at least the the list of instances and the name of the default instance. The instance plist configuration could look like this:
 
         (:foo (:url "https://foo.example")
          :bar (:url "https://bar.example" :authinfo "~/.netrc")
          :rally (:api-key "_yourapikey" :type "rally"))
 
+* `M-x customize-group RET bug-faces` if you don't like the default faces
 * Store your credentials in authinfo format in `~/.authinfo`, or specify a database location with the `:authinfo` property
 * For using Rally, generate [API keys](https://rally1.rallydev.com/login/accounts/index.html#/keys) if your subscription allows it, and set the `:api-key property`. With no API key configured username/password from authinfo are used as well.
 
 ## Functions ##
-### bz-login / bz-logout###
+### bug-login / bug-logout###
 Some Bugzilla instances require explicit login. Use those functions to login/logout if that's the case for your installation.
-### bz-bug ###
+### bug-open ###
 Open a single bug (Bugzilla only)
-### bz-search ###
+### bug-search ###
 Search for bugs. The behavior is different, depending on the bug tracker used.
 
 Bugzilla supports
@@ -43,18 +46,18 @@ Rally supports
 * complex query in Rally query syntax
 
 Both Bugzilla and Rally directly open a bug view instead of a list if the search term matches a bug identifier, or the search only returned a single result.
-### bz-search-multiple ###
-Search for bugs with multiple criteria. Same query format as bz-search (Bugzilla only)
-### bz-stored-bugs ###
+### bug-search-multiple ###
+Search for bugs with multiple criteria. Same query format as bug-search (Bugzilla only)
+### bug-stored-bugs ###
 Open a list of locally stored bugs
 
-## Key bindings for bz-modes ##
-### bz-list-mode ###
+## Key bindings for bug-modes ##
+### bug-list-mode ###
 * u - execute query again
 * RET - show single bug
 * q - kill buffer
 
-### bz-bug-mode ###
+### bug-mode ###
 * RET - open attachment with browse-url function
 * b - open bug in default browser
 * c - add comment
@@ -63,7 +66,7 @@ Open a list of locally stored bugs
 * u - execute query again
 * q - kill buffer
 
-### bz-comment-mode ###
+### bug-comment-mode ###
 * C-c C-c - commit comment
 
 ## Proxy ##
@@ -89,11 +92,11 @@ If your proxy allows using `CONNECT`, and you have a suitable shell host availab
             ProxyCommand /usr/bin/connect-proxy -H a.proxy.example:8080 a.shellhost.example 443
             LocalForward 9900 rally1.rallydev.com:443
 
-Additionally `/etc/hosts` needs `rally1.rallydev.com` added after `127.0.0.1` to have it resolve to localhost, and the URL bz uses to access Rally needs to be adjusted to include the locally bound port:
+Additionally `/etc/hosts` needs `rally1.rallydev.com` added after `127.0.0.1` to have it resolve to localhost, and the URL bug-mode uses to access Rally needs to be adjusted to include the locally bound port:
 
-        (setq bz-rally-url "https://rally1.rallydev.com:9900/slm/webservice/v2.0/")
+        (setq bug-rally-url "https://rally1.rallydev.com:9900/slm/webservice/v2.0/")
 
-After starting a SSH connection (`ssh rally-forward`) you should be able to use bz without issues.
+After starting a SSH connection (`ssh rally-forward`) you should be able to use bug-mode without issues.
 
 ### Use a proxy aware TLS program ###
 

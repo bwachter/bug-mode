@@ -1,9 +1,9 @@
-;; bz-rpc-bz.el --- RPC functions for Bugzilla
+;; bug-rpc-bz.el --- RPC functions for Bugzilla
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -21,32 +21,32 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
 
 ;;;###autoload
-(defun bz--rpc-bz (method args &optional instance)
+(defun bug--rpc-bz (method args &optional instance)
   "Send an RPC response to the given (or default) Bugzilla instance and return the
 parsed response as alist"
   (let* ((json-str (json-encode `((method . ,method) (params . [,args]) (id 11))))
-         (url (concat (bz-instance-property :url instance) "/jsonrpc.cgi"))
+         (url (concat (bug-instance-property :url instance) "/jsonrpc.cgi"))
          (url-request-method "POST")
          (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?
          (url-request-extra-headers '(("Content-Type" . "application/json")))
          (url-request-data json-str))
-    (bz-debug (concat "request " url "\n" json-str "\n"))
+    (bug-debug (concat "request " url "\n" json-str "\n"))
     (with-current-buffer (url-retrieve-synchronously url)
-      (bz-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
-      (bz-parse-rpc-response))))
+      (bug-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug-parse-rpc-response))))
 
 ;;;###autoload
-(defun bz--rpc-bz-handle-error (response)
+(defun bug--rpc-bug-handle-error (response)
   "Check data returned from Bugzilla for errors"
   (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
       (error (cdr (assoc 'message (assoc 'error response)))))
   response)
 
-(provide 'bz-rpc-bz)
-;;; bz-rpc-bz.el ends here
+(provide 'bug-rpc-bz)
+;;; bug-rpc-bz.el ends here

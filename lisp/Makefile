@@ -1,14 +1,14 @@
-ALL: bz-autoloads.el
+ALL: bug-autoloads.el
 
 .PHONY: clean
 
-SOURCES = bz.el
-SOURCES = bz-auth.el bz-bug-mode.el bz-comment-mode.el
-SOURCES += bz-list-mode.el bz-rpc.el bz-search.el
-SOURCES += bz-search-common.el bz-common-functions.el
-SOURCES += bz-rpc-bz.el bz-rpc-rally.el
-SOURCES += bz-search-rally.el bz-search-bz.el
-SOURCES += bz-bug-mode-bz.el bz-bug-mode-rally.el
+SOURCES = bug.el
+SOURCES = bug-auth.el bug-mode.el bug-comment-mode.el
+SOURCES += bug-list-mode.el bug-rpc.el bug-search.el
+SOURCES += bug-search-common.el bug-common-functions.el
+SOURCES += bug-rpc-bz.el bug-rpc-rally.el
+SOURCES += bug-search-rally.el bug-search-bz.el
+SOURCES += bug-mode-bz.el bug-mode-rally.el
 ELC = $(SOURCES:.el=.elc)
 
 %.elc: %.el
@@ -18,10 +18,10 @@ compile: $(ELC)
 
 clean:
 	@$(RM) *.elc
-	@$(RM) bz-autoloads.el
+	@$(RM) bug-autoloads.el
 
-bz-autoloads.el: $(SOURCES)
+bug-autoloads.el: $(SOURCES)
 	emacs -batch -Q -L . -eval "(progn\
-	(let ((generated-autoload-file \"$(CURDIR)/bz-autoloads.el\")\
+	(let ((generated-autoload-file \"$(CURDIR)/bug-autoloads.el\")\
 	      (make-backup-files nil))\
 	  (update-directory-autoloads \".\")))"

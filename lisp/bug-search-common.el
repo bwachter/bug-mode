@@ -1,10 +1,10 @@
-;;; bz-search-common.el -- search functions shared between different modules
+;;; bug-search-common.el -- search functions shared between different modules
 ;; TODO: this might need reworking
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -22,24 +22,24 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
 
-(defun bz-do-search (params &optional instance)
-  "Execute a Bugzilla search query"
-  (let* ((type (bz-instance-property :type instance)))
+(defun bug-do-search (params &optional instance)
+  "Execute a bug search query"
+  (let* ((type (bug-instance-property :type instance)))
     (cond
      ((string= type "rally")
-      (bz--do-rally-search params instance))
+      (bug--do-rally-search params instance))
      (t
-      (bz-handle-search-response params
-                                 (bz-rpc "Bug.search" params instance)
+      (bug-handle-search-response params
+                                 (bug-rpc "Bug.search" params instance)
                                  instance)))))
 
-(defun bz-handle-search-response (query response &optional instance)
-  "Parse the result of a Bugzilla search and either show a single bug or a bug list"
+(defun bug-handle-search-response (query response &optional instance)
+  "Parse the result of a bug search and either show a single bug or a bug list"
   (if (and
        (assoc 'result response)
        (assoc 'bugs (assoc 'result response)))
@@ -47,9 +47,9 @@
         (if (= (length bugs) 0)
             (message "No results")
           (if (= (length bugs) 1)
-              (bz-bug-show (cdr (assoc 'id (aref bugs 0))) (aref bugs 0) instance)
-            (bz-list-show query bugs instance))))
+              (bug-show (cdr (assoc 'id (aref bugs 0))) (aref bugs 0) instance)
+            (bug-list-show query bugs instance))))
     response))
 
-(provide 'bz-search-common)
-;;; bz-search-common.el ends here
+(provide 'bug-search-common)
+;;; bug-search-common.el ends here

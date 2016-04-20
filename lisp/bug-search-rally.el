@@ -1,9 +1,9 @@
-;; bz-search-rally.el --- rally specific search functions
+;; bug-search-rally.el --- rally specific search functions
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -21,24 +21,24 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
 
-(require 'bz-common-functions)
+(require 'bug-common-functions)
 
 ;;;###autoload
-(defun bz--do-rally-search (params &optional instance method)
+(defun bug--do-rally-search (params &optional instance method)
   "Execute a search query in Rally
 
 This function takes either a query string in Rallys query string syntax,
-or an alist as documented for bz--rpc-rally.
+or an alist as documented for bug--rpc-rally.
 
 When providing just the query string additional options (like fetch, order,
 pagesize, ...) can't be supplied:
 
- (bz--do-rally-search \"( FormattedID = \"US1234\" )\")
+ (bug--do-rally-search \"( FormattedID = \"US1234\" )\")
 "
   (let* ((query (cond ((stringp params)
                        `((query ,params)))
@@ -51,15 +51,15 @@ pagesize, ...) can't be supplied:
       (add-to-list 'query '(pagesize 100)))
     (unless (assoc 'fetch query)
       (add-to-list 'query '(fetch "FormattedID,LastUpdateDate,TaskStatus,Name")))
-    (bz--handle-rally-search-response
+    (bug--handle-rally-search-response
      query
-     (bz-rpc (or method "artifact.query")
+     (bug-rpc (or method "artifact.query")
              `((query-data . ,query)) instance))))
 
 ;; TODO: Rally strips the letters, and just queries the number, leading to
 ;;       duplicate results. Check the query if we were searching for a single
 ;;       bug, and break it down, if necessary
-(defun bz--handle-rally-search-response (query response &optional instance)
+(defun bug--handle-rally-search-response (query response &optional instance)
   "Parse the result of a Rally search"
   (if (and
        (assoc 'QueryResult response)
@@ -72,7 +72,7 @@ pagesize, ...) can't be supplied:
               ;; this should display the bug...
               (let* ((bug (aref (cdr (assoc 'Results query-result)) 0))
                      (bug-id (cdr (assoc '_refObjectUUID bug))))
-                (bz-bug bug-id instance))
+                (bug-open bug-id instance))
             ;; ... and this should display a list
             (let* ((results
                     (cdr (assoc 'Results query-result)))
@@ -87,22 +87,22 @@ pagesize, ...) can't be supplied:
                   ;; if so, check if the bug is present in the results
                   (let* ((formatted-id (match-string 1 stripped-query))
                          (bug-position
-                          (bz-bug-position-in-array
+                          (bug-position-in-array
                            results 'FormattedID formatted-id)))
                     ;; if the bug was found, return it as single bug, otherwise,
                     ;; just show the list (which shouldn't happen)
                     (if bug-position
                         (let ((bug (aref results bug-position)))
-                          (bz-bug (cdr (assoc '_refObjectUUID bug)) instance))
-                      (bz-list-show query results instance)))
+                          (bug-open (cdr (assoc '_refObjectUUID bug)) instance))
+                      (bug-list-show query results instance)))
                 ;; search was not for a single bug, so show the list
-                (bz-list-show query results instance))))))
+                (bug-list-show query results instance))))))
     ;; response didn't contain QueryResult and TotalResultCount, so just
     ;; return the response for debugging, as that should not happen.
     response))
 
 ;;;###autoload
-(defun bz--parse-rally-search-query (query)
+(defun bug--parse-rally-search-query (query)
   "Parse search query from minibuffer for rally"
   (cond ;; for userfriendly rally IDs, open bug directly
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)
@@ -118,5 +118,5 @@ pagesize, ...) can't be supplied:
                  query query query))))))
 
 
-(provide 'bz-search-rally)
-;;; bz-search-rally.el ends here
+(provide 'bug-search-rally)
+;;; bug-search-rally.el ends here

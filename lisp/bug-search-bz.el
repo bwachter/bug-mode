@@ -1,9 +1,9 @@
-;; bz-search-bz.el --- Bugzilla specific search functions
+;; bug-search-bz.el --- Bugzilla specific search functions
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -21,13 +21,13 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
 
 ;;;###autoload
-(defun bz--parse-bz-search-query (query)
+(defun bug--parse-bug-search-query (query)
   "Parse search query from minibuffer for Bugzilla"
     (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
       `((,(match-string 1 query) . ,(match-string 2 query)))
@@ -35,5 +35,5 @@
         `((id . ,(string-to-number query)))
       `((summary . ,query)))))
 
-(provide 'bz-search-bz)
-;;; bz-search-bz.el ends here
+(provide 'bug-search-bz)
+;;; bug-search-bz.el ends here

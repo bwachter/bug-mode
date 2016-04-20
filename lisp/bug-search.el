@@ -1,9 +1,9 @@
-;;; bz-search.el --- handle Bugzilla searches
+;;; bug-search.el --- handle bug searches
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -21,62 +21,62 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
 
-(require 'bz-search-common)
-(require 'bz-list-mode)
-(require 'bz-bug-mode)
+(require 'bug-search-common)
+(require 'bug-list-mode)
+(require 'bug-mode)
 
 ;;;###autoload
-(defun bz-stored-bugs (list-name &optional instance)
+(defun bug-stored-bugs (list-name &optional instance)
   "Display a stored list of bugs"
   (interactive
    (if current-prefix-arg
-       (list (bz-query-remembered-lists) (bz-query-instance))
+       (list (bug-query-remembered-lists) (bug-query-instance))
      (list
-      (bz-query-remembered-lists))))
-  (let* ((instance (bz-instance-to-symbolp instance))
-         (lists-for-instance (gethash instance bz-bug-remember-list))
+      (bug-query-remembered-lists))))
+  (let* ((instance (bug-instance-to-symbolp instance))
+         (lists-for-instance (gethash instance bug-remember-list))
          (list-entries (if lists-for-instance
                            (gethash list-name lists-for-instance))))
     (if list-entries
         (let ((query (make-hash-table :test 'equal)))
           (puthash "id" list-entries query)
-          (bz-do-search query instance))
+          (bug-do-search query instance))
       (message (concat "List " list-name " not found")))
     ))
 
 ;;;###autoload
-(defun bz-search (query &optional instance)
+(defun bug-search (query &optional instance)
   "Take a search query from the minibuffer and execute it"
   (interactive
    (if current-prefix-arg
        (list
         (read-string "Search query: " nil nil t)
-        (bz-query-instance))
+        (bug-query-instance))
      (list (read-string "Search query: " nil nil t))))
-  (bz-debug-log-time "start")
-  (let* ((type (bz-instance-property :type instance)))
+  (bug-debug-log-time "start")
+  (let* ((type (bug-instance-property :type instance)))
     (cond ((string= type "rally")
-           (bz-do-search (bz--parse-rally-search-query query) instance))
-          (t (bz-do-search (bz--parse-bz-search-query query) instance)))))
+           (bug-do-search (bug--parse-rally-search-query query) instance))
+          (t (bug-do-search (bug--parse-bug-search-query query) instance)))))
 
 ;;;###autoload
-(defun bz-search-multiple (&optional instance)
+(defun bug-search-multiple (&optional instance)
   "Take multiple details for a search query from the minibuffer in several
 prompts and execute them"
   (interactive
    (if current-prefix-arg
-       (list (bz-query-instance))))
+       (list (bug-query-instance))))
   (let ((terms (make-hash-table :test 'equal))
         (term nil))
     (while (not (string= term ""))
       (setq term (read-from-minibuffer "query term: "))
       (if (not (string= term ""))
-          (let* ((parsed (bz-parse-query term))
+          (let* ((parsed (bug-parse-query term))
                  (key (car parsed))
                  (value (cdr parsed))
                  (current (gethash key terms)))
@@ -85,9 +85,9 @@ prompts and execute them"
                     (puthash key (vconcat current (vector value)) terms)
                   (puthash key (vector current value) terms))
               (puthash key value terms)))))
-    (bz-do-search terms instance)))
+    (bug-do-search terms instance)))
 
-(defun bz-parse-query (query)
+(defun bug-parse-query (query)
   "Parse the search query read from minibuffer"
   (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
       `(,(match-string 1 query) . ,(match-string 2 query))
@@ -95,5 +95,5 @@ prompts and execute them"
         `(id . ,(string-to-number query))
       `(summary . ,query))))
 
-(provide 'bz-search)
-;;; bz-search.el ends here
+(provide 'bug-search)
+;;; bug-search.el ends here

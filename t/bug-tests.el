@@ -1,9 +1,9 @@
-;; bz-tests.el --- tests for bz
+;; bug-tests.el --- tests for bug-mode
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -21,7 +21,7 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
@@ -32,62 +32,62 @@
 
 (load-file (concat
             (file-name-directory (or load-file-name (buffer-file-name)))
-            "../bz.el"))
+            "../bug.el"))
 
-(defconst bz-test-data-dir
+(defconst bug-test-data-dir
   (concat
    (file-name-directory (or load-file-name (buffer-file-name)))
    "/test-data/")
   "Location of test data files.")
 
-(defmacro bz-with-dummy-config (&rest body)
-  `(let ((bz-instance-plist '(:bz-1 (:url "https://bz.tracker1.example")
-                                    :bz-2 (:url "https://bz.tracker2.example")
+(defmacro bug-with-dummy-config (&rest body)
+  `(let ((bug-instance-plist '(:bug-1 (:url "https://bz.tracker1.example")
+                                    :bug-2 (:url "https://bz.tracker2.example")
                                     :rally-1 (:api-key "thisIsNotAnApiKey"
                                                        :type "rally")
                                      ))
-         (bz-default-instance :bz-2))
+         (bug-default-instance :bug-2))
      ,@body))
 
 ;; TODO: structure tests to avoid requiring explicit requires
-(require 'bz-common-functions)
+(require 'bug-common-functions)
 
-(ert-deftest bz-test-query-functions ()
+(ert-deftest bug-test-query-functions ()
   "Test functions for handling query data"
-  (let* ((data-file (concat bz-test-data-dir
+  (let* ((data-file (concat bug-test-data-dir
                             "rally-query-result-two-bugs.json"))
          (results (cdr (assoc 'Results
                               (assoc 'QueryResult
                                      (json-read-file data-file))))))
     (should (equal (length results) 2))
     (should (equal 0
-                   (bz-bug-position-in-array results 'FormattedID "TA815")))
+                   (bug-position-in-array results 'FormattedID "TA815")))
     (should (equal 1
-                   (bz-bug-position-in-array results 'FormattedID "US815")))
+                   (bug-position-in-array results 'FormattedID "US815")))
     (should (equal nil
-                   (bz-bug-position-in-array results 'FormattedID "US850")))
+                   (bug-position-in-array results 'FormattedID "US850")))
     ))
 
 
-(require 'bz-rpc)
+(require 'bug-rpc)
 
-(ert-deftest bz-test-properties ()
+(ert-deftest bug-test-properties ()
   "Test property gathering"
-  (bz-with-dummy-config
+  (bug-with-dummy-config
    ;; check if dummy default property is set
-   (should (equal bz-default-instance :bz-2))
+   (should (equal bug-default-instance :bug-2))
    ;; check if stringp->symbolp conversion behaves as expected
-   (should (equal (bz-instance-to-symbolp :foo) :foo))
-   (should (equal (bz-instance-to-symbolp "foo") :foo))
-   (should (equal (bz-instance-to-symbolp ":foo") :foo))
+   (should (equal (bug-instance-to-symbolp :foo) :foo))
+   (should (equal (bug-instance-to-symbolp "foo") :foo))
+   (should (equal (bug-instance-to-symbolp ":foo") :foo))
    ;; check retrieving a non-default property
-   (should (equal (bz-instance-property :url :bz-1)
+   (should (equal (bug-instance-property :url :bug-1)
                   "https://bz.tracker1.example"))
-   (should (equal (bz-instance-property :url "bz-1")
+   (should (equal (bug-instance-property :url "bug-1")
                   "https://bz.tracker1.example"))
    ;; check if retrieving default properties works
-   (should (equal (bz-instance-property :url)
-                  (bz-instance-property :url :bz-2)))))
+   (should (equal (bug-instance-property :url)
+                  (bug-instance-property :url :bug-2)))))
 
-(provide 'bz-tests)
-;;; bz-tests.el ends here
+(provide 'bug-tests)
+;;; bug-tests.el ends here

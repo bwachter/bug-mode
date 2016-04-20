@@ -1,10 +1,10 @@
-;; bz-bug-mode-rally.el --- bug mode backend for Rally
+;; bug-mode-rally.el --- bug mode backend for Rally
 ;; (c) 2016 Bernd Wachter <bwachter@lart.info>
 ;;
-;; Copyright (c) 2010-2015 bz-mode developers
+;; Copyright (c) 2010-2015 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bz-mode/master/AUTHORS.md
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
 ;;
 ;; Keywords: tools
 ;;
@@ -22,15 +22,15 @@
 ;;
 ;;; History:
 ;;
-;; This file is maintained at https://github.com/bwachter/bz-mode/
+;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
 ;;; Code:
 
 ;;;###autoload
-(defun bz--fetch-rally-bug (id &optional instance)
+(defun bug--fetch-rally-bug (id &optional instance)
   "Retrieve a single bug from Rally"
-  (let* ((search-response (bz-rpc "artifact.read" `((object-id . ,id)) instance))
+  (let* ((search-response (bug-rpc "artifact.read" `((object-id . ,id)) instance))
          (return-document-type (caar search-response))
          (return-document (cdr (car search-response))))
     ;; error messages are handled in RPC backend already, and -- unlike in
@@ -38,5 +38,5 @@
     ;; in theory, from this point on nothing should fail
     return-document))
 
-(provide 'bz-bug-mode-rally)
-;;; bz-bug-mode-rally.el ends here
+(provide 'bug-mode-rally)
+;;; bug-mode-rally.el ends here
