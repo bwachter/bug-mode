@@ -63,14 +63,14 @@
                        parsed)))
     ;; populate header
     ;; as all entries are strings list can be sorted by any column
-    ;; TODO: propertize the header
     (setq tabulated-list-format
           (make-vector (length (bz-list-columns instance)) nil))
     (let ((count 0)
           (header-widths (bz-header-widths bugs list-columns)))
       (dolist (element list-columns)
         (aset tabulated-list-format count
-              `(,element ,(cdr (assoc element header-widths)) t))
+              `(,(bz--list-format-header-field element instance)
+                ,(cdr (assoc element header-widths)) t))
         (setq count (+ 1 count))))
     (tabulated-list-init-header)
 
@@ -79,6 +79,16 @@
       (add-to-list 'tabulated-list-entries `(nil ,element)))
     (tabulated-list-print t)
     (bz-debug-log-time "stop")))
+
+(defun bz--list-format-header-field (header-field &optional instance)
+  "Format a header field name for display, taking into account instance
+specific field descriptions."
+  (propertize
+   (prin1-to-string (or
+                     (bz--bug-get-field-property
+                      (intern header-field) 'display_name instance)
+                     header-field) t)
+    'face 'bz-bug-header-field))
 
 (defun bz-bug-to-filtered-vector (bug list-columns)
   "Extract fields listed in the header from bug and return a vector suitable

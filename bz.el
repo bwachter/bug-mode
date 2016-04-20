@@ -108,6 +108,12 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
 
 (defgroup bz-faces nil "Face configuration for bz-mode")
 
+(defface bz-bug-header-field
+  '((((class color) (background light)) :foreground "DarkGoldenrod4" :weight bold)
+    (((class color) (background  dark)) :foreground "LightGoldenrod2" :weight bold))
+  "Face used for a header field in bz-list-mode"
+  :group 'bz-faces)
+
 (defface bz-bug-field-description
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background dark))  :foreground "LightSkyBlue1"))
