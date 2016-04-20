@@ -92,7 +92,7 @@
       (lambda (prop)
         (concat
          (bz--bug-format-field-name (car prop) instance)
-         (bz--bug-format-field-value prop instance)))
+         (bz--bug-format-field-value prop instance t)))
       (filter (lambda (prop)
                 (and (not (equal :json-false (bz--bug-get-field-property (car prop) 'is_visible)))
                      ;; TODO: implement retrieval of additional rally objects
@@ -148,11 +148,15 @@ specific field descriptions."
     'face 'bz-bug-field-description
     'bz-bug-field-name field-name))
 
-(defun bz--bug-format-field-value (field &optional instance)
+;;;###autoload
+(defun bz--bug-format-field-value (field &optional instance long)
   "Format a bug field value for display, taking into account instance
 specific field descriptions. Unlike bz--bug-format-field-name this function
 requires both field name and content, therefore taking the complete cons
-cell as argument"
+cell as argument
+
+If the optional parameter `long' is non-nil display functions output
+is formatted to take more space"
   (let ((content-type (bz--bug-get-field-property
                        (car field) 'type instance)))
     (propertize
@@ -172,7 +176,7 @@ cell as argument"
                 (prin1-to-string (cdr (assoc '_refObjectName (cdr field))) t))
         'face 'bz-bug-field-type-98))
       ((equal content-type 5)
-       (propertize (bz--format-time-date (cdr field) t)
+       (propertize (bz--format-time-date (cdr field) long)
                    'face 'bz-bug-field-type-5))
       ((equal content-type 6)
        (propertize (prin1-to-string (cdr field) t)
@@ -188,6 +192,7 @@ cell as argument"
      'bz-bug-field-type content-type
      'bz-bug-field-name (car field))))
 
+;;;###autoload
 (defun bz--bug-get-field-property (field-name property &optional instance)
   "Return a property for a bug field from the field definition.
 

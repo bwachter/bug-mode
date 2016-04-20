@@ -24,6 +24,15 @@
 ;; This file is maintained at https://github.com/bwachter/bz-mode/
 ;; Check the git history for details.
 ;;
+;; TODO:
+;;  - drop columns if none of the selected bugs has that field
+;;  - calculate the column width based on buffer width and truncate
+;;    column display contents, if necessary
+;;  - remember cursor position when refreshing the buffer contents
+;;  - add support for results over multiple pages:
+;;    - add indicater that there are additional pages
+;;    - allow jumping forward/backward
+;;
 ;;; Code:
 
 (require 'bz-rpc)
@@ -96,12 +105,14 @@ for inclusion in tabulated-list-entries"
   (let ((data (make-vector (length list-columns) ""))
         (count 0))
     (dolist (header-item list-columns)
-      (let ((value (or (cdr (assoc (intern header-item) (cdr bug))) ""))
-            (bug-id (cdr (assoc (bz--uuid-field-name bz-instance) (cdr bug))))
-            (formatted-string))
-        ;; TODO: parse value according to datatype, and set matching face
+      (let* ((field (assoc (intern header-item) (cdr bug)))
+             (value (or (cdr field) ""))
+             (bug-id (cdr (assoc (bz--uuid-field-name bz-instance) (cdr bug))))
+             (formatted-string))
         (setq formatted-string
-              (propertize (prin1-to-string value t) 'bz-bug-id bug-id))
+              (propertize
+               (bz--bug-format-field-value field bz-instance)
+               'bz-bug-id bug-id))
         (aset data count formatted-string))
       (setq count (+ 1 count)))
     data))
