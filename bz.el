@@ -267,6 +267,18 @@ are used.
        (t
         '("id" "status" "summary" "last_change_time"))))))
 
+(defun bz--uuid-field-name (&optional instance)
+  "Return the field used to uniquely identify an individual bug on a
+specific instance"
+  (let ((type (bz-instance-property :type instance)))
+    (if (bz-instance-property :bug-uuid instance)
+        (bz-instance-property :bug-uuid instance)
+      (cond
+       ((string= type "rally")
+        '_refObjectUUID)
+       (t
+        'id)))))
+
 ;;;;;;
 ;; startup code to read persistent data
 (bz-read-data-file)

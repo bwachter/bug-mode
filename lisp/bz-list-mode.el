@@ -83,11 +83,14 @@
 for inclusion in tabulated-list-entries"
   (let ((data (make-vector (length list-columns) ""))
         (count 0))
-    (dolist (header-item (bz-list-columns instance))
-      (aset data count (or
-                    ;; TODO: properly parse and print datatypes
-                    ;;       propertize the whole thing
-                    (prin1-to-string (cdr (assoc (intern header-item) (cdr bug))) t) ""))
+    (dolist (header-item list-columns)
+      (let ((value (or (cdr (assoc (intern header-item) (cdr bug))) ""))
+            (bug-id (cdr (assoc (bz--uuid-field-name bz-instance) (cdr bug))))
+            (formatted-string))
+        ;; TODO: parse value according to datatype, and set matching face
+        (setq formatted-string
+              (propertize (prin1-to-string value t) 'bz-bug-id bug-id))
+        (aset data count formatted-string))
       (setq count (+ 1 count)))
     data))
 
@@ -120,15 +123,10 @@ an alist with (type . length) cells containing the longest length"
 (defun bz-list-mode-select-bug ()
   "Open the bug at point in the list"
   (interactive)
-  (save-excursion
-    (move-beginning-of-line nil)
-    (let ((type (bz-instance-property :type bz-instance)))
-      (cond
-       ((string= type "rally")
-        (if (re-search-forward "^\\(\\(F\\|DE\\|TA\\|US\\)[0-9]+\\)" nil t)
-            (bz-search (match-string 1) bz-instance)))
-       (t (if (re-search-forward "^\\([0-9]+\\)" nil t)
-              (bz-bug (match-string 1) bz-instance)))))))
+  (let ((bug-id (get-text-property (point) 'bz-bug-id)))
+    (if bug-id
+        (bz-bug bug-id bz-instance)
+      (message "No bug ID found. Misconfigured bug UUID property?"))))
 
 ;;;###autoload
 (defun bz-list-mode-update-list ()
