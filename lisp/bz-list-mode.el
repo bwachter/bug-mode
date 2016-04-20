@@ -147,9 +147,14 @@ This is mostly useful for debugging text properties"
 
 ;;;###autoload
 (defun bz--list-mode-select-bug ()
-  "Open the bug at point in the list"
+  "Open the current bug from the list. The bug identifier is read from text
+properties at point, or -- if that fails -- from the beginning of the current
+line"
   (interactive)
-  (let ((bug-id (get-text-property (point) 'bz-bug-id)))
+  (let ((bug-id (or (get-text-property (point) 'bz-bug-id)
+                    (save-excursion
+                      (forward-line 0)
+                      (get-text-property (point) 'bz-bug-id)))))
     (if bug-id
         (bz-bug bug-id bz-instance)
       (message "No bug ID found. Misconfigured bug UUID property?"))))
