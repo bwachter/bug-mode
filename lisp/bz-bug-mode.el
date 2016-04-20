@@ -41,6 +41,7 @@
                           ;; TODO: this should change to 'status change' instead of 'resolve'
                           (define-key keymap "s"         'bz--bug-mode-resolve-bug)
                           (define-key keymap "u"         'bz--bug-mode-update-bug)
+                          (define-key keymap "q"         'bz--bug-mode-quit-window)
                           keymap)
   "Keymap for BZ bug mode")
 
@@ -329,6 +330,13 @@ This is mostly useful for debugging text properties"
   "Update the bug by reloading it from Bugzilla"
   (interactive)
   (bz-bug bz-id bz-instance))
+
+;;;###autoload
+(defun bz--bug-mode-quit-window ()
+  "Close the search result window"
+  (interactive)
+  ;; TODO: check if bz-changed-data is non-nil, and prompt about losing changes
+  (quit-window t))
 
 ;; attachment handling functions
 (defun bz-get-attachments (id &optional instance)

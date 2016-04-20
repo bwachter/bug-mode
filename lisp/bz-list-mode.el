@@ -31,8 +31,10 @@
 (require 'bz-common-functions)
 
 (defvar bz-list-mode-map (let ((keymap (copy-keymap special-mode-map)))
-                           (define-key keymap (kbd "RET") 'bz-list-mode-select-bug)
-                           (define-key keymap "u"         'bz-list-mode-update-list)
+                           (define-key keymap (kbd "RET") 'bz--list-mode-select-bug)
+                           (define-key keymap "i"         'bz--list-mode-info)
+                           (define-key keymap "u"         'bz--list-mode-update-list)
+                           (define-key keymap "q"         'bz--list-mode-quit-window)
                            keymap)
   "Keymap for BZ list mode")
 
@@ -120,7 +122,21 @@ an alist with (type . length) cells containing the longest length"
 
 ;; functions usually called through keybindings in bz-list-mode
 ;;;###autoload
-(defun bz-list-mode-select-bug ()
+(defun bz--list-mode-info ()
+  "Display some information about thing at or near point
+
+This is mostly useful for debugging text properties"
+  (interactive)
+  (let ((bug-id (get-text-property (point) 'bz-bug-id)))
+    (message
+     (concat
+      "ID = "
+      (prin1-to-string bug-id)
+      "; "
+      ))))
+
+;;;###autoload
+(defun bz--list-mode-select-bug ()
   "Open the bug at point in the list"
   (interactive)
   (let ((bug-id (get-text-property (point) 'bz-bug-id)))
@@ -129,10 +145,16 @@ an alist with (type . length) cells containing the longest length"
       (message "No bug ID found. Misconfigured bug UUID property?"))))
 
 ;;;###autoload
-(defun bz-list-mode-update-list ()
+(defun bz--list-mode-update-list ()
   "Update the list by running the original search query again"
   (interactive)
   (bz-do-search bz-query bz-instance))
+
+;;;###autoload
+(defun bz--list-mode-quit-window ()
+  "Close the search result window"
+  (interactive)
+  (quit-window t))
 
 (provide 'bz-list-mode)
 ;;; bz-list-mode.el ends here
