@@ -111,5 +111,14 @@ a single dash (-) is returned."
                             (date-to-time date-string) t)
       "-")))
 
+;;;;;;
+;; functions suitable as defaults for use from modes keymaps
+
+;;;###autoload
+(defun bug--mode-default-quit-window ()
+  "Close the search result window"
+  (interactive)
+  (quit-window t))
+
 (provide 'bug-common-functions)
 ;;; bug-common-functions.el ends here

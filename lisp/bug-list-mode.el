@@ -44,7 +44,7 @@
     (define-key keymap (kbd "RET") 'bug--list-mode-select-bug)
     (define-key keymap "i"         'bug--list-mode-info)
     (define-key keymap "u"         'bug--list-mode-update-list)
-    (define-key keymap "q"         'bug--list-mode-quit-window)
+    (define-key keymap "q"         'bug--mode-default-quit-window)
     keymap)
   "Keymap for BZ list mode")
 
@@ -176,12 +176,6 @@ line"
   "Update the list by running the original search query again"
   (interactive)
   (bug-do-search bug---query bug---instance))
-
-;;;###autoload
-(defun bug--list-mode-quit-window ()
-  "Close the search result window"
-  (interactive)
-  (quit-window t))
 
 (provide 'bug-list-mode)
 ;;; bug-list-mode.el ends here
