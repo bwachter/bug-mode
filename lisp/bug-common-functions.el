@@ -73,6 +73,31 @@ with names of lists across all bug tracker instances"
     (delete-dups category-keys)
     (completing-read "List name: " category-keys nil nil)))
 
+;;;;;;
+;; functions useful for formatting strings before inserting them into buffers
+
+(defun bug--format-kv (key value)
+  "Format a key value pair for prettyprinting. The output is
+
+key: value
+
+with the key formatted as 'bug-field-description and the value as
+'bug-field-type-0"
+  (concat
+   (propertize (concat key ": ")
+               'face 'bug-field-description)
+   (propertize value 'face 'bug-field-type-0)
+   "\n"))
+
+(defun bug--format-bool (value)
+  "Format a bool converted from JSON to `yes' or `no'"
+  (cond ((equal value t)
+         "yes")
+        ((equal value :json-false)
+         "no")
+        (t
+         (prin1-to-string value))))
+
 (defun bug--format-time-date (date-string &optional long)
   "Return a formatted time/date string, using customizable format strings. If
 'long' is nil a short string will be returned, otherwise a long one.
