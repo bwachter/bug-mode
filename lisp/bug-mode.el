@@ -96,10 +96,12 @@
          (bug--bug-format-field-value prop instance t)))
       (filter (lambda (prop)
                 (and (not (equal :json-false (bug--bug-get-field-property (car prop) 'is_visible)))
-                     ;; TODO: implement retrieval of additional rally objects
-                     ;;       until it's implemented just hide them to avoid
-                     ;;       polluting the bug buffer
-                     (not (equal 98 (bug--bug-get-field-property (car prop) 'type)))
+                     ;; referenced objects are included as a list. If there's
+                     ;; a `Count' property with value `0' it's safe to assume
+                     ;; we don't need to retrieve it (might be rally only)
+                     (not (and
+                           (listp (cdr prop))
+                           (equal 0 (cdr (assoc 'Count (cdr prop))))))
                      (not (equal (cdr prop) nil))
                      (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr prop) t)))
                      (not (string= (car prop) "internals")))) bug) "\n"))
@@ -183,7 +185,7 @@ is formatted to take more space"
        (propertize (prin1-to-string (cdr field) t)
                    'face 'bug-field-type-6))
       ((equal content-type 98)
-       ())
+       (propertize (prin1-to-string (cdr field) t)))
       ((equal content-type 99)
        (propertize (replace-regexp-in-string "[[:space:]]*$" ""
                                              (bug--bug-format-html (cdr field)))
