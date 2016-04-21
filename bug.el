@@ -215,7 +215,8 @@ descriptive string"
               (format "Starting new measurement at %s"
                       (current-time-string bug-debug-timestamp))))
             ((string= stamp "stop")
-             (if bug-debug-timestamp
+             (if (and (boundp 'bug-debug-timestamp)
+                      bug-debug-timestamp)
                  (bug-debug
                   (format "Stopping measurement at %s, %f seconds after start"
                           (current-time-string)
@@ -224,7 +225,8 @@ descriptive string"
                (bug-debug "No measurement started"))
              (setq bug-debug-timestamp nil)
              (setq bug-debug-last-timestamp nil))
-            (t (if bug-debug-timestamp
+            (t (if (and (boundp 'bug-debug-timestamp)
+                        bug-debug-timestamp)
                    (let ((format-string
                           (if (and (boundp 'bug-debug-last-timestamp)
                                    bug-debug-last-timestamp)
