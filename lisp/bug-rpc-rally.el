@@ -69,6 +69,7 @@ require an additional object-id in args to work.
 
 args is an alist, whith the following keys:
 - object-id: a string representing the object-id
+- object-type: a string describing a referenced object to retrieve
 - query-data: an alist containing query parameters
 - post-data: an alist containing data for the POST body
 
@@ -89,17 +90,21 @@ object-id for read (or any other call requiring an object-id):
   (let* ((object (car (split-string method "\\." t)))
          (operation (cadr (split-string method "\\." t)))
          (object-id (cdr (assoc 'object-id args)))
+         (object-type (cdr (assoc 'object-type args)))
          (query-string (url-build-query-string (cdr (assoc 'query-data args))))
          (url-request-method (cond ((string= operation "delete") "DELETE")
                                    ((string= operation "read") "GET")
                                    ((string= operation "query") "GET")
                                    (t "POST")))
-         (url-str (cond ((string= operation "create") (concat object "/create"))
-                        ((string= operation "copy")
-                         (concat object "/" object-id "/copy"))
-                        ((string= operation "query")
-                         (concat object "?" query-string))
-                        (t (concat object "/" object-id))))
+         (url-str
+          (cond ((string= operation "create") (concat object "/create"))
+                ((string= operation "copy")
+                 (concat object "/" object-id "/copy"))
+                ((string= operation "query")
+                 (concat object "?" query-string))
+                (t (if object-type
+                       (concat object "/" object-id "/" object-type)
+                     (concat object "/" object-id)))))
          (url (concat bug-rally-url url-str))
          (url-request-extra-headers `(("Content-Type" . "application/json")
                                       ,(bug--rpc-rally-auth-header instance))))
