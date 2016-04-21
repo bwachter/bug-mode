@@ -113,6 +113,12 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
 
 (defgroup bug-faces nil "Face configuration for bug-mode")
 
+(defface bug-section-header
+  '((((class color) (background light)) :foreground "DarkGoldenrod4" :weight bold)
+    (((class color) (background  dark)) :foreground "LightGoldenrod2" :weight bold))
+  "Face used for section headers"
+  :group 'bug-faces)
+
 (defface bug-header-field
   '((((class color) (background light)) :foreground "DarkGoldenrod4" :weight bold)
     (((class color) (background  dark)) :foreground "LightGoldenrod2" :weight bold))
