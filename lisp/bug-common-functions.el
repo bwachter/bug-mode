@@ -77,11 +77,14 @@ with names of lists across all bug tracker instances"
   "Return a formatted time/date string, using customizable format strings. If
 'long' is nil a short string will be returned, otherwise a long one.
 
-No adjustments for the local timezone are made."
+No adjustments for the local timezone are made. If nil is passed as date
+a single dash (-) is returned."
   (let ((format-string (if long bug-time-date-format-long
                          bug-time-date-format-short)))
-    (format-time-string format-string
-                        (date-to-time date-string) t)))
+    (if date-string
+        (format-time-string format-string
+                            (date-to-time date-string) t)
+      "-")))
 
 (provide 'bug-common-functions)
 ;;; bug-common-functions.el ends here
