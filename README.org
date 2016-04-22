@@ -1,4 +1,4 @@
-*  bug-mode
+* bug-mode
 
 A mode to interface with bug/issue tracking systems from within Emacs. This mode started out as bz-mode, but got renamed to bug-mode after work was done to support additional bug trackers.
 
@@ -13,6 +13,10 @@ Currently somewhat working bug trackers are:
 - JSON-RPC mode enabled for Bugzilla
 
 ** Installing
+
+This is a quick start guide. Have a look at the [[./doc/manual.org][full manual]]
+for more details.
+
 - call =make= to generate autoloads
 - Edit your ~/.emacs or ~/.emacs.d/init.el:
 #+BEGIN_SRC emacs-lisp
@@ -68,53 +72,3 @@ Open a list of locally stored bugs
 
 *** bug-comment-mode
 - C-c C-c - commit comment
-
-* Proxy
-
-HTTPS proxy support in emacs has been broken for quite a while, for details read [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=11788][bug 11788]]. As a result, doing something like the following will at best lead to interesting results if your bug tracker is only reachable via https for authenticated operations (which it should be):
-
-#+BEGIN_SRC emacs-lisp
-(setq url-proy-services
-      '(("no_proxy" . "^\\((localhost\\|10.*\\)")
-        ("http" . "a.proxy.example")
-        ("https" . "a.proxy.example")))
-#+END_SRC
-
-There are multiple possible workarounds, some of them are documented here in order of desirability.
-
-** Patch url
-
-If you're using emacs 25 you can just grab the patch from git (=2d1a6054b161bd1055d4feb11c8c5ac95543f5db=) and apply it. If you're using emacs 24 or older you'd need to spend some effort to back-port the patch.
-
-** Use portforwarding
-
-If your proxy allows using =CONNECT=, and you have a suitable shell host available you can use this to forward a local port to Rally, bypassing the whole proxy mess. An example entry for =~/.ssh/config= could look like this:
-
-#+BEGIN_SRC
-Host rally-forward
-    ProxyCommand /usr/bin/connect-proxy -H a.proxy.example:8080 a.shellhost.example 443
-    LocalForward 9900 rally1.rallydev.com:443
-#+END_SRC
-
-Additionally =/etc/hosts= needs =rally1.rallydev.com= added after =127.0.0.1= to have it resolve to localhost, and the URL bug-mode uses to access Rally needs to be adjusted to include the locally bound port:
-
-#+BEGIN_SRC emacs-lisp
-(setq bug-rally-url "https://rally1.rallydev.com:9900/slm/webservice/v2.0/")
-#+END_SRC
-
-After starting a SSH connection (=ssh rally-forward=) you should be able to use bug-mode without issues.
-
-** Use a proxy aware TLS program
-
-OpenSSL's s_client [[https://rt.openssl.org/Ticket/Display.html?id=2651&user=guest&pass=guest][gained proxy support in trunk]]. Assuming your network allows host resolution it might be possible to use this as workaround:
-
-#+BEGIN_SRC emacs-lisp
-;; disable builtin gnutls
-(if (fboundp 'gnutls-available-p)
-    (fmakunbound 'gnutls-available-p))
-
-;; set openssl compiled from trunk as tls-program
-(setf tls-program '("openssl-trunk s_client -connect %h:%p -proxy a.proxy.example:8080 -ign_eof"))
-#+END_SRC
-
-Note that this will bypass the whole noproxy logic, so if you're using tls in the local network without proxy as well this will break things.
