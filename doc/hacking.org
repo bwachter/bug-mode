@@ -1,0 +1,35 @@
+* Notes about working on bug-mode
+
+Currently bug-mode is an organically grown dung heap. This document tries to
+assist in fixing this, and keep it clean in the future.
+
+** Naming conventions
+*** Backend identifiers
+Functions, names and documentation sometimes needs to include references to
+a specific bug tracking engine. The following identifiers are used in bug-mode:
+
+- bz (Bugzilla)
+- rally (Rally)
+
+*** Public (interactive) functions
+Public functions, both interactive or supposed to be called from 3rd party code,
+should be prefixed with =bug-=.
+*** Non-public (interactive) functions
+Internal functions, which includes functions not supposed to be called from 3rd
+party code as well as interactive functions only useful when called in one of
+the modes provided by bug-mode should be prefixed with =bug--=.
+*** Backend implementation details
+For a backend specific implementation detail add a backend identifier suffix
+to the function. For example, search details for Rally would be implemented
+in =bug-search-rally=, and the function =bug-search= would check which
+backend handles the current request, and calls the correct function.
+*** Functions only available on a single backend
+Some features are only provided by a single supported backend. In this case
+instead of providing a generic function and implementing backend details
+for it a function name with a backend infix should be chosen instead.
+
+One example is the function to display details about a Rally subscription,
+=bug-rally-subscription=.
+*** Buffer local variables
+If buffer local variables are required to store state (=make-local-variable=)
+the name should be prefixed with =bug---=.
