@@ -45,8 +45,8 @@
   "Show details about a Rally subscription"
   (interactive
    (if current-prefix-arg
-       (list (bug-query-instance))))
-  (unless (string= "rally" (bug-instance-property :type instance))
+       (list (bug--query-instance))))
+  (unless (string= "rally" (bug--instance-property :type instance))
     (error "Not a Rally instance"))
   (let ((subscription (car (bug-rpc "Subscription.query"
                                     '((query-data

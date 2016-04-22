@@ -31,15 +31,15 @@
   "Send an RPC response to the given (or default) Bugzilla instance and return the
 parsed response as alist"
   (let* ((json-str (json-encode `((method . ,method) (params . [,args]) (id 11))))
-         (url (concat (bug-instance-property :url instance) "/jsonrpc.cgi"))
+         (url (concat (bug--instance-property :url instance) "/jsonrpc.cgi"))
          (url-request-method "POST")
          (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?
          (url-request-extra-headers '(("Content-Type" . "application/json")))
          (url-request-data json-str))
-    (bug-debug (concat "request " url "\n" json-str "\n"))
+    (bug--debug (concat "request " url "\n" json-str "\n"))
     (with-current-buffer (url-retrieve-synchronously url)
-      (bug-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
-      (bug-parse-rpc-response))))
+      (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug--parse-rpc-response))))
 
 ;;;###autoload
 (defun bug--rpc-bug-handle-error (response)

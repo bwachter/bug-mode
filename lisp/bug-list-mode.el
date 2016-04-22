@@ -55,8 +55,8 @@
 
 (defun bug-list-show (query parsed &optional instance)
   "Display the result of a bug search returning a list of bugs"
-  (bug-debug-log-time "bug-list-show")
-  (let ((type (bug-instance-property :type instance)))
+  (bug--debug-log-time "bug-list-show")
+  (let ((type (bug--instance-property :type instance)))
     (cond
      ((string= type "rally")
       (switch-to-buffer (format "*rally results: %s*" (pretty-kvs query))))
@@ -68,14 +68,14 @@
   (setq bug---instance instance)
   (setq buffer-read-only nil)
 
-  (let* ((list-columns (bug-list-columns instance))
+  (let* ((list-columns (bug--list-columns instance))
          (bugs (mapcar (lambda (bug)
                          (bug-to-filtered-vector bug list-columns))
                        parsed)))
     ;; populate header
     ;; as all entries are strings list can be sorted by any column
     (setq tabulated-list-format
-          (make-vector (length (bug-list-columns instance)) nil))
+          (make-vector (length (bug--list-columns instance)) nil))
     (let ((count 0)
           (header-widths (bug-header-widths bugs list-columns)))
       (dolist (element list-columns)
@@ -89,7 +89,7 @@
     (dolist (element bugs)
       (add-to-list 'tabulated-list-entries `(nil ,element)))
     (tabulated-list-print t)
-    (bug-debug-log-time "stop")))
+    (bug--debug-log-time "stop")))
 
 (defun bug--list-format-header-field (header-field &optional instance)
   "Format a header field name for display, taking into account instance

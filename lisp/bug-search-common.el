@@ -29,7 +29,7 @@
 
 (defun bug-do-search (params &optional instance)
   "Execute a bug search query"
-  (let* ((type (bug-instance-property :type instance)))
+  (let* ((type (bug--instance-property :type instance)))
     (cond
      ((string= type "rally")
       (bug--do-rally-search params instance))

@@ -58,9 +58,9 @@
    (if current-prefix-arg
        (list
         (read-string "Bug ID: " nil nil t)
-        (bug-query-instance))
+        (bug--query-instance))
      (list (read-string "Bug ID: " nil nil t))))
-  (let* ((type (bug-instance-property :type instance))
+  (let* ((type (bug--instance-property :type instance))
          (bug-content (cond ((string= type "rally")
                              (bug--fetch-rally-bug id instance))
                             (t (bug--fetch-bz-bug id instance)))))
@@ -68,8 +68,8 @@
 
 (defun bug-show (bug &optional instance)
   "Display an existing bug buffer in bug-mode"
-  (bug-debug-log-time "bug-show")
-  (let ((type (bug-instance-property :type instance))
+  (bug--debug-log-time "bug-show")
+  (let ((type (bug--instance-property :type instance))
         (tmp-bug-id))
     (cond ((string= type "rally")
            (setq tmp-bug-id (cdr (assoc 'FormattedID bug)))
@@ -129,7 +129,7 @@
     (goto-char 0)
     (setq buffer-read-only t)
     (bug--bug-mode-update-header)
-    (bug-debug-log-time "stop")))
+    (bug--debug-log-time "stop")))
 
 (defun bug--bug-mode-update-header ()
   "Update the buffers headerline with bug modified status and name,
@@ -200,7 +200,7 @@ via bug-handle-comments-response"
 (defun bug--bug-mode-browse-bug ()
   "Open the current bug in browser"
   (interactive)
-  (let ((url (concat (bug-instance-property :url bug---instance) "/show_bug.cgi?id=" bug---id)))
+  (let ((url (concat (bug--instance-property :url bug---instance) "/show_bug.cgi?id=" bug---id)))
     (browse-url url)))
 
 ;;;###autoload
@@ -253,12 +253,12 @@ This is mostly useful for debugging text properties"
   (interactive
    (if (and (boundp 'bug---id) (boundp 'bug---data))
        (list
-        (bug-query-remembered-lists))
+        (bug--query-remembered-lists))
      (list
-      (bug-query-remembered-lists)
+      (bug--query-remembered-lists)
       (read-string "Bug: " nil nil t)
-      (if current-prefix-arg (bug-query-instance)))))
-  (let* ((instance (bug-instance-to-symbolp instance))
+      (if current-prefix-arg (bug--query-instance)))))
+  (let* ((instance (bug--instance-to-symbolp instance))
          (lists-for-instance (gethash instance bug-remember-list))
          (list-entries (if lists-for-instance
                            (gethash list-name lists-for-instance)))
@@ -271,7 +271,7 @@ This is mostly useful for debugging text properties"
         (puthash list-name list-entries lists-for-instance)
         (puthash instance lists-for-instance bug-remember-list)
         ))
-    (bug-write-data-file)))
+    (bug--write-data-file)))
 
 ;;;###autoload
 (defun bug--bug-mode-resolve-bug ()
@@ -286,7 +286,7 @@ This is mostly useful for debugging text properties"
            (mapcar
             (lambda (x)
               (cdr (assoc 'name x)))
-            (cdr (assoc 'values (gethash "resolution" (bug-get-fields bug---instance)))))))))
+            (cdr (assoc 'values (gethash "resolution" (bug--get-fields bug---instance)))))))))
     (bug-update bug---id `((status . "RESOLVED") (resolution . ,resolution)) bug---instance))
   (bug-open bug---id bug---instance))
 
@@ -340,7 +340,7 @@ via bug-handle-attachments-response"
       (move-beginning-of-line nil)
       ;; FIXME: breaks if ; in filenames/descriptions.. heh
       (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
-          (format "%s/attachment.cgi?id=%s" (bug-instance-property :url instance) (match-string 1))
+          (format "%s/attachment.cgi?id=%s" (bug--instance-property :url instance) (match-string 1))
         (error "No attachment near point")))))
 
 ;; layout. should get dropped eventually

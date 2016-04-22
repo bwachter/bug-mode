@@ -33,8 +33,8 @@
 (defun bug--rpc-rally-auth-header (&optional instance)
   "Generate an auth header for rally, either by using an API key, or -- if
 no API key is configured -- by using basic auth with username and password"
-  (if (bug-instance-property :api-key instance)
-      (cons "zsessionid" (bug-instance-property :api-key instance))
+  (if (bug--instance-property :api-key instance)
+      (cons "zsessionid" (bug--instance-property :api-key instance))
     (cons "Authorization" (concat "Basic "
                                   (base64-encode-string
                                    (concat (car (bug-credentials instance))
@@ -108,11 +108,11 @@ object-id for read (or any other call requiring an object-id):
          (url (concat bug-rally-url url-str))
          (url-request-extra-headers `(("Content-Type" . "application/json")
                                       ,(bug--rpc-rally-auth-header instance))))
-    (bug-debug (concat "request " url "\n" object-id "\n"))
-    (bug-debug-log-time "RPC init")
+    (bug--debug (concat "request " url "\n" object-id "\n"))
+    (bug--debug-log-time "RPC init")
     (with-current-buffer (url-retrieve-synchronously url)
-      (bug-debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
-      (bug-parse-rpc-response))))
+      (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug--parse-rpc-response))))
 
 ;;;###autoload
 (defun bug--rpc-rally-handle-error (response)

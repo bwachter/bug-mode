@@ -35,10 +35,10 @@
   "Display a stored list of bugs"
   (interactive
    (if current-prefix-arg
-       (list (bug-query-remembered-lists) (bug-query-instance))
+       (list (bug--query-remembered-lists) (bug--query-instance))
      (list
-      (bug-query-remembered-lists))))
-  (let* ((instance (bug-instance-to-symbolp instance))
+      (bug--query-remembered-lists))))
+  (let* ((instance (bug--instance-to-symbolp instance))
          (lists-for-instance (gethash instance bug-remember-list))
          (list-entries (if lists-for-instance
                            (gethash list-name lists-for-instance))))
@@ -56,10 +56,10 @@
    (if current-prefix-arg
        (list
         (read-string "Search query: " nil nil t)
-        (bug-query-instance))
+        (bug--query-instance))
      (list (read-string "Search query: " nil nil t))))
-  (bug-debug-log-time "start")
-  (let* ((type (bug-instance-property :type instance)))
+  (bug--debug-log-time "start")
+  (let* ((type (bug--instance-property :type instance)))
     (cond ((string= type "rally")
            (bug-do-search (bug--parse-rally-search-query query) instance))
           (t (bug-do-search (bug--parse-bug-search-query query) instance)))))
@@ -70,7 +70,7 @@
 prompts and execute them"
   (interactive
    (if current-prefix-arg
-       (list (bug-query-instance))))
+       (list (bug--query-instance))))
   (let ((terms (make-hash-table :test 'equal))
         (term nil))
     (while (not (string= term ""))

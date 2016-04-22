@@ -61,11 +61,11 @@
                                      (json-read-file data-file))))))
     (should (equal (length results) 2))
     (should (equal 0
-                   (bug-position-in-array results 'FormattedID "TA815")))
+                   (bug--position-in-array results 'FormattedID "TA815")))
     (should (equal 1
-                   (bug-position-in-array results 'FormattedID "US815")))
+                   (bug--position-in-array results 'FormattedID "US815")))
     (should (equal nil
-                   (bug-position-in-array results 'FormattedID "US850")))
+                   (bug--position-in-array results 'FormattedID "US850")))
     ))
 
 
@@ -77,17 +77,17 @@
    ;; check if dummy default property is set
    (should (equal bug-default-instance :bug-2))
    ;; check if stringp->symbolp conversion behaves as expected
-   (should (equal (bug-instance-to-symbolp :foo) :foo))
-   (should (equal (bug-instance-to-symbolp "foo") :foo))
-   (should (equal (bug-instance-to-symbolp ":foo") :foo))
+   (should (equal (bug--instance-to-symbolp :foo) :foo))
+   (should (equal (bug--instance-to-symbolp "foo") :foo))
+   (should (equal (bug--instance-to-symbolp ":foo") :foo))
    ;; check retrieving a non-default property
-   (should (equal (bug-instance-property :url :bug-1)
+   (should (equal (bug--instance-property :url :bug-1)
                   "https://bz.tracker1.example"))
-   (should (equal (bug-instance-property :url "bug-1")
+   (should (equal (bug--instance-property :url "bug-1")
                   "https://bz.tracker1.example"))
    ;; check if retrieving default properties works
-   (should (equal (bug-instance-property :url)
-                  (bug-instance-property :url :bug-2)))))
+   (should (equal (bug--instance-property :url)
+                  (bug--instance-property :url :bug-2)))))
 
 (provide 'bug-tests)
 ;;; bug-tests.el ends here

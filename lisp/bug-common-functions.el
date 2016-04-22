@@ -30,12 +30,12 @@
   (delq nil
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
-(defun bug-position-in-array (data field field-value)
+(defun bug--position-in-array (data field field-value)
   "Search for a bug with a value 'field-value' in field 'field' in a query
 response. For example, to check if a rally user story 815 exists in the results
 the call would look like this:
 
- (bug-position-in-array results 'FormattedID \"US815\")"
+ (bug--position-in-array results 'FormattedID \"US815\")"
   (let ((pos))
     (let ((count (- (length results) 1 )))
       (while (>= count 0)
@@ -46,7 +46,7 @@ the call would look like this:
         (setq count (- count 1))))
     pos))
 
-(defun bug-query-instance ()
+(defun bug--query-instance ()
   "Query for a bug tracker instance, providing completion with the instances
 configured in bug-instance-plist. Returns the entered bug tracker instance.
 
@@ -58,7 +58,7 @@ Instance name only needs to be entered enough to get a match."
                                (replace-regexp-in-string "^:" "" (prin1-to-string record)))))))
     (completing-read "Instance: " completions nil t)))
 
-(defun bug-query-remembered-lists ()
+(defun bug--query-remembered-lists ()
   "Query for the name of a locally remembered bug list. Completion is seeded
 with names of lists across all bug tracker instances"
   (let ((instance-keys) (category-keys))
@@ -82,7 +82,7 @@ the following:
  (bug--get-field-property 'foo 'display_name instance)"
   (cdr
    (assoc property
-          (gethash (symbol-name field-name) (bug-get-fields instance)))))
+          (gethash (symbol-name field-name) (bug--get-fields instance)))))
 
 ;;;;;;
 ;; functions suitable as defaults for use from modes keymaps

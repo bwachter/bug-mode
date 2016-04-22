@@ -212,7 +212,7 @@ required for proxy circumvention")
 ;;;;;;
 ;; Debug helpers
 
-(defmacro bug-debug (body)
+(defmacro bug--debug (body)
   `(if (and (boundp 'bug-debug) bug-debug)
        (let ((str ,body))
          (with-current-buffer (get-buffer-create "*bug-debug*")
@@ -220,7 +220,7 @@ required for proxy circumvention")
            (insert str)
            (insert "\n")))))
 
-(defun bug-debug-log-time (stamp)
+(defun bug--debug-log-time (stamp)
   "Log timestamps to debug buffer if debugging is enabled
 
 Measurement needs to be started with passing \"start\" as argument, and may be
@@ -230,18 +230,18 @@ descriptive string"
       (cond ((string= stamp "start")
              (setq bug-debug-timestamp (current-time))
              (setq bug-debug-last-timestamp nil)
-             (bug-debug
+             (bug--debug
               (format "Starting new measurement at %s"
                       (current-time-string bug-debug-timestamp))))
             ((string= stamp "stop")
              (if (and (boundp 'bug-debug-timestamp)
                       bug-debug-timestamp)
-                 (bug-debug
+                 (bug--debug
                   (format "Stopping measurement at %s, %f seconds after start"
                           (current-time-string)
                           (time-to-seconds
                            (time-subtract (current-time) bug-debug-timestamp))))
-               (bug-debug "No measurement started"))
+               (bug--debug "No measurement started"))
              (setq bug-debug-timestamp nil)
              (setq bug-debug-last-timestamp nil))
             (t (if (and (boundp 'bug-debug-timestamp)
@@ -262,8 +262,8 @@ descriptive string"
                                     (time-to-seconds
                                      (time-subtract (current-time)
                                                     bug-debug-timestamp))))))
-                         (bug-debug format-string))
-                     (bug-debug "No measurement started"))
+                         (bug--debug format-string))
+                     (bug--debug "No measurement started"))
                (setq bug-debug-last-timestamp (current-time))))))
 
 ;;;;;;
@@ -276,7 +276,7 @@ descriptive string"
    "/json")
   "Location of additional JSON data files used by bug-mode.")
 
-(defun bug-write-data-file ()
+(defun bug--write-data-file ()
   "Write user data to disk"
   (with-temp-buffer
     (insert ";; Foo\n")
@@ -285,20 +285,20 @@ descriptive string"
     (insert ")\n")
     (write-file bug-data-file)))
 
-(defun bug-read-data-file ()
+(defun bug--read-data-file ()
   "Restore user data from disk"
   (if (file-exists-p bug-data-file)
       (load (expand-file-name bug-data-file))))
 
-(defun bug-list-columns (&optional instance)
+(defun bug--list-columns (&optional instance)
   "Read the list headers for a bugtracker instance.
 
 If the given instance does not have a :list-columns property defaults
 are used.
 "
-  (let ((type (bug-instance-property :type instance)))
-    (if (bug-instance-property :list-columns instance)
-        (bug-instance-property :list-columns instance)
+  (let ((type (bug--instance-property :type instance)))
+    (if (bug--instance-property :list-columns instance)
+        (bug--instance-property :list-columns instance)
       (cond
        ((string= type "rally")
         '("FormattedID" "Name" "LastUpdateDate"))
@@ -308,9 +308,9 @@ are used.
 (defun bug--uuid-field-name (&optional instance)
   "Return the field used to uniquely identify an individual bug on a
 specific instance"
-  (let ((type (bug-instance-property :type instance)))
-    (if (bug-instance-property :bug-uuid instance)
-        (bug-instance-property :bug-uuid instance)
+  (let ((type (bug--instance-property :type instance)))
+    (if (bug--instance-property :bug-uuid instance)
+        (bug--instance-property :bug-uuid instance)
       (cond
        ((string= type "rally")
         '_refObjectUUID)
@@ -319,7 +319,7 @@ specific instance"
 
 ;;;;;;
 ;; startup code to read persistent data
-(bug-read-data-file)
+(bug--read-data-file)
 
 (provide 'bug)
 ;;; bug.el ends here

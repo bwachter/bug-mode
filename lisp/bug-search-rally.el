@@ -87,7 +87,7 @@ pagesize, ...) can't be supplied:
                   ;; if so, check if the bug is present in the results
                   (let* ((formatted-id (match-string 1 stripped-query))
                          (bug-position
-                          (bug-position-in-array
+                          (bug--position-in-array
                            results 'FormattedID formatted-id)))
                     ;; if the bug was found, return it as single bug, otherwise,
                     ;; just show the list (which shouldn't happen)
