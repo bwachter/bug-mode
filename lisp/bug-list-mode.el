@@ -38,6 +38,7 @@
 (require 'bug-rpc)
 (require 'bug-search-common)
 (require 'bug-common-functions)
+(require 'bug-format)
 
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -95,7 +96,7 @@
 specific field descriptions."
   (propertize
    (prin1-to-string (or
-                     (bug--bug-get-field-property
+                     (bug--get-field-property
                       (intern header-field) 'display_name instance)
                      header-field) t)
     'face 'bug-header-field))
@@ -112,7 +113,7 @@ for inclusion in tabulated-list-entries"
              (formatted-string))
         (setq formatted-string
               (propertize
-               (bug--bug-format-field-value field bug---instance)
+               (bug--format-field-value field bug---instance)
                'bug-id bug-id))
         (aset data count formatted-string))
       (setq count (+ 1 count)))

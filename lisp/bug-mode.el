@@ -28,6 +28,7 @@
 
 (require 'bug-rpc)
 (require 'bug-common-functions)
+(require 'bug-format)
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -95,8 +96,8 @@
      (mapconcat
       (lambda (prop)
         (concat
-         (bug--bug-format-field-name (car prop) instance)
-         (bug--bug-format-field-value prop instance t)))
+         (bug--format-field-name (car prop) instance)
+         (bug--format-field-value prop instance t)))
       (filter (lambda (prop)
                 (and (not (equal :json-false (bug--bug-get-field-property (car prop) 'is_visible)))
                      ;; referenced objects are included as a list. If there's
@@ -126,77 +127,6 @@
     (goto-char 0)
     (setq buffer-read-only t)
     (bug-debug-log-time "stop")))
-
-(defun bug--bug-format-html (html &optional base-url)
-  "Parse an HTML string and return it formatted suitable for inserting
-into the buffer. If HTML parsing is not possible the unparsed HTML is
-returned as string."
-  (if (fboundp 'libxml-parse-html-region)
-      (with-temp-buffer
-        (insert html)
-        (let ((parsed-html
-               (libxml-parse-html-region (point-min) (point-max) base-url)))
-          (with-temp-buffer
-            (shr-insert-document parsed-html)
-            (buffer-string))))
-    html))
-
-(defun bug--bug-format-field-name (field-name &optional instance)
-  "Format a bug field name for display, taking into account instance
-specific field descriptions."
-  (propertize
-   (concat
-    (prin1-to-string (or
-                      (bug--bug-get-field-property
-                       field-name 'display_name instance)
-                      `(,field-name)) t)
-    ": ")
-    'face 'bug-field-description
-    'bug-field-name field-name))
-
-;;;###autoload
-(defun bug--bug-format-field-value (field &optional instance long)
-  "Format a bug field value for display, taking into account instance
-specific field descriptions. Unlike bug--bug-format-field-name this function
-requires both field name and content, therefore taking the complete cons
-cell as argument
-
-If the optional parameter `long' is non-nil display functions output
-is formatted to take more space"
-  (let ((content-type (bug--bug-get-field-property
-                       (car field) 'type instance)))
-    (propertize
-     (cond
-      ((equal :json-false (cdr field))
-       "No")
-      ((equal :json-true (cdr field))
-       "Yes")
-      ;; some rally objects in a bug contain _refObjectName, which is
-      ;; enough information to display -> just display that to save
-      ;; an RPC call
-      ;; TODO: save object attributes to allow querying the object
-      ((and (listp (cdr field))
-            (assoc '_refObjectName (cdr field)))
-       (propertize
-        (concat "-> "
-                (prin1-to-string (cdr (assoc '_refObjectName (cdr field))) t))
-        'face 'bug-field-type-98))
-      ((equal content-type 5)
-       (propertize (bug--format-time-date (cdr field) long)
-                   'face 'bug-field-type-5))
-      ((equal content-type 6)
-       (propertize (prin1-to-string (cdr field) t)
-                   'face 'bug-field-type-6))
-      ((equal content-type 98)
-       (propertize (prin1-to-string (cdr field) t)))
-      ((equal content-type 99)
-       (propertize (replace-regexp-in-string "[[:space:]]*$" ""
-                                             (bug--bug-format-html (cdr field)))
-                   'face 'bug-field-type-99))
-      (t
-       (prin1-to-string (cdr field) t)))
-     'bug-field-type content-type
-     'bug-field-name (car field))))
 
 ;;;###autoload
 (defun bug--bug-get-field-property (field-name property &optional instance)

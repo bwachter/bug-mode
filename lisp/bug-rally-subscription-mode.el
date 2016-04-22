@@ -28,6 +28,7 @@
 
 (require 'bug-rpc)
 (require 'bug-common-functions)
+(require 'bug-format)
 
 (defvar bug-rally-subscription-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
