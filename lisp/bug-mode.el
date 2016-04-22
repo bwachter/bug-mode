@@ -99,7 +99,7 @@
          (bug--format-field-name (car prop) instance)
          (bug--format-field-value prop instance t)))
       (filter (lambda (prop)
-                (and (not (equal :json-false (bug--bug-get-field-property (car prop) 'is_visible)))
+                (and (not (equal :json-false (bug--get-field-property (car prop) 'is_visible)))
                      ;; referenced objects are included as a list. If there's
                      ;; a `Count' property with value `0' it's safe to assume
                      ;; we don't need to retrieve it (might be rally only)
@@ -128,16 +128,6 @@
     (setq buffer-read-only t)
     (bug-debug-log-time "stop")))
 
-;;;###autoload
-(defun bug--bug-get-field-property (field-name property &optional instance)
-  "Return a property for a bug field from the field definition.
-
-For example, to find the display name for the field 'foo' you could do
-the following:
- (bug--bug-get-field-property 'foo 'display_name instance)"
-  (cdr
-   (assoc property
-          (gethash (symbol-name field-name) (bug-get-fields instance)))))
 
 (defun bug-update (id fields &optional instance)
   "Update fields in the bug on Bugzilla"

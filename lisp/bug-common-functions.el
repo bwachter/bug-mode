@@ -73,6 +73,16 @@ with names of lists across all bug tracker instances"
     (delete-dups category-keys)
     (completing-read "List name: " category-keys nil nil)))
 
+;;;###autoload
+(defun bug--get-field-property (field-name property &optional instance)
+  "Return a property for a bug field from the field definition.
+
+For example, to find the display name for the field 'foo' you could do
+the following:
+ (bug--get-field-property 'foo 'display_name instance)"
+  (cdr
+   (assoc property
+          (gethash (symbol-name field-name) (bug-get-fields instance)))))
 
 ;;;;;;
 ;; functions suitable as defaults for use from modes keymaps
