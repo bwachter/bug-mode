@@ -83,6 +83,8 @@
     ;; the tmp-bug-id bit is needed as setting the mode clears buffer-local variables
     (make-local-variable 'bug---id)
     (setq bug---id tmp-bug-id)
+    (make-local-variable 'bug--is-new)
+    (setq bug---is-new (if bug---id nil t))
     (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))
     (make-local-variable 'bug---data)
     (setq bug---data bug)
@@ -126,8 +128,37 @@
           (bug-get-comments bug---id instance)))
     (goto-char 0)
     (setq buffer-read-only t)
+    (bug--bug-mode-update-header)
     (bug-debug-log-time "stop")))
 
+(defun bug--bug-mode-update-header ()
+  "Update the buffers headerline with bug modified status and name,
+and keep the buffers modified marker accurate."
+  (let* ((summary (or (cdr (assoc 'summary bug---data))
+                     (cdr (assoc 'Name bug---data))
+                     "<Missing summary!>"))
+         (face)(prefix))
+    (setq summary
+          (concat
+           summary
+           (make-string (- (window-width) (length summary)) ? )))
+    (cond (bug---is-new
+           (set-buffer-modified-p t)
+           (setq prefix "New bug")
+           (setq face 'bug-header-line-new))
+          (bug---changed-data
+           (set-buffer-modified-p t)
+           (setq prefix (concat "*" bug---id))
+           (setq face 'bug-header-line-modified))
+          (t
+           (set-buffer-modified-p nil)
+           (setq prefix bug---id)
+           (setq face 'bug-header-line)))
+
+    (setq header-line-format
+          (propertize
+           (concat prefix ": " summary)
+           'face face))))
 
 (defun bug-update (id fields &optional instance)
   "Update fields in the bug on Bugzilla"

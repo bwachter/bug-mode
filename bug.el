@@ -119,6 +119,25 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
   "Face used for section headers"
   :group 'bug-faces)
 
+;; TODO: the headerline faces are not ideal
+(defface bug-header-line
+  '((((class color) (background light)) :background "grey95")
+    (((class color) (background  dark)) :background "grey20"))
+  "Face used to display a header line for bugs"
+  :group 'bug-faces)
+
+(defface bug-header-line-modified
+  '((((class color) (background light)) :background "salmon4")
+    (((class color) (background  dark)) :background "LightSalmon3"))
+  "Face used to display a header line for modified bugs"
+  :group 'bug-faces)
+
+(defface bug-header-line-new
+  '((((class color) (background light)) :background "salmon4")
+    (((class color) (background  dark)) :background "LightSalmon3"))
+  "Face used to display a header line for new bugs"
+  :group 'bug-faces)
+
 (defface bug-header-field
   '((((class color) (background light)) :foreground "DarkGoldenrod4" :weight bold)
     (((class color) (background  dark)) :foreground "LightGoldenrod2" :weight bold))
