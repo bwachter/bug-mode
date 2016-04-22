@@ -47,7 +47,7 @@
         (if (= (length bugs) 0)
             (message "No results")
           (if (= (length bugs) 1)
-              (bug-show (cdr (assoc 'id (aref bugs 0))) (aref bugs 0) instance)
+              (bug-show (aref bugs 0) instance)
             (bug-list-show query bugs instance))))
     response))
 

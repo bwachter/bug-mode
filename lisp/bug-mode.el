@@ -63,23 +63,26 @@
          (bug-content (cond ((string= type "rally")
                              (bug--fetch-rally-bug id instance))
                             (t (bug--fetch-bz-bug id instance)))))
-    (if bug-content (bug-show id bug-content instance))))
+    (if bug-content (bug-show bug-content instance))))
 
-(defun bug-show (id bug &optional instance)
+(defun bug-show (bug &optional instance)
   "Display an existing bug buffer in bug-mode"
   (bug-debug-log-time "bug-show")
-  (let ((type (bug-instance-property :type instance)))
-
+  (let ((type (bug-instance-property :type instance))
+        (tmp-bug-id))
     (cond ((string= type "rally")
+           (setq tmp-bug-id (cdr (assoc 'FormattedID bug)))
            (switch-to-buffer (format "*rally bug: %s*"
-                                     (cdr (assoc 'FormattedID bug)))))
+                                     tmp-bug-id)))
           (t
-           (switch-to-buffer (format "*bugzilla bug: %s*" (cdr (assoc 'id bug))))))
+           (setq tmp-bug-id (cdr (assoc 'id bug)))
+           (switch-to-buffer (format "*bugzilla bug: %s*" tmp-bug-id))))
 
     (bug-mode)
-    (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))
+    ;; the tmp-bug-id bit is needed as setting the mode clears buffer-local variables
     (make-local-variable 'bug---id)
-    (setq bug---id id)
+    (setq bug---id tmp-bug-id)
+    (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))
     (make-local-variable 'bug---data)
     (setq bug---data bug)
     (make-local-variable 'bug---instance)
@@ -116,10 +119,10 @@
       (insert "\nATTACHMENTS:\n")
       (bug-insert-hr)
       (insert "\nCOMMENTS:\n")
-      (if bug-autoload-attachments
-          (bug-get-attachments id instance))
-      (if bug-autoload-comments
-          (bug-get-comments id instance)))
+      (if (and bug---id bug-autoload-attachments)
+          (bug-get-attachments bug---id instance))
+      (if (and bug---id bug-autoload-comments)
+          (bug-get-comments bug---id instance)))
     (goto-char 0)
     (setq buffer-read-only t)
     (bug-debug-log-time "stop")))
