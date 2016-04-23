@@ -83,7 +83,13 @@ parsed response as alist"
     (if fields
         (progn
           (mapcar (lambda (field)
-                    (let ((key (cdr (assoc 'name field))))
+                    (let* ((key (cdr (assoc 'name field)))
+                           (bz-mapped-field (bug--rpc-bz-map-field key)))
+                      ;; workaround for missing or oddly named fields in
+                      ;; Bugzillas field list
+                      (if (and bz-mapped-field
+                               (not (gethash bz-mapped-field field-hash)))
+                          (puthash bz-mapped-field field field-hash))
                       (puthash key field field-hash)))
                   (cdr (car (cdr (car fields)))))
           (setq bug-field-cache (plist-put bug-field-cache instance field-hash))

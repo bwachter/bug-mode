@@ -58,7 +58,9 @@ cell as argument
 If the optional parameter `long' is non-nil display functions output
 is formatted to take more space"
   (let ((content-type (bug--get-field-property
-                       (car field) 'type instance)))
+                       (car field) 'type instance))
+        (field-id (bug--get-field-property
+                       (car field) 'id instance)))
     (propertize
      (cond
       ((equal :json-false (cdr field))
@@ -90,6 +92,7 @@ is formatted to take more space"
       (t
        (prin1-to-string (cdr field) t)))
      'bug-field-type content-type
+     'bug-field-id field-id
      'bug-field-name (car field))))
 
 (defun bug--format-html (html &optional base-url)

@@ -48,5 +48,17 @@ parsed response as alist"
       (error (cdr (assoc 'message (assoc 'error response)))))
   response)
 
+;;;###autoload
+(defun bug--rpc-bz-map-field (field-name)
+  "Try to guess what the definition of a field in a bug is by
+either throwing away ^bug_ or looking up the key in a list.
+
+It seems that about half of the fields in Bugzillas field query
+don't match the fields found in a bug."
+  (if (string-match "^bug_" field-name)
+      (replace-regexp-in-string "^bug_" "" field-name)
+    (cond ((string= field-name "summary")
+           "short-desc"))))
+
 (provide 'bug-rpc-bz)
 ;;; bug-rpc-bz.el ends here

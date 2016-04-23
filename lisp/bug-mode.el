@@ -236,11 +236,19 @@ via bug-handle-comments-response"
 This is mostly useful for debugging text properties"
   (interactive)
   (let ((text-property (get-text-property (point) 'bug-field-name))
-        (content-type (get-text-property (point) 'bug-field-type)))
+        (content-type (get-text-property (point) 'bug-field-type))
+        (field-id (get-text-property (point) 'bug-field-id))
+        (field (get-text-property (point) 'field)))
     (message
      (concat
       "type = "
       (prin1-to-string content-type)
+      "; "
+      "field-id = "
+      (prin1-to-string field-id)
+      "; "
+      "field = "
+      (prin1-to-string field)
       "; "
       (prin1-to-string text-property)
       " = "
