@@ -32,18 +32,19 @@
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
-    (define-key keymap (kbd "RET") 'bug--bug-mode-open-attachment)
+    (define-key keymap (kbd "RET") 'bug--bug-mode-open-thing-near-point)
     (define-key keymap "b"         'bug--bug-mode-browse-bug)
     ;; TODO: change this to a 'change bug' popup
     (define-key keymap "c"         'bug--bug-mode-create-comment)
     (define-key keymap "d"         'bug--bug-mode-download-attachment)
-    (define-key keymap "e"         'bug--bug-mode-edit-field)
+    (define-key keymap "e"         'bug--bug-mode-edit-thing-near-point)
     (define-key keymap "i"         'bug--bug-mode-info)
     (define-key keymap "r"         'bug--bug-mode-remember-bug)
     ;; TODO: this should change to 'status change' instead of 'resolve'
     (define-key keymap "s"         'bug--bug-mode-resolve-bug)
     (define-key keymap "u"         'bug--bug-mode-update-bug)
     (define-key keymap "q"         'bug--bug-mode-quit-window)
+    (define-key keymap "\C-c\C-c"  'bug--bug-mode-commit)
     keymap)
   "Keymap for BZ bug mode")
 
@@ -93,13 +94,16 @@
     (make-local-variable 'bug---changed-data)
     (setq bug---changed-data nil)
     (setq buffer-read-only nil)
+    (buffer-disable-undo)
     (erase-buffer)
     (insert
      (mapconcat
       (lambda (prop)
         (concat
-         (bug--format-field-value prop instance t)))
          (bug--format-field-name prop instance)
+         (propertize
+          (bug--format-field-value prop instance t)
+          'field (car prop))))
       (filter (lambda (prop)
                 (and (not (equal :json-false (bug--get-field-property (car prop) 'is_visible)))
                      ;; referenced objects are included as a list. If there's
@@ -127,6 +131,7 @@
     (goto-char 0)
     (setq buffer-read-only t)
     (bug--bug-mode-update-header)
+    (buffer-enable-undo)
     (bug--debug-log-time "stop")))
 
 (defun bug--bug-mode-update-header ()
@@ -216,16 +221,99 @@ via bug-handle-comments-response"
    (expand-file-name (concat "~/" (match-string 3)))))
 
 ;;;###autoload
-(defun bug--bug-mode-open-attachment ()
+(defun bug--bug-mode-open-thing-near-point ()
   "Open the current attachment in the web browser"
   (interactive)
   (browse-url (bug-find-attachment-url bug---instance)))
 
 ;;;###autoload
-(defun bug--bug-mode-edit-field ()
-  "Edit the bug field at or near point"
+(defun bug--bug-mode-commit ()
+  "Commit changes in the bug to the bug tracker"
   (interactive)
-  ())
+  (if (equal nil bug---changed-data)
+      (message "No changes available.")
+    (progn
+      (message "Sending changes...")
+      (bug-update bug---id bug---changed-data bug---instance))))
+
+(defun bug--bug-mode-locate-field (field-name)
+  "Try to locate a field `field-name' at point or at the current line. If found
+a position in the field is returned -- which may be just between fields, so
+the caller needs to ensure that code using this position operates on the correct
+field (e.g. by using constrain-to-field).
+
+If no (valid) field was found `nil' is returned."
+  (let ((field-pos nil))
+
+    (if (equal field-name (get-text-property (point) 'field))
+        ;; the field at point is of the right type, no search required
+        (setq field-pos (point))
+      (save-excursion
+        ;; search from beginning of line to the next field change,
+        ;; and compare if it's the correct type. If not we don't
+        ;; make another attempt at locating the field (most likely
+        ;; that case should not happen anyway)
+        (forward-line 0)
+        (let ((pos (next-single-property-change (point) 'field)))
+          (if (equal field-name
+                     (get-text-property pos 'field))
+              (setq field-pos pos)))))
+    field-pos))
+
+(defun bug--bug-mode-edit-field(field-name field-type field-value)
+  "Query new value for a field, with different input methods based
+on field type (minibuffer or a separate popup buffer). Returns the new field
+value, or the old field value if nothing has changed."
+  (cond ((equal field-type 0)
+         (let ((my-history (list field-value)))
+           (read-string (concat (prin1-to-string field-name) ": ")
+                        "" 'my-history)))
+        (t (message (format "Editing a field of type %s is not implemented"
+                            (prin1-to-string field-type t)))
+           field-value)))
+
+;;;###autoload
+(defun bug--bug-mode-edit-thing-near-point ()
+  "Edit the bug field at or near point"
+  ;; TODO: when called with prefix argument, prompt for which field to edit
+  (interactive)
+  (let ((field-name (or (get-text-property (point) 'bug-field-name)
+                        (save-excursion
+                          (forward-line 0)
+                          (get-text-property (point) 'bug-field-name)))))
+    ;; TODO: bail out if field is read-only as well
+    (if (and (equal field-name nil)
+             (not (equal nil (bug--bug-mode-locate-field field-name))))
+        ;; no field found? Bail out.
+        (message "Unable to locate an editable field near point")
+      ;; field found? Make sure we're in the right field, and then query
+      ;; for new values
+      (let ((field-pos (bug--bug-mode-locate-field field-name)))
+        (setq field-pos (constrain-to-field (+ 1 field-pos)
+                                            field-pos t))
+        (let* ((field-value (field-string field-pos))
+               (field-type (get-text-property field-pos 'bug-field-type))
+               (new-value
+                (bug--bug-mode-edit-field field-name field-type field-value)))
+          (unless (string= field-value new-value)
+            ;; new value entered? Update buffer and internal variables
+            (progn
+              (setq buffer-read-only nil)
+              (goto-char field-pos)
+              (delete-field field-pos)
+              ;; add or replace the new field in `bug---changed-data'
+              (if (assoc field-name bug---changed-data)
+                  (setf (cdr (assoc field-name bug---changed-data)) new-value)
+                (push (cons field-name new-value) bug---changed-data))
+              ;; replace old data with new ones, nicely formatted
+              (insert
+               (propertize
+                (bug--format-field-value (cons field-name new-value)
+                                         bug---instance t)
+                'field field-name))
+              (bug--bug-mode-update-header)
+              ;(setq buffer-read-only t)
+              )))))))
 
 ;;;###autoload
 (defun bug--bug-mode-info ()
