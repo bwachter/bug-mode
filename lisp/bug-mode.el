@@ -148,11 +148,11 @@ and keep the buffers modified marker accurate."
            (setq face 'bug-header-line-new))
           (bug---changed-data
            (set-buffer-modified-p t)
-           (setq prefix (concat "*" bug---id))
+           (setq prefix (concat "*" (prin1-to-string bug---id t)))
            (setq face 'bug-header-line-modified))
           (t
            (set-buffer-modified-p nil)
-           (setq prefix bug---id)
+           (setq prefix (prin1-to-string bug---id t))
            (setq face 'bug-header-line)))
 
     (setq header-line-format
