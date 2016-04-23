@@ -98,8 +98,8 @@
      (mapconcat
       (lambda (prop)
         (concat
-         (bug--format-field-name (car prop) instance)
          (bug--format-field-value prop instance t)))
+         (bug--format-field-name prop instance)
       (filter (lambda (prop)
                 (and (not (equal :json-false (bug--get-field-property (car prop) 'is_visible)))
                      ;; referenced objects are included as a list. If there's
@@ -235,7 +235,7 @@ via bug-handle-comments-response"
 
 This is mostly useful for debugging text properties"
   (interactive)
-  (let ((text-property (get-text-property (point) 'bug-field-name))
+  (let ((field-name (get-text-property (point) 'bug-field-name))
         (content-type (get-text-property (point) 'bug-field-type))
         (field-id (get-text-property (point) 'bug-field-id))
         (field (get-text-property (point) 'field)))
@@ -250,9 +250,9 @@ This is mostly useful for debugging text properties"
       "field = "
       (prin1-to-string field)
       "; "
-      (prin1-to-string text-property)
+      (prin1-to-string field-name)
       " = "
-      (prin1-to-string (cdr (assoc text-property bug---data)))
+      (prin1-to-string (cdr (assoc field-name bug---data)))
       ))))
 
 ;;;###autoload

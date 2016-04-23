@@ -35,25 +35,24 @@
         (t
          (prin1-to-string value))))
 
-(defun bug--format-field-name (field-name &optional instance)
-  "Format a bug field name for display, taking into account instance
-specific field descriptions."
-  (propertize
-   (concat
-    (prin1-to-string (or
-                      (bug--get-field-property
-                       field-name 'display_name instance)
-                      `(,field-name)) t)
-    ": ")
-    'face 'bug-field-description
-    'bug-field-name field-name))
+(defun bug--format-field-name (field &optional instance)
+  "Format a bug field name for display, taking into account instance specific
+field descriptions. `field' is expected to be a bug field cons cell."
+  (let ((field-name (car field)))
+    (propertize
+     (concat
+      (prin1-to-string (or
+                        (bug--get-field-property
+                         field-name 'display_name instance)
+                        `(,field-name)) t)
+      ": ")
+     'face 'bug-field-description
+     'bug-field-name field-name)))
 
 ;;;###autoload
 (defun bug--format-field-value (field &optional instance long)
-  "Format a bug field value for display, taking into account instance
-specific field descriptions. Unlike bug--format-field-name this function
-requires both field name and content, therefore taking the complete cons
-cell as argument
+  "Format a bug field value for display, taking into account instance specific
+field descriptions `field' is expected to be a bug field cons cell.
 
 If the optional parameter `long' is non-nil display functions output
 is formatted to take more space"
