@@ -46,7 +46,7 @@
   (interactive
    (if current-prefix-arg
        (list (bug--query-instance))))
-  (unless (string= "rally" (bug--instance-property :type instance))
+  (unless (equal 'rally (bug--backend-type instance))
     (error "Not a Rally instance"))
   (let ((subscription (car (bug-rpc "Subscription.query"
                                     '((query-data

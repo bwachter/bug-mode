@@ -290,32 +290,37 @@ descriptive string"
   (if (file-exists-p bug-data-file)
       (load (expand-file-name bug-data-file))))
 
+(defun bug--backend-type (&optional instance)
+  "Return the backend type for the given bug tracker instance"
+  (let ((type (bug--instance-property :type instance)))
+    (if (equal nil type)
+        'bz
+      type)))
+
 (defun bug--list-columns (&optional instance)
   "Read the list headers for a bugtracker instance.
 
 If the given instance does not have a :list-columns property defaults
 are used.
 "
-  (let ((type (bug--instance-property :type instance)))
-    (if (bug--instance-property :list-columns instance)
-        (bug--instance-property :list-columns instance)
-      (cond
-       ((string= type "rally")
-        '("FormattedID" "Name" "LastUpdateDate"))
-       (t
-        '("id" "status" "summary" "last_change_time"))))))
+  (if (bug--instance-property :list-columns instance)
+      (bug--instance-property :list-columns instance)
+    (cond
+     ((equal 'rally (bug--backend-type instance))
+      '("FormattedID" "Name" "LastUpdateDate"))
+     (t
+      '("id" "status" "summary" "last_change_time")))))
 
 (defun bug--uuid-field-name (&optional instance)
   "Return the field used to uniquely identify an individual bug on a
 specific instance"
-  (let ((type (bug--instance-property :type instance)))
-    (if (bug--instance-property :bug-uuid instance)
-        (bug--instance-property :bug-uuid instance)
-      (cond
-       ((string= type "rally")
-        '_refObjectUUID)
-       (t
-        'id)))))
+  (if (bug--instance-property :bug-uuid instance)
+      (bug--instance-property :bug-uuid instance)
+    (cond
+     ((equal 'rally (bug--backend-type instance))
+      '_refObjectUUID)
+     (t
+      'id))))
 
 ;;;;;;
 ;; startup code to read persistent data

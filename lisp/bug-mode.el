@@ -61,8 +61,7 @@
         (read-string "Bug ID: " nil nil t)
         (bug--query-instance))
      (list (read-string "Bug ID: " nil nil t))))
-  (let* ((type (bug--instance-property :type instance))
-         (bug-content (cond ((string= type "rally")
+  (let* ((bug-content (cond ((equal 'rally (bug--backend-type instance))
                              (bug--fetch-rally-bug id instance))
                             (t (bug--fetch-bz-bug id instance)))))
     (if bug-content (bug-show bug-content instance))))
@@ -70,9 +69,8 @@
 (defun bug-show (bug &optional instance)
   "Display an existing bug buffer in bug-mode"
   (bug--debug-log-time "bug-show")
-  (let ((type (bug--instance-property :type instance))
-        (tmp-bug-id))
-    (cond ((string= type "rally")
+  (let ((tmp-bug-id))
+    (cond ((equal 'rally (bug--backend-type instance))
            (setq tmp-bug-id (cdr (assoc 'FormattedID bug)))
            (switch-to-buffer (format "*rally bug: %s*"
                                      tmp-bug-id)))
@@ -116,7 +114,7 @@
                      (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr prop) t)))
                      (not (string= (car prop) "internals")))) bug) "\n"))
 
-    (unless (string= type "rally")
+    (unless (equal 'rally (bug--backend-type instance))
       ;; TODO: Rally has multiple objects which need to be loaded separately,
       ;;       the bugzilla style loading of attachements and comments won't
       ;;       scale for that.

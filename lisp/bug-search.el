@@ -59,10 +59,9 @@
         (bug--query-instance))
      (list (read-string "Search query: " nil nil t))))
   (bug--debug-log-time "start")
-  (let* ((type (bug--instance-property :type instance)))
-    (cond ((string= type "rally")
+    (cond ((equal 'rally (bug--backend-type instance))
            (bug-do-search (bug--parse-rally-search-query query) instance))
-          (t (bug-do-search (bug--parse-bug-search-query query) instance)))))
+          (t (bug-do-search (bug--parse-bug-search-query query) instance))))
 
 ;;;###autoload
 (defun bug-search-multiple (&optional instance)

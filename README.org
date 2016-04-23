@@ -26,7 +26,7 @@ for more details.
 #+BEGIN_SRC emacs-lisp
 (:foo (:url "https://foo.example")
  :bar (:url "https://bar.example" :authinfo "~/.netrc")
- :rally (:api-key "_yourapikey" :type "rally"))
+ :rally (:api-key "_yourapikey" :type rally))
 #+END_SRC
 - =M-x customize-group RET bug-faces= if you don't like the default faces
 - Store your credentials in authinfo format in =~/.authinfo=, or specify a database location with the =:authinfo= property

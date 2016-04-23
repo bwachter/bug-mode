@@ -51,21 +51,19 @@ instance if INSTANCE is empty"
 (defun bug-rpc (method args &optional instance)
   "Send an RPC response to the given (or default) bugtracker instance and return the
 parsed response as alist"
-  (let* ((type (bug--instance-property :type instance)))
-         (cond
-          ((string= type "rally")
-           (bug--rpc-rally method args instance))
-          (t (bug--rpc-bz method args instance)))))
+  (cond
+   ((equal 'rally (bug--backend-type instance))
+    (bug--rpc-rally method args instance))
+   (t (bug--rpc-bz method args instance))))
 
 (defun bug--parse-rpc-response ()
   "Parse a JSON response from buffer and return it as alist"
   (bug--debug-log-time "RPC done")
   (goto-char 0)
   (if (re-search-forward "\n\n" nil t)
-      (let ((response (json-read-from-string (decode-coding-string (buffer-substring (point) (point-max)) 'utf-8)))
-            (type (bug--instance-property :type instance)))
+      (let ((response (json-read-from-string (decode-coding-string (buffer-substring (point) (point-max)) 'utf-8))))
         (cond
-         ((string= type "rally")
+         ((equal 'rally (bug--backend-type instance))
           (bug--rpc-rally-handle-error response))
          (t (bug--rpc-bug-handle-error response))))
     (error "Failed to parse http response")))
@@ -73,10 +71,9 @@ parsed response as alist"
 (defun bug--get-fields (&optional instance)
   "Download fields used by this bug tracker instance or returns them from cache"
   (let* ((instance (bug--instance-to-symbolp instance))
-         (type (bug--instance-property :type instance))
          (fields (if (plist-get bug-field-cache instance) nil
                    (cond
-                    ((string= type "rally")
+                    ((equal 'rally (bug--backend-type instance))
                      (bug--rpc-rally-get-fields))
                     (t (bug-rpc "Bug.fields" '() instance)))))
          (field-hash (make-hash-table :test 'equal)))

@@ -29,14 +29,13 @@
 
 (defun bug-do-search (params &optional instance)
   "Execute a bug search query"
-  (let* ((type (bug--instance-property :type instance)))
-    (cond
-     ((string= type "rally")
-      (bug--do-rally-search params instance))
-     (t
-      (bug-handle-search-response params
-                                 (bug-rpc "Bug.search" params instance)
-                                 instance)))))
+  (cond
+   ((equal 'rally (bug--backend-type instance))
+    (bug--do-rally-search params instance))
+   (t
+    (bug-handle-search-response params
+                                (bug-rpc "Bug.search" params instance)
+                                instance))))
 
 (defun bug-handle-search-response (query response &optional instance)
   "Parse the result of a bug search and either show a single bug or a bug list"

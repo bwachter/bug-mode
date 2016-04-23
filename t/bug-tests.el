@@ -44,7 +44,7 @@
   `(let ((bug-instance-plist '(:bug-1 (:url "https://bz.tracker1.example")
                                     :bug-2 (:url "https://bz.tracker2.example")
                                     :rally-1 (:api-key "thisIsNotAnApiKey"
-                                                       :type "rally")
+                                                       :type rally)
                                      ))
          (bug-default-instance :bug-2))
      ,@body))
