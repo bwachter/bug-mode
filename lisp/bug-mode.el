@@ -118,9 +118,7 @@
       ;;       scale for that.
       ;;       Additionally it'd be better to select the insertion points by
       ;;       using text properties.
-      (bug-insert-hr)
       (insert "\nATTACHMENTS:\n")
-      (bug-insert-hr)
       (insert "\nCOMMENTS:\n")
       (if (and bug---id bug-autoload-attachments)
           (bug-get-attachments bug---id instance))
@@ -350,12 +348,6 @@ via bug-handle-attachments-response"
       (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
           (format "%s/attachment.cgi?id=%s" (bug--instance-property :url instance) (match-string 1))
         (error "No attachment near point")))))
-
-;; layout. should get dropped eventually
-(defun bug-insert-hr ()
-  (insert "\n")
-  (insert-char ?- (floor (/ (window-width) 1.5)))
-  (insert "\n"))
 
 (provide 'bug-mode)
 ;;; bug-mode.el ends here
