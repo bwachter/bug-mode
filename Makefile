@@ -12,6 +12,4 @@ lisp:
 	@$(MAKE) -C lisp
 
 test: lisp
-	@emacs -batch -Q --eval "(progn\
-	(load-file \"t/bug-tests.el\")\
-	(ert-run-tests-batch-and-exit))"
+	@$(MAKE) -C t

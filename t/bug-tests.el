@@ -26,35 +26,12 @@
 ;;
 ;;; Code:
 
-(require 'cl-lib)
-(require 'ert)
-(require 'json)
-
-(load-file (concat
-            (file-name-directory (or load-file-name (buffer-file-name)))
-            "../bug.el"))
-
-(defconst bug-test-data-dir
-  (concat
-   (file-name-directory (or load-file-name (buffer-file-name)))
-   "/test-data/")
-  "Location of test data files.")
-
-(defmacro bug-with-dummy-config (&rest body)
-  `(let ((bug-instance-plist '(:bug-1 (:url "https://bz.tracker1.example")
-                                    :bug-2 (:url "https://bz.tracker2.example")
-                                    :rally-1 (:api-key "thisIsNotAnApiKey"
-                                                       :type rally)
-                                     ))
-         (bug-default-instance :bug-2))
-     ,@body))
-
 ;; TODO: structure tests to avoid requiring explicit requires
 (require 'bug-common-functions)
 
 (ert-deftest bug-test-query-functions ()
   "Test functions for handling query data"
-  (let* ((data-file (concat bug-test-data-dir
+  (let* ((data-file (concat bug--test-data-dir
                             "rally-query-result-two-bugs.json"))
          (results (cdr (assoc 'Results
                               (assoc 'QueryResult
@@ -73,7 +50,7 @@
 
 (ert-deftest bug-test-properties ()
   "Test property gathering"
-  (bug-with-dummy-config
+  (bug--with-dummy-config
    ;; check if dummy default property is set
    (should (equal bug-default-instance :bug-2))
    ;; check if stringp->symbolp conversion behaves as expected
