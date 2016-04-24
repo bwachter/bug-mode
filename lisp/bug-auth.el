@@ -41,18 +41,19 @@ The return value is a two element list (login password)
   (let* ((url (url-generic-parse-url (bug--instance-property :url instance)))
          (host (url-host url))
          (port (prin1-to-string (url-port url)))
-         (authinfo (netrc-parse
-                    (expand-file-name
+         (authinfo-file (expand-file-name
                      (if (bug--instance-property :authinfo instance)
-                         (bug--instance-property :authinfo instance) "~/.authinfo"))))
+                         (bug--instance-property :authinfo instance) "~/.authinfo")))
+         (authinfo (netrc-parse authinfo-file))
          (authrecord (netrc-machine authinfo host port))
          (login (if (bug--instance-property :login instance)
                     (bug--instance-property :login instance)
                   (netrc-get authrecord "login")))
          (password (if (bug--instance-property :password instance)
                        (bug--instance-property :password instance)
-                     (netrc-get authrecord "password")))
-         )
+                     (netrc-get authrecord "password"))))
+    (unless (file-exists-p authinfo-file)
+      (error (format "Authinfo file in '%s' does not exist." authinfo-file)))
     (list login password)))
 
 ;;;###autoload
