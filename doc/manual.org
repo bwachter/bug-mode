@@ -24,9 +24,15 @@ There are multiple possible workarounds, some of them are documented here in
 order of desirability.
 
 *** Patch url
+A patched version of url is included for emacs 24.5. You can start using
+it by setting =bug-patched-url= to =t=. The changes should not interfere
+with other packages (apart from fixing https proxy use for them as well),
+and if no patched version was found matching your emacs it just falls back
+to the default url package -- setting this option should have no negative
+impact.
+
 If you're using emacs 25 you can just grab the patch from git
-(=2d1a6054b161bd1055d4feb11c8c5ac95543f5db=) and apply it. If you're using
-emacs 24 or older you'd need to spend some effort to back-port the patch.
+(=2d1a6054b161bd1055d4feb11c8c5ac95543f5db=) and apply it.
 
 *** Use portforwarding
 If your proxy allows using =CONNECT=, and you have a suitable shell host

@@ -46,7 +46,10 @@
   :group 'bug)
 
 (defcustom bug-patched-url nil
-  "Try to load url patched for https proxy support"
+  "Try to load url patched for https proxy support. Unless you manually patched
+`url-http' or use other workarounds this option is required to use an https
+proxy. If no patched url for your emacs version is available a message will
+be printed, and the default url used (which may fail)"
   :type 'string
   :group 'bug)
 

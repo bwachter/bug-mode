@@ -1301,11 +1301,6 @@ previous `url-http' call, which is being re-attempted."
 				       :process proc
 				       :hostname (url-host url-current-object)
 				       :verify-error nil)))
-		  ;; check certificate validity
-		  (setq tls-connection
-			(nsm-verify-connection tls-connection
-					       (url-host url-current-object)
-					       (url-port url-current-object)))
 		  (with-current-buffer process-buffer (erase-buffer))
 		  (set-process-buffer tls-connection process-buffer)
 		  (setq url-http-after-change-function
