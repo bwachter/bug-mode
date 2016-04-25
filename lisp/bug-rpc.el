@@ -51,10 +51,11 @@ instance if INSTANCE is empty"
 (defun bug-rpc (method args &optional instance)
   "Send an RPC response to the given (or default) bugtracker instance and return the
 parsed response as alist"
-  (cond
-   ((equal 'rally (bug--backend-type instance))
-    (bug--rpc-rally method args instance))
-   (t (bug--rpc-bz method args instance))))
+  (bug--with-patched-url
+   (cond
+    ((equal 'rally (bug--backend-type instance))
+     (bug--rpc-rally method args instance))
+    (t (bug--rpc-bz method args instance)))))
 
 (defun bug--parse-rpc-response ()
   "Parse a JSON response from buffer and return it as alist"
@@ -92,6 +93,21 @@ parsed response as alist"
           (setq bug-field-cache (plist-put bug-field-cache instance field-hash))
           ))
     (plist-get bug-field-cache instance)))
+
+(defmacro bug--with-patched-url (&rest body)
+  "Try to load url-http patched for https proxy if `bug-patched-url' is
+non-nil and the file patched-url/url-http-major-minor.el exists."
+  `(let ((patch-file (format "%s/patched-url/url-http-%d.%d.el"
+                            (file-name-directory (or load-file-name (buffer-file-name)))
+                            emacs-major-version
+                            emacs-minor-version)))
+     (if (and (not (equal nil bug-patched-url))
+              (file-exists-p patch-file))
+        (progn
+          (message (concat "Using url from " patch-file))
+          (load-file patch-file))
+      (message "Not using patched URL, which may break proxy support"))
+    ,@body))
 
 (provide 'bug-rpc)
 ;;; bug-rpc.el ends here

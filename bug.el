@@ -45,6 +45,11 @@
   :type 'string
   :group 'bug)
 
+(defcustom bug-patched-url nil
+  "Try to load url patched for https proxy support"
+  :type 'string
+  :group 'bug)
+
 (defcustom bug-default-instance ""
   "The default bug tracker to use"
   :type 'string
