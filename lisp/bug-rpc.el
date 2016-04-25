@@ -26,7 +26,10 @@
 ;;
 ;;; Code:
 
-(setq bug-field-cache nil)
+(setq bug--url-patch-file (format "%s/patched-url/url-http-%d.%d.el"
+                                  (file-name-directory (or load-file-name (buffer-file-name)))
+                                  emacs-major-version
+                                  emacs-minor-version))
 
 (defun bug--instance-to-symbolp (instance)
   "Make sure that the instance handle is symbolp; returns default instance
@@ -97,16 +100,13 @@ parsed response as alist"
 (defmacro bug--with-patched-url (&rest body)
   "Try to load url-http patched for https proxy if `bug-patched-url' is
 non-nil and the file patched-url/url-http-major-minor.el exists."
-  `(let ((patch-file (format "%s/patched-url/url-http-%d.%d.el"
-                            (file-name-directory (or load-file-name (buffer-file-name)))
-                            emacs-major-version
-                            emacs-minor-version)))
+  `(progn
      (if (and (not (equal nil bug-patched-url))
-              (file-exists-p patch-file))
-        (progn
-          (message (concat "Using url from " patch-file))
-          (load-file patch-file))
-      (message "Not using patched URL, which may break proxy support"))
+              (file-exists-p bug--url-patch-file))
+         (progn
+           (message (concat "Using url from " bug--url-patch-file))
+           (load-file bug--url-patch-file))
+       (message "Not using patched URL, which may break proxy support"))
     ,@body))
 
 (provide 'bug-rpc)
