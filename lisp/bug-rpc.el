@@ -26,6 +26,7 @@
 ;;
 ;;; Code:
 
+(setq bug--field-cache nil)
 (setq bug--url-patch-file (format "%s/patched-url/url-http-%d.%d.el"
                                   (file-name-directory (or load-file-name (buffer-file-name)))
                                   emacs-major-version
@@ -75,7 +76,7 @@ parsed response as alist"
 (defun bug--get-fields (&optional instance)
   "Download fields used by this bug tracker instance or returns them from cache"
   (let* ((instance (bug--instance-to-symbolp instance))
-         (fields (if (plist-get bug-field-cache instance) nil
+         (fields (if (plist-get bug--field-cache instance) nil
                    (cond
                     ((equal 'rally (bug--backend-type instance))
                      (bug--rpc-rally-get-fields))
@@ -93,9 +94,9 @@ parsed response as alist"
                           (puthash bz-mapped-field field field-hash))
                       (puthash key field field-hash)))
                   (cdr (car (cdr (car fields)))))
-          (setq bug-field-cache (plist-put bug-field-cache instance field-hash))
+          (setq bug--field-cache (plist-put bug--field-cache instance field-hash))
           ))
-    (plist-get bug-field-cache instance)))
+    (plist-get bug--field-cache instance)))
 
 (defmacro bug--with-patched-url (&rest body)
   "Try to load url-http patched for https proxy if `bug-patched-url' is
