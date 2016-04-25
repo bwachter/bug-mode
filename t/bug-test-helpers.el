@@ -26,6 +26,9 @@
 ;;
 ;;; Code:
 
+(setq bug--test-helper-cwd
+      (file-name-directory (or load-file-name (buffer-file-name))))
+
 (defconst bug-random-data-base10
   "0123456789"
   "Input for generating fixed length random numbers")
@@ -59,6 +62,16 @@ is provided a base10 number is generated."
    (bug-random-string 4 bug-random-data-base16)
    (bug-random-string 12 bug-random-data-base16)))
 
+(defun bug--test-reload-all-files ()
+  "Reload all(!) lisp files of bug-mode. Unless you're working on bug-mode
+that's not what you want."
+  (let ((all-files
+         (directory-files
+          (concat bug--test-helper-cwd "../lisp/") t ".el$")))
+    (push
+     (concat bug--test-helper-cwd "../bug.el") all-files)
+    (dolist (f all-files)
+      (load-file f))))
 
 (provide 'bug-tests)
 ;;; bug-tests.el ends here
