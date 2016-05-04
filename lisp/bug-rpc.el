@@ -50,7 +50,11 @@ if instance is nil"
 instance if INSTANCE is empty"
   (let* ((instance(bug--instance-to-symbolp instance))
          (property-list (plist-get bug-instance-plist instance)))
-    (plist-get property-list property)))
+    (if (and (equal property :url)
+             (equal 'rally (bug--backend-type instance)))
+        (let ((rally-url (plist-get property-list property)))
+          (or rally-url bug-rally-url))
+    (plist-get property-list property))))
 
 (defun bug-rpc (method args &optional instance)
   "Send an RPC response to the given (or default) bugtracker instance and return the
