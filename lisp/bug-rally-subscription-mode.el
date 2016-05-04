@@ -50,7 +50,8 @@
     (error "Not a Rally instance"))
   (let ((subscription (car (bug-rpc "Subscription.query"
                                     '((query-data
-                                       ((query ""))))))))
+                                       ((query ""))))
+                                    instance))))
     (switch-to-buffer
      (format "rally subscription: %s"
              (cdr (assoc 'Name subscription))))
