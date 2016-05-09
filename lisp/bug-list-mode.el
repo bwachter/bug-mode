@@ -108,12 +108,16 @@ for inclusion in tabulated-list-entries"
     (dolist (header-item list-columns)
       (let* ((field (assoc (intern header-item) (cdr bug)))
              (value (or (cdr field) ""))
+             (map (make-sparse-keymap))
              (bug-id (cdr (assoc (bug--uuid-field-name bug---instance) (cdr bug))))
              (formatted-string))
+        (define-key map [mouse-1] 'bug--list-mode-select-bug-with-mouse)
+        (define-key map [mouse-2] 'bug--list-mode-select-bug-with-mouse)
         (setq formatted-string
               (propertize
                (bug--format-field-value field bug---instance)
-               'bug-id bug-id))
+               'bug-id bug-id
+               'keymap map))
         (aset data count formatted-string))
       (setq count (+ 1 count)))
     data))
@@ -156,6 +160,14 @@ This is mostly useful for debugging text properties"
       (prin1-to-string bug-id)
       "; "
       ))))
+
+;;;###autoload
+(defun bug--list-mode-select-bug-with-mouse (event)
+  "Move the cursor to the position of the mouse pointer, and then
+open the bug."
+  (interactive "e")
+  (goto-char (posn-point (event-start event)))
+  (bug--list-mode-select-bug))
 
 ;;;###autoload
 (defun bug--list-mode-select-bug ()
