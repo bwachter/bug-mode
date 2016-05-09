@@ -30,6 +30,7 @@
 (require 'url-parse)
 (require 'bug-rpc)
 
+;;;###autoload
 (defun bug-credentials (&optional instance)
   "Return credentials for the given bug tracker instances, if set. The
 configuration data for the instance and authinfo files will be searched, with
