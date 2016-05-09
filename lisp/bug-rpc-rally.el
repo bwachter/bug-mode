@@ -57,6 +57,32 @@ no API key is configured -- by using basic auth with username and password"
 ;; +--------+--------+--------------------------+
 ;; | Query  | GET    | <object>?<query>         |
 ;; +--------+--------+--------------------------+
+(defun bug--rpc-rally-request-method (operation)
+  "Return the appropriate request method (DELETE/GET/POST) for `operation'"
+  (setq operation (downcase operation))
+  (cond ((string= operation "delete") "DELETE")
+        ((string= operation "read") "GET")
+        ((string= operation "query") "GET")
+        ((string= operation "authorize") "GET")
+        (t "POST")))
+
+(defun bug--rpc-rally-url-map-operation (operation &optional object args)
+  "Create the operation specific part of the URL"
+  (let ((object-id (cdr (assoc 'object-id args)))
+        (object-type (cdr (assoc 'object-type args)))
+        (query-string (url-build-query-string (cdr (assoc 'query-data args)))))
+    (cond
+     ((string= operation "authorize") (concat object "/authorize"))
+     ;; TODO: operations like create need to use a security key
+     ;;       https://rally1.rallydev.com/slm/doc/webservice/authentication.jsp
+     ((string= operation "create") (concat object "/create"))
+     ((string= operation "copy")
+      (concat object "/" object-id "/copy"))
+     ((string= operation "query")
+      (concat object "?" query-string))
+     (t (if object-type
+            (concat object "/" object-id "/" object-type)
+          (concat object "/" object-id))))))
 
 ;;;###autoload
 (defun bug--rpc-rally (method args &optional instance)
@@ -89,26 +115,13 @@ object-id for read (or any other call requiring an object-id):
 "
   (let* ((object (car (split-string method "\\." t)))
          (operation (cadr (split-string method "\\." t)))
-         (object-id (cdr (assoc 'object-id args)))
-         (object-type (cdr (assoc 'object-type args)))
-         (query-string (url-build-query-string (cdr (assoc 'query-data args))))
-         (url-request-method (cond ((string= operation "delete") "DELETE")
-                                   ((string= operation "read") "GET")
-                                   ((string= operation "query") "GET")
-                                   (t "POST")))
-         (url-str
-          (cond ((string= operation "create") (concat object "/create"))
-                ((string= operation "copy")
-                 (concat object "/" object-id "/copy"))
-                ((string= operation "query")
-                 (concat object "?" query-string))
-                (t (if object-type
-                       (concat object "/" object-id "/" object-type)
-                     (concat object "/" object-id)))))
+         (url-request-method (bug--rpc-rally-request-method operation))
+         (url-str (bug--rpc-rally-url-map-operation operation object args))
          (url (concat bug-rally-url url-str))
+         (url-request-data (json-encode (list (cdr (assoc 'post-data args)))))
          (url-request-extra-headers `(("Content-Type" . "application/json")
                                       ,(bug--rpc-rally-auth-header instance))))
-    (bug--debug (concat "request " url "\n" object-id "\n"))
+    (bug--debug (concat "request " url "\n"))
     (bug--debug-log-time "RPC init")
     (with-current-buffer (url-retrieve-synchronously url)
       (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))

@@ -3,3 +3,4 @@ machine bz4.fun.example login foobar
 machine bz.tracker2.example login bz2-user
 machine bz.tracker1.example port 443 login bz1-user password AiNee8cu
 machine bz.tracker1.example login bz1-user password AiNee8cu
+machine rally1.rallydev.com login rally-user password rally-password

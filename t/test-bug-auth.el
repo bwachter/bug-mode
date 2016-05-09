@@ -29,12 +29,14 @@
 (require 'bug-auth)
 
 (ert-deftest test-bug-auth ()
-  "Test functions for handling query data"
+  "Test functions for handling authentication"
   (bug--with-dummy-config
    (should (equal '("bz1-user" "AiNee8cu")
                   (bug-credentials :bug-1)))
    (should (equal '("bz2-user" nil)
                   (bug-credentials :bug-2)))
+   (should (equal '("rally-user" "rally-password")
+                  (bug-credentials :rally-2)))
    (should (equal '(nil nil)
                   (bug-credentials :bug-nil)))
    ))

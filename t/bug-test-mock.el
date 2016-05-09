@@ -37,9 +37,11 @@
                                             :authinfo ,(concat bug--test-data-dir "netrc"))
                                       :bug-2 (:url "https://bz.tracker2.example"
                                                    :authinfo ,(concat bug--test-data-dir "netrc"))
-                                    :rally-1 (:api-key "thisIsNotAnApiKey"
-                                                       :type rally)
-                                     ))
+                                      :rally-1 (:api-key "thisIsNotAnApiKey"
+                                                         :type rally)
+                                      :rally-2 (:authinfo ,(concat bug--test-data-dir "netrc")
+                                                          :type rally)
+                                      ))
          (bug-default-instance :bug-2))
      ,@body))
 
