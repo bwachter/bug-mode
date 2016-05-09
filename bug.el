@@ -53,9 +53,9 @@ be printed, and the default url used (which may fail)"
   :type 'string
   :group 'bug)
 
-(defcustom bug-default-instance ""
+(defcustom bug-default-instance nil
   "The default bug tracker to use"
-  :type 'string
+  :type 'sexp
   :group 'bug)
 
 (defcustom bug-instance-plist nil
