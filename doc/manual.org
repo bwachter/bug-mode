@@ -1,14 +1,117 @@
 * bug-mode manual
+** Table of contents                                                  :TOC_4:
+ - [[#bug-mode-manual][bug-mode manual]]
+   - [[#known-issues-and-limitations][Known issues and limitations]]
+   - [[#installation][Installation]]
+     - [[#requirements][Requirements]]
+   - [[#supported-backends][Supported backends]]
+     - [[#bugzilla-json-rpc][Bugzilla JSON-RPC]]
+     - [[#rally-rest-api][Rally REST API]]
+   - [[#modes][Modes]]
+     - [[#generic-modes][Generic modes]]
+       - [[#bug-mode][bug-mode]]
+       - [[#bug-list-mode][bug-list-mode]]
+     - [[#rally-specific-modes][Rally specific modes]]
+       - [[#bug-rally-subscription-mode][bug-rally-subscription-mode]]
+   - [[#interactive-functions][Interactive functions]]
+     - [[#bug-login-bugzilla][bug-login (/Bugzilla/)]]
+     - [[#bug-logout-bugzilla][bug-logout (/Bugzilla/)]]
+     - [[#bug-open][bug-open]]
+     - [[#bug-rally-subscription-rally][bug-rally-subscription (/Rally/)]]
+     - [[#bug-search][bug-search]]
+     - [[#bug-search-multiple-bugzilla][bug-search-multiple (/Bugzilla/)]]
+     - [[#bug-stored-bugs][bug-stored-bugs]]
+   - [[#customization][Customization]]
+   - [[#proxy-use][Proxy use]]
+     - [[#patch-url][Patch url]]
+     - [[#use-port-forwarding][Use port forwarding]]
+     - [[#use-a-proxy-aware-tls-program][Use a proxy aware TLS program]]
+   - [[#rich-text-formatting][Rich text formatting]]
+   - [[#related-modes-and-modules][Related modes and modules]]
+     - [[#rally-mode][rally-mode]]
+     - [[#bugz-mode][bugz-mode]]
+     - [[#ghel][gh.el]]
+     - [[#jira-rest][jira-rest]]
+
+** Known issues and limitations
+To get an overview of open issues, report bugs, or suggest improvements please visit the [[https://github.com/bwachter/bug-mode/issues][GitHub issue tracker]].
 ** Installation
+*** Requirements
+- [[http://cvs.savannah.gnu.org/viewvc/*checkout*/emacs/lisp/json.el?root=emacs][json.el]], which nowadays should be included in your copy of emacs already.
+** Supported backends
+*** Bugzilla JSON-RPC
+For historical reasons the API used for Bugzilla is the [[https://www.bugzilla.org/docs/4.0/en/html/api/Bugzilla/WebService/Server/JSONRPC.html][JSON-RPC API]], which has been deprecated. Currently this is used as default API if no bug tracker type has been configured. In the future it is expected to keep the JSON-RPC API for backwards compatibility with older instances, but implement the [[https://bugzilla.readthedocs.io/en/5.0/api/index.html][REST WebService API]] as additional backend for newer Bugzilla instances.
+
+A Bugzilla instance >= 3.6 with JSON-RPC enabled is required.
+*** Rally REST API
+For Rally REST/JSON based [[https://rally1.rallydev.com/slm/doc/webservice/][Web Services API]] in version 2 is implemented (the latest version at the moment of writing this manual).
 ** Modes
 *** Generic modes
 **** bug-mode
+     :PROPERTIES:
+     :CUSTOM_ID: bug-mode
+     :END:
+***** Key bindings
+- RET - open attachment with browse-url function
+- b - open bug in default browser
+- c - add comment (deprecated, will be removed)
+- d - download attachment with w3m-download
+- e - edit the field near point, if editable
+- i - display information about thing at point (debug functionality)
+- r - remember the bug in a locally stored list
+- s - resolve the bug (deprecated, will be removed)
+- u - execute query again and update bug buffer
+- q - kill bug buffer
+- C-c C-c - Commit changes made to the bug tracker
+
 **** bug-list-mode
+     :PROPERTIES:
+     :CUSTOM_ID: bug-list-mode
+     :END:
+***** Key bindings
+- RET - open bug at point
+- i - display information about thing at point (debug functionality)
+- u - execute query again and update search buffer
+- q - kill search buffer
+
 *** Rally specific modes
+    :PROPERTIES:
+    :CUSTOM_ID: bug-rally-subscription-mode
+    :END:
 **** bug-rally-subscription-mode
-Use the `bug-rally-subscription' function to display details about your Rally subscription.
+Use the =bug-rally-subscription= function to display details about your Rally subscription.
 #+CAPTION: Sample output for a Rally subscription
 [[./rally-subscription-info.png]]
+
+** Interactive functions
+*** bug-login (/Bugzilla/)
+Explicitely log in to a Bugzilla instance.
+*** bug-logout (/Bugzilla/)
+Explicitely log out from a Bugzilla instance.
+*** bug-open
+Open a single bug, taking the /internal/ bug ID as argument. For Bugzilla the internal and user visible bug ID is identical, while for Rally the user friendly ID (like "US123") and the internal bug ID don't match.
+
+For bug trackers like Rally you can use =bug-search= with a bug reference as argument, which will resolve the internal ID, and open it via =bug-open=, at the cost of one additional API call.
+*** bug-rally-subscription (/Rally/)
+Entry point to [[#bug-rally-subscription-mode][bug-rally-subscription-mode]]
+*** bug-search
+Search for bugs, and display them in [[#bug-list-mode][bug-list-mode]]. The exact behavior depends on the bug tracker used.
+
+Bugzilla supports
+- free form text query
+- key-value (e.g. "component:Test")
+- the name of a named search
+
+Rally supports
+- free form text query
+- complex query in Rally query syntax
+
+Both Bugzilla and Rally directly open a bug view instead of a list if the search term matches a bug identifier, or the search only returned a single result.
+*** bug-search-multiple (/Bugzilla/)
+Search for bugs with multiple criteria. Same query format as bug-search.
+*** bug-stored-bugs
+Open a list of locally stored bugs.
+
 ** Customization
 ** Proxy use
 HTTPS proxy support in emacs has been broken for quite a while, for details read
@@ -37,7 +140,7 @@ impact.
 If you're using emacs 25 you can just grab the patch from git
 (=2d1a6054b161bd1055d4feb11c8c5ac95543f5db=) and apply it.
 
-*** Use portforwarding
+*** Use port forwarding
 If your proxy allows using =CONNECT=, and you have a suitable shell host
 available you can use this to forward a local port to Rally, bypassing the
 whole proxy mess. An example entry for =~/.ssh/config= could look like this:
@@ -89,7 +192,7 @@ A rendering of a bug using /all/ of Rallys Rich Text elements looks like this:
 A mode for using Bugzilla, wrapping the pybugz utility. Of limited use, as
 pybugz is rather picky about which Bugzilla instances it likes to work with.
 *** [[https://github.com/sigma/gh.el][gh.el]]
-A library wrapping most of Githubs API. For adding Github issues to bug-mode
-just directly querying the Github API might be easier.
+A library wrapping most of GitHubs API. For adding GitHub issues to bug-mode
+just directly querying the GitHub API might be easier.
 *** [[https://github.com/mattdeboard/jira-rest][jira-rest]]
 A library for using Jiras REST API.

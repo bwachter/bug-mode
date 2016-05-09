@@ -7,12 +7,7 @@ Currently somewhat working bug trackers are:
 - [[https://www.bugzilla.org/][Bugzilla]]
 - [[https://www.rallydev.com/][Rally]]
 
-** Requirements
-- [[http://cvs.savannah.gnu.org/viewvc/*checkout*/emacs/lisp/json.el?root=emacs][json.el]]
-- Recent release of Bugzilla, probably at least 3.6
-- JSON-RPC mode enabled for Bugzilla
-
-** Installing
+** Quick start
 
 This is a quick start guide. Have a look at the [[./doc/manual.org][full manual]]
 for more details.
@@ -31,44 +26,3 @@ for more details.
 - =M-x customize-group RET bug-faces= if you don't like the default faces
 - Store your credentials in authinfo format in =~/.authinfo=, or specify a database location with the =:authinfo= property
 - For using Rally, generate [[https://rally1.rallydev.com/login/accounts/index.html#/keys][API Keys]] if your subscription allows it, and set the =:api-key property=. With no API key configured username/password from authinfo are used as well.
-
-** Functions
-*** bug-login / bug-logout
-Some Bugzilla instances require explicit login. Use those functions to login/logout if that's the case for your installation.
-*** bug-open
-Open a single bug (Bugzilla only)
-*** bug-search
-Search for bugs. The behavior is different, depending on the bug tracker used.
-
-Bugzilla supports
-- free form text query
-- key-value (e.g. "component:Test")
-- the name of a named search
-
-Rally supports
-- free form text query
-- complex query in Rally query syntax
-
-Both Bugzilla and Rally directly open a bug view instead of a list if the search term matches a bug identifier, or the search only returned a single result.
-*** bug-search-multiple
-Search for bugs with multiple criteria. Same query format as bug-search (Bugzilla only)
-*** bug-stored-bugs
-Open a list of locally stored bugs
-
-** Key bindings for bug-modes
-*** bug-list-mode
-- u - execute query again
-- RET - show single bug
-- q - kill buffer
-
-*** bug-mode
-- RET - open attachment with browse-url function
-- b - open bug in default browser
-- c - add comment
-- d - download attachment with w3m-download
-- r - remember the bug in a locally stored list
-- u - execute query again
-- q - kill buffer
-
-*** bug-comment-mode
-- C-c C-c - commit comment
