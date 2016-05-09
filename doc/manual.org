@@ -6,6 +6,9 @@
 **** bug-list-mode
 *** Rally specific modes
 **** bug-rally-subscription-mode
+Use the `bug-rally-subscription' function to display details about your Rally subscription.
+#+CAPTION: Sample output for a Rally subscription
+[[./rally-subscription-info.png]]
 ** Customization
 ** Proxy use
 HTTPS proxy support in emacs has been broken for quite a while, for details read
@@ -73,6 +76,13 @@ host resolution it might be possible to use this as workaround:
 Note that this will bypass the whole noproxy logic, so if you're using tls in
 the local network without proxy as well this will break things.
 
+** Rich text formatting
+Rally supports "Rich Text" (they mean "HTML") for some fields. While for most of the options the value is questionable, and looks more like "Look! We can do fancy text too!", the list formatting and the option to emphasize text using bold/italics/underline are quite useful. Even though a few more formatting options are supported you should limit yourself to those.
+
+A rendering of a bug using /all/ of Rallys Rich Text elements looks like this:
+
+#+CAPTION: Rendering of all Rally Rich Text elements
+[[./rally-bug-richtext.png]]
 ** Related modes and modules
 *** [[https://github.com/seanleblanc/rally-mode][rally-mode]]
 *** [[http://www.jemarch.net/git/bugz-mode.git/][bugz-mode]]
