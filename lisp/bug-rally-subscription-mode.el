@@ -153,10 +153,12 @@
      (let ((modules (split-string (cdr (assoc 'Modules subscription)) ","))
            (module-string ""))
        (while modules
-         (setq module-string
-               (concat module-string
-                       (propertize (format "- %s\n" (car modules))
-                     'face 'bug-field-type-0)))
+         (let ((module (car modules)))
+           (unless (string= "" module)
+             (setq module-string
+                   (concat module-string
+                           (propertize (format "- %s\n" (car modules))
+                                       'face 'bug-field-type-0)))))
          (setq modules (cdr modules)))
        module-string)))
   (goto-char 0)
