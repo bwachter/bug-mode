@@ -33,7 +33,7 @@
         ((equal value :json-false)
          "no")
         (t
-         (prin1-to-string value))))
+         (prin1-to-string value t))))
 
 (defun bug--format-field-name (field &optional instance)
   "Format a bug field name for display, taking into account instance specific

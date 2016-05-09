@@ -6,7 +6,7 @@ TESTS =
 TESTS += test-bug-auth.el
 #TESTS += test-bug-comment-mode.el
 #TESTS += test-bug-common-functions.el
-#TESTS += test-bug-format.el
+TESTS += test-bug-format.el
 #TESTS += test-bug-list-mode.el
 #TESTS += test-bug-mode-bz.el
 #TESTS += test-bug-mode.el
@@ -33,4 +33,5 @@ module-tests: $(TESTS)
 	    (load-file \"test-init.el\")\
 	    (load-file \"$$test\")\
 	    (ert-run-tests-batch-and-exit))";\
+	  if [ $$? -ne 0 ]; then exit 1; fi ;\
 	done
