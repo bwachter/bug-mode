@@ -27,7 +27,17 @@
 ;;; Code:
 
 ;;;###autoload
-(defun bug--parse-bz-search-query (query)
+(defun bug--do-bz-search (params &optional instance)
+  "Execute a search query in Bugzilla.
+
+This function takes a pre-parsed Bugzilla search query as argument.
+"
+  (bug--handle-search-response params
+                               (bug-rpc "Bug.search" params instance)
+                               instance))
+
+;;;###autoload
+(defun bug--parse-bz-search-query (query &optional instance)
   "Parse search query from minibuffer for Bugzilla"
   (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
       `((,(match-string 1 query) . ,(match-string 2 query)))

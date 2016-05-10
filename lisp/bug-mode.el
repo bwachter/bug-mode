@@ -61,9 +61,7 @@
         (read-string "Bug ID: " nil nil t)
         (bug--query-instance))
      (list (read-string "Bug ID: " nil nil t))))
-  (let* ((bug-content (cond ((equal 'rally (bug--backend-type instance))
-                             (bug--fetch-rally-bug id instance))
-                            (t (bug--fetch-bz-bug id instance)))))
+  (let* ((bug-content (bug--backend-function "bug--fetch-%s-bug" id instance)))
     (if bug-content (bug-show bug-content instance))))
 
 (defun bug-show (bug &optional instance)

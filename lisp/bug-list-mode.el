@@ -187,7 +187,7 @@ line"
 (defun bug--list-mode-update-list ()
   "Update the list by running the original search query again"
   (interactive)
-  (bug-do-search bug---query bug---instance))
+  (bug--do-search bug---query bug---instance))
 
 (provide 'bug-list-mode)
 ;;; bug-list-mode.el ends here

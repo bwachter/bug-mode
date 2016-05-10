@@ -102,7 +102,7 @@ pagesize, ...) can't be supplied:
     response))
 
 ;;;###autoload
-(defun bug--parse-rally-search-query (query)
+(defun bug--parse-rally-search-query (query &optional instance)
   "Parse search query from minibuffer for rally"
   (cond ;; for userfriendly rally IDs, open bug directly
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)

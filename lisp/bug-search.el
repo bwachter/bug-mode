@@ -45,7 +45,7 @@
     (if list-entries
         (let ((query (make-hash-table :test 'equal)))
           (puthash "id" list-entries query)
-          (bug-do-search query instance))
+          (bug--do-search query instance))
       (message (concat "List " list-name " not found")))
     ))
 
@@ -59,9 +59,9 @@
         (bug--query-instance))
      (list (read-string "Search query: " nil nil t))))
   (bug--debug-log-time "start")
-    (cond ((equal 'rally (bug--backend-type instance))
-           (bug-do-search (bug--parse-rally-search-query query) instance))
-          (t (bug-do-search (bug--parse-bz-search-query query) instance))))
+  (bug--do-search
+   (bug--backend-function "bug--parse-%s-search-query" query instance)
+   instance))
 
 ;;;###autoload
 (defun bug-search-multiple (&optional instance)
@@ -84,7 +84,7 @@ prompts and execute them"
                     (puthash key (vconcat current (vector value)) terms)
                   (puthash key (vector current value) terms))
               (puthash key value terms)))))
-    (bug-do-search terms instance)))
+    (bug--do-search terms instance)))
 
 (provide 'bug-search)
 ;;; bug-search.el ends here

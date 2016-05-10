@@ -305,6 +305,31 @@ descriptive string"
         'bz
       type)))
 
+(defun bug--backend-function (format-string &optional args instance)
+  "Call a backend specific function, selected based on the backend specified by
+the configuration for `instance'
+
+The `format-string' needs to contain exactly one placeholder for a string (%s),
+which will get replaced by a backend identifier. The backend functions need to
+be defined with two arguments, `args' and `instance'. If more than one argument
+is required they should be passed as list in `args'.
+
+Example usage:
+
+(defun some-bz-function (&optional args instance)
+  (message \"Bugzilla\"))
+
+(defun some-rally-function (&optional args instance)
+  (message \"Rally\"))
+
+(bug--backend-function \"some-%s-function\" nil instance)
+"
+  (let ((func))
+    (fset 'func
+          (intern (format format-string
+                          (prin1-to-string (bug--backend-type instance) t))))
+    (func args instance)))
+
 (defun bug--list-columns (&optional instance)
   "Read the list headers for a bugtracker instance.
 

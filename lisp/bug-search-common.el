@@ -27,17 +27,11 @@
 ;;
 ;;; Code:
 
-(defun bug-do-search (params &optional instance)
+(defun bug--do-search (params &optional instance)
   "Execute a bug search query"
-  (cond
-   ((equal 'rally (bug--backend-type instance))
-    (bug--do-rally-search params instance))
-   (t
-    (bug-handle-search-response params
-                                (bug-rpc "Bug.search" params instance)
-                                instance))))
+  (bug--backend-function "bug--do-%s-search" params instance))
 
-(defun bug-handle-search-response (query response &optional instance)
+(defun bug--handle-search-response (query response &optional instance)
   "Parse the result of a bug search and either show a single bug or a bug list"
   (if (and
        (assoc 'result response)
