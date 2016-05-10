@@ -52,6 +52,11 @@ For Rally REST/JSON based [[https://rally1.rallydev.com/slm/doc/webservice/][Web
      :PROPERTIES:
      :CUSTOM_ID: bug-mode
      :END:
+=bug-mode= is used to display details for a single bug, either from a search result or by searching/[[#bug-open][opening a single bug]].
+
+#+CAPTION: A single Rally bug
+[[./rally-bug-from-search.png]]
+
 **** Key bindings
 - RET - open attachment with browse-url function
 - b - open bug in default browser
@@ -69,6 +74,11 @@ For Rally REST/JSON based [[https://rally1.rallydev.com/slm/doc/webservice/][Web
      :PROPERTIES:
      :CUSTOM_ID: bug-list-mode
      :END:
+=bug-list-mode= is used to display a list of bugs, usually as a result of a search. Full bugs can be opened in =bug-mode= either from the keyboard by navigating to an entry and pressing =RET=, or by mouse using either the left or the middle button.
+
+#+CAPTION: A search result of Rally bugs
+[[./rally-bug-search-safari.png]]
+
 **** Key bindings
 - RET - open bug at point
 - i - display information about thing at point (debug functionality)
@@ -92,6 +102,9 @@ Explicitely log in to a Bugzilla instance.
 ** bug-logout (/Bugzilla/)
 Explicitely log out from a Bugzilla instance.
 ** bug-open
+   :PROPERTIES:
+   :CUSTOM_ID: bug-open
+   :END:
 Open a single bug, taking the /internal/ bug ID as argument. For Bugzilla the internal and user visible bug ID are identical, while for Rally the user friendly ID (like "US123") and the internal bug ID don't match.
 
 For bug trackers like Rally you can use =bug-search= with a bug reference as argument, which will resolve the internal ID, and open it via =bug-open=, at the cost of one additional API call.
@@ -116,6 +129,16 @@ Search for bugs with multiple criteria. Same query format as bug-search.
 Open a list of locally stored bugs.
 
 * Customization
+As enduser it's recommended to configure bug-mode using Emacs "Easy Customization Interface", invoked with =M-x customize-group RET bug=:
+
+#+CAPTION: Customization screen
+[[./bug-mode-customization.png]]
+
+The easiest way to change the faces used in bug mode is via =M-x customize-group RET bug-faces=:
+
+#+CAPTION: Customization screen for faces
+[[./bug-mode-customization-faces.png]]
+
 * Proxy use
 HTTPS proxy support in emacs has been broken for quite a while, for details read
 [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=11788][bug 11788]]. As a result, doing something like the following will at best lead to
