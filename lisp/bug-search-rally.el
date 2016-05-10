@@ -54,7 +54,7 @@ pagesize, ...) can't be supplied:
     (bug--handle-rally-search-response
      query
      (bug-rpc (or method "artifact.query")
-             `((query-data . ,query)) instance))))
+             `((query-data . ,query)) instance) instance)))
 
 ;; TODO: Rally strips the letters, and just queries the number, leading to
 ;;       duplicate results. Check the query if we were searching for a single

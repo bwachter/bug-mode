@@ -118,13 +118,17 @@ object-id for read (or any other call requiring an object-id):
          (url-request-method (bug--rpc-rally-request-method operation))
          (url-str (bug--rpc-rally-url-map-operation operation object args))
          (url (concat bug-rally-url url-str))
+         ;; don't accept any cookie, see issue 6 for details
+         (url-cookie-untrusted-urls '(".*"))
          (url-request-data (json-encode (list (cdr (assoc 'post-data args)))))
          (url-request-extra-headers `(("Content-Type" . "application/json")
+                                      ,(bug--rpc-cookie-header instance)
                                       ,(bug--rpc-rally-auth-header instance))))
-    (bug--debug (concat "request " url "\n"))
+    (bug--debug (concat "request " url " instance " (prin1-to-string instance t) "\n"))
     (bug--debug-log-time "RPC init")
     (with-current-buffer (url-retrieve-synchronously url)
       (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug--rpc-response-store-cookies instance)
       (bug--parse-rpc-response))))
 
 ;;;###autoload

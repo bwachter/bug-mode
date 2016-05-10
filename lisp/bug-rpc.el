@@ -58,6 +58,12 @@
       (remf bug--cache instance)
     (setq bug--cache nil)))
 
+(defun bug--rpc-cookie-header (&optional instance)
+  "Insert cookies stored for this particular instance, if any"
+  (if (bug--cache-get 'cookies instance)
+      (cons "Cookie" (mapconcat 'identity (bug--cache-get 'cookies instance) "; "))
+    nil))
+
 (defun bug--instance-to-symbolp (instance)
   "Make sure that the instance handle is symbolp; returns default instance
 if instance is nil"
@@ -90,6 +96,22 @@ parsed response as alist"
     ((equal 'rally (bug--backend-type instance))
      (bug--rpc-rally method args instance))
     (t (bug--rpc-bz method args instance)))))
+
+(defun bug--rpc-response-store-cookies (instance)
+  "Try to extract cookies from an RPC response, and store them in the cache"
+  (bug--debug (concat "saving cookies for instance: " (prin1-to-string instance t) "\n"))
+  (save-match-data
+    (let ((cookies))
+      (goto-char 0)
+      (re-search-forward "\n\n" nil t)
+      (while (re-search-backward "^Set-Cookie:[[:space:]]*\\([^;]+\\).*$" nil t)
+        ;; A cookie header looks like this:
+        ;; Set-Cookie: SUBBUCKETID=123;Path=/;Domain=rally1.rallydev.com;Secure;HttpOnly
+        ;; the above regex should return `SUBBUCKETID=123'
+        (let ((cookie (match-string 1)))
+          (set-text-properties 0 (length cookie) nil cookie)
+          (push cookie cookies)))
+      (bug--cache-put 'cookies cookies instance))))
 
 (defun bug--parse-rpc-response ()
   "Parse a JSON response from buffer and return it as alist"

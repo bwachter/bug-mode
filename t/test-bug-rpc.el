@@ -65,6 +65,8 @@
 ;; - bug--parse-rpc-response
 ;; - bug--get-fields
 ;; - bug--with-patched-url
+;; - bug--rpc-response-store-cookies
+;; - bug--rpc-cookie-header
 
 (provide 'test-bug-rpc)
 ;;; test-bug-rpc.el ends here

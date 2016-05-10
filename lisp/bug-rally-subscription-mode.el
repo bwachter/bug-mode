@@ -87,7 +87,8 @@
                                 `((object-id .
                                    ,(prin1-to-string
                                      (cdr (assoc 'ObjectID subscription))))
-                                  (object-type . "Workspaces")))))))
+                                  (object-type . "Workspaces"))
+                                instance)))))
            (workspace-string ""))
        (let ((count (- (length workspaces) 1)))
          (while (>= count 0)
