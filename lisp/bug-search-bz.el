@@ -27,11 +27,11 @@
 ;;; Code:
 
 ;;;###autoload
-(defun bug--parse-bug-search-query (query)
+(defun bug--parse-bz-search-query (query)
   "Parse search query from minibuffer for Bugzilla"
-    (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
+  (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
       `((,(match-string 1 query) . ,(match-string 2 query)))
-    (if (string-match "[:space:]*[0-9]+[:space:]*" query)
+    (if (string-match "[[:space:]]*[0-9]+[:space:]*" query)
         `((id . ,(string-to-number query)))
       `((summary . ,query)))))
 

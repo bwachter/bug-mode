@@ -61,7 +61,7 @@
   (bug--debug-log-time "start")
     (cond ((equal 'rally (bug--backend-type instance))
            (bug-do-search (bug--parse-rally-search-query query) instance))
-          (t (bug-do-search (bug--parse-bug-search-query query) instance))))
+          (t (bug-do-search (bug--parse-bz-search-query query) instance))))
 
 ;;;###autoload
 (defun bug-search-multiple (&optional instance)
@@ -75,7 +75,7 @@ prompts and execute them"
     (while (not (string= term ""))
       (setq term (read-from-minibuffer "query term: "))
       (if (not (string= term ""))
-          (let* ((parsed (bug-parse-query term))
+          (let* ((parsed (bug--parse-bz-search-query term))
                  (key (car parsed))
                  (value (cdr parsed))
                  (current (gethash key terms)))
@@ -85,14 +85,6 @@ prompts and execute them"
                   (puthash key (vector current value) terms))
               (puthash key value terms)))))
     (bug-do-search terms instance)))
-
-(defun bug-parse-query (query)
-  "Parse the search query read from minibuffer"
-  (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
-      `(,(match-string 1 query) . ,(match-string 2 query))
-    (if (string-match "[:space:]*[0-9]+[:space:]*" query)
-        `(id . ,(string-to-number query))
-      `(summary . ,query))))
 
 (provide 'bug-search)
 ;;; bug-search.el ends here
