@@ -121,5 +121,10 @@
                    '((query-data . ((query "(FormattedID = \"foo\")")))))))
    ))
 
+;; TODO:
+;; - bug--rpc-rally
+;; - bug--rpc-rally-handle-error
+;; - bug--rpc-rally-get-fields
+
 (provide 'test-bug-rpc-rally)
 ;;; test-bug-rpc-rally.el ends here

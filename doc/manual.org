@@ -14,6 +14,7 @@
      - [[#rally-specific-modes][Rally specific modes]]
        - [[#bug-rally-subscription-mode][bug-rally-subscription-mode]]
    - [[#interactive-functions][Interactive functions]]
+     - [[#bug-cache-clear][bug-cache-clear]]
      - [[#bug-login-bugzilla][bug-login (/Bugzilla/)]]
      - [[#bug-logout-bugzilla][bug-logout (/Bugzilla/)]]
      - [[#bug-open][bug-open]]
@@ -84,12 +85,14 @@ Use the =bug-rally-subscription= function to display details about your Rally su
 [[./rally-subscription-info.png]]
 
 ** Interactive functions
+*** bug-cache-clear
+Clear cached data, either globally, or -- when called with prefix argument -- for a particular instance.
 *** bug-login (/Bugzilla/)
 Explicitely log in to a Bugzilla instance.
 *** bug-logout (/Bugzilla/)
 Explicitely log out from a Bugzilla instance.
 *** bug-open
-Open a single bug, taking the /internal/ bug ID as argument. For Bugzilla the internal and user visible bug ID is identical, while for Rally the user friendly ID (like "US123") and the internal bug ID don't match.
+Open a single bug, taking the /internal/ bug ID as argument. For Bugzilla the internal and user visible bug ID are identical, while for Rally the user friendly ID (like "US123") and the internal bug ID don't match.
 
 For bug trackers like Rally you can use =bug-search= with a bug reference as argument, which will resolve the internal ID, and open it via =bug-open=, at the cost of one additional API call.
 *** bug-rally-subscription (/Rally/)

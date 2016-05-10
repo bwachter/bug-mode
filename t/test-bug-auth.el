@@ -41,5 +41,9 @@
                   (bug-credentials :bug-nil)))
    ))
 
+;; TODO:
+;; - bug-login
+;; - bug-logout
+
 (provide 'test-bug-auth)
 ;;; test-bug-auth.el ends here

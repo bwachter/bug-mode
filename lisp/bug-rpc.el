@@ -26,11 +26,37 @@
 ;;
 ;;; Code:
 
-(setq bug--field-cache nil)
+(require 'cl)
+
+(setq bug--cache nil)
 (setq bug--url-patch-file (format "%s/patched-url/url-http-%d.%d.el"
                                   (file-name-directory (or load-file-name (buffer-file-name)))
                                   emacs-major-version
                                   emacs-minor-version))
+
+(defun bug--cache-put (key value &optional instance)
+  "Cache a key/value pair for a specific instance"
+  (let* ((instance (bug--instance-to-symbolp instance))
+         (tmp-alist (plist-get bug--cache instance)))
+    (if (assoc key tmp-alist)
+        (setf (cdr (assoc key tmp-alist)) value)
+      (setq bug--cache
+            (plist-put bug--cache instance
+                       (push (cons key value) tmp-alist))))))
+
+(defun bug--cache-get (key &optional instance)
+  "Return a cached value for a specific instance"
+  (let ((instance (bug--instance-to-symbolp instance)))
+    (cdr (assoc key (plist-get bug--cache instance)))))
+
+(defun bug-cache-clear (&optional instance)
+  "Clear the cache, either globally, or for a specific instance"
+  (interactive
+   (if current-prefix-arg
+       (list (bug--instance-to-symbolp (bug--query-instance)))))
+  (if instance
+      (remf bug--cache instance)
+    (setq bug--cache nil)))
 
 (defun bug--instance-to-symbolp (instance)
   "Make sure that the instance handle is symbolp; returns default instance
@@ -80,7 +106,7 @@ parsed response as alist"
 (defun bug--get-fields (&optional instance)
   "Download fields used by this bug tracker instance or returns them from cache"
   (let* ((instance (bug--instance-to-symbolp instance))
-         (fields (if (plist-get bug--field-cache instance) nil
+         (fields (if (bug--cache-get 'fields instance) nil
                    (cond
                     ((equal 'rally (bug--backend-type instance))
                      (bug--rpc-rally-get-fields))
@@ -98,9 +124,9 @@ parsed response as alist"
                           (puthash bz-mapped-field field field-hash))
                       (puthash key field field-hash)))
                   (cdr (car (cdr (car fields)))))
-          (setq bug--field-cache (plist-put bug--field-cache instance field-hash))
+          (bug--cache-put 'fields field-hash instance)
           ))
-    (plist-get bug--field-cache instance)))
+    (bug--cache-get 'fields instance)))
 
 (defmacro bug--with-patched-url (&rest body)
   "Try to load url-http patched for https proxy if `bug-patched-url' is
