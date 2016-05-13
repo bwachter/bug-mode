@@ -80,10 +80,10 @@
     ;; the tmp-bug-id bit is needed as setting the mode clears buffer-local variables
     (make-local-variable 'bug---id)
     (setq bug---id tmp-bug-id)
-    (make-local-variable 'bug---internal-id)
+    (make-local-variable 'bug---uuid)
     (cond ((equal 'rally (bug--backend-type instance))
-           (setq bug---internal-id (cdr (assoc '_refObjectUUID bug))))
-          (t (setq bug---internal-id bug---id)))
+           (setq bug---uuid (cdr (assoc '_refObjectUUID bug))))
+          (t (setq bug---uuid bug---id)))
     (make-local-variable 'bug--is-new)
     (setq bug---is-new (if bug---id nil t))
     (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))
@@ -391,7 +391,7 @@ This is mostly useful for debugging text properties"
 (defun bug--bug-mode-update-bug ()
   "Update the bug by reloading it from the bug tracker"
   (interactive)
-  (bug-open bug---internal-id bug---instance))
+  (bug-open bug---uuid bug---instance))
 
 ;;;###autoload
 (defun bug--bug-mode-quit-window ()
