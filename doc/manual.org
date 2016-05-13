@@ -23,6 +23,7 @@
    - [[#bug-search-multiple-bugzilla][bug-search-multiple (/Bugzilla/)]]
    - [[#bug-stored-bugs][bug-stored-bugs]]
  - [[#customization][Customization]]
+ - [[#org-mode-integration][org-mode integration]]
  - [[#proxy-use][Proxy use]]
    - [[#patch-url][Patch url]]
    - [[#use-port-forwarding][Use port forwarding]]
@@ -141,6 +142,15 @@ The easiest way to change the faces used in bug mode is via =M-x customize-group
 
 #+CAPTION: Customization screen for faces
 [[./bug-mode-customization-faces.png]]
+
+* org-mode integration
+To enable basic org-mode integration do a =(require 'org-bug)= /after/ initializing bug-mode. This will provide two hyperlink types for use in org-mode. The format for both types is <bug tracker instance>/<bug identifier>. The instance identifier may not be omitted.
+
+The =bug= link type provides a link to a single bug, requiring a unique identifier. For Rally a link could look like this: =bug::test-rally/adff50be-40ec-4739-8615-d77ac5429bac=.
+
+The =bug-search= link type provides a link to a bug search. For Rally this can be used to easily link to a user friendly bug name, like this: =bug::test-rally/US2=. A simple text search could be done like this: =bug-search::test-rally/may get eaten=.
+
+The org-mode integration supports [[http://orgmode.org/manual/Capture.html][org-capture]] from bug-mode and bug-list-mode (=search result) buffers. Calling =org-capture= anywhere in a bug-mode buffer will capture a link to the bug. Calling =org-capture= in a bug-list-mode buffer will capture a link to the bug at point.
 
 * Proxy use
 HTTPS proxy support in emacs has been broken for quite a while, for details read
