@@ -109,13 +109,15 @@ for inclusion in tabulated-list-entries"
       (let* ((field (assoc (intern header-item) (cdr bug)))
              (value (or (cdr field) ""))
              (map (make-sparse-keymap))
-             (bug-id (cdr (assoc (bug--uuid-field-name bug---instance) (cdr bug))))
+             (bug-uuid (cdr (assoc (bug--uuid-field-name bug---instance) (cdr bug))))
+             (bug-id (cdr (assoc (bug--friendly-id-field-name bug---instance) (cdr bug))))
              (formatted-string))
         (define-key map [mouse-1] 'bug--list-mode-select-bug-with-mouse)
         (define-key map [mouse-2] 'bug--list-mode-select-bug-with-mouse)
         (setq formatted-string
               (propertize
                (bug--format-field-value field bug---instance)
+               'bug-uuid bug-uuid
                'bug-id bug-id
                'keymap map))
         (aset data count formatted-string))
@@ -146,6 +148,26 @@ an alist with (type . length) cells containing the longest length"
     (maphash (lambda (key val) (setq result (cons `(,key . ,val) result))) ht)
     result))
 
+(defun bug-list-mode-bug-near-point ()
+  "Return details of the bug at or near point, in the form of an alist with
+the following keys:
+- bug-id -- the user friendly bug ID
+- bug-uuid -- the unique ID of the bug
+- instance -- the bugtracker instance
+
+This function may be called by external modules to get information about a bug
+at or near point. If no valid bug was found bug-id and bug-uuid are `nil'"
+  (let ((bug-uuid (or (get-text-property (point) 'bug-uuid)
+                      (save-excursion
+                        (forward-line 0)
+                        (get-text-property (point) 'bug-uuid))))
+        (bug-id (or (get-text-property (point) 'bug-id)
+                      (save-excursion
+                        (forward-line 0)
+                        (get-text-property (point) 'bug-id))))
+        (bug-instance (or (and (boundp 'bug---instance) bug---instance) bug-default-instance)))
+    `((bug-id . ,bug-id)(bug-uuid . ,bug-uuid)(instance . ,bug-instance))))
+
 ;; functions usually called through keybindings in bug-list-mode
 ;;;###autoload
 (defun bug--list-mode-info ()
@@ -153,11 +175,15 @@ an alist with (type . length) cells containing the longest length"
 
 This is mostly useful for debugging text properties"
   (interactive)
-  (let ((bug-id (get-text-property (point) 'bug-id)))
+  (let ((bug-uuid (get-text-property (point) 'bug-uuid))
+        (bug-id (get-text-property (point) 'bug-id)))
     (message
      (concat
       "ID = "
       (prin1-to-string bug-id)
+      "; "
+      "UUID = "
+      (prin1-to-string bug-uuid)
       "; "
       ))))
 
@@ -175,12 +201,10 @@ open the bug."
 properties at point, or -- if that fails -- from the beginning of the current
 line"
   (interactive)
-  (let ((bug-id (or (get-text-property (point) 'bug-id)
-                    (save-excursion
-                      (forward-line 0)
-                      (get-text-property (point) 'bug-id)))))
-    (if bug-id
-        (bug-open bug-id bug---instance)
+  (let* ((bug-info (bug-list-mode-bug-near-point))
+         (bug-uuid (cdr (assoc 'bug-uuid bug-info))))
+    (if 'bug-uuid
+        (bug-open bug-uuid bug---instance)
       (message "No bug ID found. Misconfigured bug UUID property?"))))
 
 ;;;###autoload
