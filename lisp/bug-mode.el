@@ -90,7 +90,7 @@
     (make-local-variable 'bug---data)
     (setq bug---data bug)
     (make-local-variable 'bug---instance)
-    (setq bug---instance instance)
+    (setq bug---instance (bug--instance-to-symbolp instance))
     (make-local-variable 'bug---changed-data)
     (setq bug---changed-data nil)
     (setq buffer-read-only nil)
