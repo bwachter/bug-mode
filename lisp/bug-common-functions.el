@@ -74,7 +74,9 @@ with names of lists across all bug tracker instances"
     (completing-read "List name: " category-keys nil nil)))
 
 ;;;###autoload
-(defun bug--get-field-property (field-name property &optional instance)
+;; TODO: pass in object, and first check for property in object, and if not
+;;       found, check generic one
+(defun bug--get-field-property (field-name property &optional instance object)
   "Return a property for a bug field from the field definition.
 
 For example, to find the display name for the field 'foo' you could do
