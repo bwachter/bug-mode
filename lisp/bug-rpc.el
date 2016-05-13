@@ -125,13 +125,16 @@ parsed response as alist"
          (t (bug--rpc-bug-handle-error response))))
     (error "Failed to parse http response")))
 
-(defun bug--get-fields (&optional instance)
+(defun bug--get-fields (&optional instance object)
   "Download fields used by this bug tracker instance or returns them from cache"
-  (let* ((instance (bug--instance-to-symbolp instance))
-         (fields (if (bug--cache-get 'fields instance) nil
+  (let* ((cache-key (if object
+                        (intern (concat "fields-" (prin1-to-string object t)))
+                      'fields))
+         (instance (bug--instance-to-symbolp instance))
+         (fields (if (bug--cache-get cache-key instance) nil
                    (cond
                     ((equal 'rally (bug--backend-type instance))
-                     (bug--rpc-rally-get-fields))
+                     (bug--rpc-rally-get-fields object))
                     (t (bug-rpc "Bug.fields" '() instance)))))
          (field-hash (make-hash-table :test 'equal)))
     (if fields
@@ -146,9 +149,9 @@ parsed response as alist"
                           (puthash bz-mapped-field field field-hash))
                       (puthash key field field-hash)))
                   (cdr (car (cdr (car fields)))))
-          (bug--cache-put 'fields field-hash instance)
+          (bug--cache-put cache-key field-hash instance)
           ))
-    (bug--cache-get 'fields instance)))
+    (bug--cache-get cache-key instance)))
 
 (defmacro bug--with-patched-url (&rest body)
   "Try to load url-http patched for https proxy if `bug-patched-url' is

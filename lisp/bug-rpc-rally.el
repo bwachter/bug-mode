@@ -143,7 +143,7 @@ object-id for read (or any other call requiring an object-id):
     response))
 
 ;;;###autoload
-(defun bug--rpc-rally-get-fields ()
+(defun bug--rpc-rally-get-fields (&optional object)
     "Return a static list of valid field names for rally
 
 Unlike Bugzilla Rally does not have an API call to retrieve a list of

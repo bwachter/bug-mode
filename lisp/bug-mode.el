@@ -327,6 +327,9 @@ This is mostly useful for debugging text properties"
         (field (get-text-property (point) 'field)))
     (message
      (concat
+      "object = "
+      (prin1-to-string (cdr (assoc 'ObjectType bug---data)))
+      "; "
       "type = "
       (prin1-to-string content-type)
       "; "

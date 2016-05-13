@@ -36,6 +36,7 @@
     ;; error messages are handled in RPC backend already, and -- unlike in
     ;; bugzilla -- the query is executed with a known to exist UUID. So,
     ;; in theory, from this point on nothing should fail
+    (push `(ObjectType . ,return-document-type) return-document)
     return-document))
 
 (provide 'bug-mode-rally)
