@@ -355,6 +355,16 @@ specific instance"
      (t
       'id))))
 
+(defun bug--friendly-id-field-name (&optional instance)
+  "Return the field used to show a friendly bug ID to the user"
+  (if (bug--instance-property :bug-friendly-id instance)
+      (bug--instance-property :bug-friendly-id instance)
+    (cond
+     ((equal 'rally (bug--backend-type instance))
+      'FormattedID)
+     (t
+      'id))))
+
 ;;;;;;
 ;; startup code to read persistent data
 (bug--read-data-file)
