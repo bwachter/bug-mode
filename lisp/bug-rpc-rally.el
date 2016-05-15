@@ -129,10 +129,10 @@ object-id for read (or any other call requiring an object-id):
     (with-current-buffer (url-retrieve-synchronously url)
       (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
       (bug--rpc-response-store-cookies instance)
-      (bug--parse-rpc-response))))
+      (bug--parse-rpc-response instance))))
 
 ;;;###autoload
-(defun bug--rpc-rally-handle-error (response)
+(defun bug--rpc-rally-handle-error (response instance)
   "Check data returned from Rally for errors"
   (let* (; the errors are inside the returned object, for error handling
          ; it's easiest to just throw away the outer layer
@@ -143,7 +143,7 @@ object-id for read (or any other call requiring an object-id):
     response))
 
 ;;;###autoload
-(defun bug--rpc-rally-get-fields (&optional object)
+(defun bug--rpc-rally-get-fields (&optional object instance)
     "Return a static list of valid field names for rally
 
 Unlike Bugzilla Rally does not have an API call to retrieve a list of

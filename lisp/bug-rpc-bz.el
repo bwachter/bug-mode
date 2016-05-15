@@ -39,14 +39,19 @@ parsed response as alist"
     (bug--debug (concat "request " url "\n" json-str "\n"))
     (with-current-buffer (url-retrieve-synchronously url)
       (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
-      (bug--parse-rpc-response))))
+      (bug--parse-rpc-response instance))))
 
 ;;;###autoload
-(defun bug--rpc-bug-handle-error (response)
+(defun bug--rpc-bz-handle-error (response instance)
   "Check data returned from Bugzilla for errors"
   (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
       (error (cdr (assoc 'message (assoc 'error response)))))
   response)
+
+;;;###autoload
+(defun bug--rpc-bz-get-fields (&optional object instance)
+  "Download the field list for Bugzilla"
+  (bug-rpc "Bug.fields" '() instance))
 
 ;;;###autoload
 (defun bug--rpc-bz-map-field (field-name)

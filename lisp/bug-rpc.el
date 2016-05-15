@@ -113,16 +113,13 @@ parsed response as alist"
           (push cookie cookies)))
       (bug--cache-put 'cookies cookies instance))))
 
-(defun bug--parse-rpc-response ()
+(defun bug--parse-rpc-response (instance)
   "Parse a JSON response from buffer and return it as alist"
   (bug--debug-log-time "RPC done")
   (goto-char 0)
   (if (re-search-forward "\n\n" nil t)
       (let ((response (json-read-from-string (decode-coding-string (buffer-substring (point) (point-max)) 'utf-8))))
-        (cond
-         ((equal 'rally (bug--backend-type instance))
-          (bug--rpc-rally-handle-error response))
-         (t (bug--rpc-bug-handle-error response))))
+        (bug--backend-function "bug--rpc-%s-handle-error" response instance))
     (error "Failed to parse http response")))
 
 (defun bug--get-fields (&optional instance object)
@@ -132,10 +129,7 @@ parsed response as alist"
                       'fields))
          (instance (bug--instance-to-symbolp instance))
          (fields (if (bug--cache-get cache-key instance) nil
-                   (cond
-                    ((equal 'rally (bug--backend-type instance))
-                     (bug--rpc-rally-get-fields object))
-                    (t (bug-rpc "Bug.fields" '() instance)))))
+                   (bug--backend-function "bug--rpc-%s-get-fields" object instance)))
          (field-hash (make-hash-table :test 'equal)))
     (if fields
         (progn
