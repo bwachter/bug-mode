@@ -30,7 +30,9 @@
 ;;;###autoload
 (defun bug--fetch-rally-bug (id &optional instance)
   "Retrieve a single bug from Rally"
-  (let* ((search-response (bug-rpc "artifact.read" `((object-id . ,id)) instance))
+  (let* ((search-response (bug-rpc `((resource . "artifact")
+                                     (operation . "read")
+                                     (object-id . ,id)) instance))
          (return-document-type (caar search-response))
          (return-document (cdr (car search-response))))
     ;; error messages are handled in RPC backend already, and -- unlike in

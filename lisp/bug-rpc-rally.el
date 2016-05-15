@@ -66,26 +66,28 @@ no API key is configured -- by using basic auth with username and password"
         ((string= operation "authorize") "GET")
         (t "POST")))
 
-(defun bug--rpc-rally-url-map-operation (operation &optional object args)
+(defun bug--rpc-rally-url-map-operation (args)
   "Create the operation specific part of the URL"
   (let ((object-id (cdr (assoc 'object-id args)))
         (object-type (cdr (assoc 'object-type args)))
+        (resource (cdr (assoc 'resource args)))
+        (operation (cdr (assoc 'operation args)))
         (query-string (url-build-query-string (cdr (assoc 'query-data args)))))
     (cond
-     ((string= operation "authorize") (concat object "/authorize"))
+     ((string= operation "authorize") (concat resource "/authorize"))
      ;; TODO: operations like create need to use a security key
      ;;       https://rally1.rallydev.com/slm/doc/webservice/authentication.jsp
-     ((string= operation "create") (concat object "/create"))
+     ((string= operation "create") (concat resource "/create"))
      ((string= operation "copy")
-      (concat object "/" object-id "/copy"))
+      (concat resource "/" object-id "/copy"))
      ((string= operation "query")
-      (concat object "?" query-string))
+      (concat resource "?" query-string))
      (t (if object-type
-            (concat object "/" object-id "/" object-type)
-          (concat object "/" object-id))))))
+            (concat resource "/" object-id "/" object-type)
+          (concat resource "/" object-id))))))
 
 ;;;###autoload
-(defun bug--rpc-rally (method args &optional instance)
+(defun bug--rpc-rally (args &optional instance)
   "Send an RPC response to the given (or default) Rally instance and return the
 parsed response as alist.
 
@@ -94,6 +96,8 @@ though the API is different for Rally. All operations but query and create
 require an additional object-id in args to work.
 
 args is an alist, whith the following keys:
+- resource: a string representing the resource to use
+- operation: what to do with the resource
 - object-id: a string representing the object-id
 - object-type: a string describing a referenced object to retrieve
 - query-data: an alist containing query parameters
@@ -113,10 +117,10 @@ object-id for read (or any other call requiring an object-id):
  (bug--rpc-rally \"hierarchicalrequirement.read\"
                '((object-id . \"1a23bc45-abcd-6e78-f901-g2345hij678k\")))
 "
-  (let* ((object (car (split-string method "\\." t)))
-         (operation (cadr (split-string method "\\." t)))
+  (let* ((resource (cdr (assoc 'resource args)))
+         (operation (cdr (assoc 'operation args)))
          (url-request-method (bug--rpc-rally-request-method operation))
-         (url-str (bug--rpc-rally-url-map-operation operation object args))
+         (url-str (bug--rpc-rally-url-map-operation args))
          (url (concat bug-rally-url url-str))
          ;; don't accept any cookie, see issue 6 for details
          (url-cookie-untrusted-urls '(".*"))

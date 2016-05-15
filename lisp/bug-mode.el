@@ -159,13 +159,19 @@ and keep the buffers modified marker accurate."
 
 (defun bug-update (id fields &optional instance)
   "Update fields in the bug on Bugzilla"
-  (message (format "fields: %s" (append fields `((ids . ,id)))))
-  (bug-rpc "Bug.update" (append fields `((ids . ,id))) instance))
+  (let ((fields (append fields `((ids . ,id)))))
+    (message (format "fields: %s" fields))
+    (bug-rpc `((resource . "Bug")
+               (operation . "update")
+               (post-data . ,fields)) instance)))
 
 (defun bug-get-comments (id &optional instance)
   "Request comments for a bug and add it to an existing(!) bug buffer
 via bug-handle-comments-response"
-  (bug-handle-comments-response id (bug-rpc "Bug.comments" `(("ids" . ,id)) instance)))
+  (bug-handle-comments-response id
+                                (bug-rpc `((resource . "Bug")
+                                           (operation . "comments")
+                                           (post-data . (("ids" . ,id)))) instance)))
 
 (defun bug-handle-comments-response (id response)
   "Add received comments into an existing bug buffer"
@@ -398,7 +404,9 @@ This is mostly useful for debugging text properties"
 (defun bug-get-attachments (id &optional instance)
     "Request attachment details for a bug and add it to an existing(!) bug buffer
 via bug-handle-attachments-response"
-  (bug-handle-attachments-response id (bug-rpc "Bug.attachments" `(("ids" . ,id)) instance)))
+  (bug-handle-attachments-response id (bug-rpc `((resource . "Bug")
+                                                 (operation . "attachments")
+                                                 (post-data . (("ids" . ,id)))) instance)))
 
 (defun bug-handle-attachments-response (id response)
   "Add received attachment info into an existing bug buffer"

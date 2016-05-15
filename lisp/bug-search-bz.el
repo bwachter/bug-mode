@@ -33,7 +33,10 @@
 This function takes a pre-parsed Bugzilla search query as argument.
 "
   (bug--handle-search-response params
-                               (bug-rpc "Bug.search" params instance)
+                               (bug-rpc `((resource . "Bug")
+                                          (operation . "search")
+                                          (post-data . ,params))
+                                        instance)
                                instance))
 
 ;;;###autoload

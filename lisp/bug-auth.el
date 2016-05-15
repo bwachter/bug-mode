@@ -62,16 +62,20 @@ The return value is a two element list (login password)
   (interactive
    (if current-prefix-arg
        (list (bug--query-instance))))
-  (bug-rpc "User.logout" '() instance))
+  (bug-rpc '((resource . "User")
+             (operation . "login")) instance))
 
 ;;;###autoload
 (defun bug-login (&optional instance)
   (interactive
    (if current-prefix-arg
        (list (bug--query-instance))))
-  (bug-rpc "User.login" `((login . ,(car (bug-credentials instance)))
+  (bug-rpc `((resource . "User")
+             (operation . "login")
+             (post-data .
+                        ((login . ,(car (bug-credentials instance)))
                          (password . ,(cadr (bug-credentials instance)))
-                         (remember . t)) instance)
+                         (remember . t))) instance))
   (bug--get-fields)
   (message "Login successful"))
 

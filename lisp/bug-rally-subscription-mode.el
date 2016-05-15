@@ -48,8 +48,9 @@
        (list (bug--query-instance))))
   (unless (equal 'rally (bug--backend-type instance))
     (error "Not a Rally instance"))
-  (let ((subscription (car (bug-rpc "Subscription.query"
-                                    '((query-data
+  (let ((subscription (car (bug-rpc '((resource . "Subscription")
+                                      (operation . "query")
+                                      (query-data
                                        ((query ""))))
                                     instance))))
     (switch-to-buffer
@@ -83,8 +84,9 @@
             (cdr (assoc 'Results
                         (assoc 'QueryResult
                                (bug-rpc
-                                "Subscription.read"
-                                `((object-id .
+                                `((resource . "Subscription")
+                                  (operation . "read")
+                                  (object-id .
                                    ,(prin1-to-string
                                      (cdr (assoc 'ObjectID subscription))))
                                   (object-type . "Workspaces"))

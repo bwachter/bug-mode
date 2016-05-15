@@ -27,10 +27,13 @@
 ;;; Code:
 
 ;;;###autoload
-(defun bug--rpc-bz (method args &optional instance)
+(defun bug--rpc-bz (args &optional instance)
   "Send an RPC response to the given (or default) Bugzilla instance and return the
 parsed response as alist"
-  (let* ((json-str (json-encode `((method . ,method) (params . [,args]) (id 11))))
+  (let* ((method (concat (cdr (assoc 'resource args)) "."
+                         (cdr (assoc 'operation args))))
+         (post-data (cdr (assoc 'post-data args)))
+         (json-str (json-encode `((method . ,method) (params . [,post-data]) (id 11))))
          (url (concat (bug--instance-property :url instance) "/jsonrpc.cgi"))
          (url-request-method "POST")
          (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?
@@ -51,7 +54,8 @@ parsed response as alist"
 ;;;###autoload
 (defun bug--rpc-bz-get-fields (&optional object instance)
   "Download the field list for Bugzilla"
-  (bug-rpc "Bug.fields" '() instance))
+  (bug-rpc '((resource . "Bug")
+                          (operation . "fields")) instance))
 
 ;;;###autoload
 (defun bug--rpc-bz-map-field (field-name)

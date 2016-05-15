@@ -88,14 +88,22 @@ instance if INSTANCE is empty"
           (or rally-url bug-rally-url))
     (plist-get property-list property))))
 
-(defun bug-rpc (method args &optional instance)
+(defun bug-rpc (args &optional instance)
   "Send an RPC response to the given (or default) bugtracker instance and return the
-parsed response as alist"
+parsed response as alist.
+
+The `args' alist usually has at least two elements:
+- resource: a string representing the resource to use
+- operation: what to do with the resource
+
+If data needs to be posted a `post-data' element containing an alist with
+data needs to be added.
+
+Backends may define additional keys, check the documentation of their RPC
+functions for details.
+"
   (bug--with-patched-url
-   (cond
-    ((equal 'rally (bug--backend-type instance))
-     (bug--rpc-rally method args instance))
-    (t (bug--rpc-bz method args instance)))))
+   (bug--backend-function "bug--rpc-%s" args instance)))
 
 (defun bug--rpc-response-store-cookies (instance)
   "Try to extract cookies from an RPC response, and store them in the cache"

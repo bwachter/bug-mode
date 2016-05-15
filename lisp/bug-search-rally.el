@@ -53,8 +53,11 @@ pagesize, ...) can't be supplied:
       (add-to-list 'query '(fetch "FormattedID,LastUpdateDate,TaskStatus,Name")))
     (bug--handle-rally-search-response
      query
-     (bug-rpc (or method "artifact.query")
-             `((query-data . ,query)) instance) instance)))
+     (bug-rpc `((resource . "artifact")
+                (operation ."query")
+                (query-data . ,query)) instance) instance)))
+     ;(bug-rpc (or method "artifact.query")
+     ;        `((query-data . ,query)) instance) instance)))
 
 ;; TODO: Rally strips the letters, and just queries the number, leading to
 ;;       duplicate results. Check the query if we were searching for a single
