@@ -60,5 +60,15 @@ don't match the fields found in a bug."
     (cond ((string= field-name "summary")
            "short-desc"))))
 
+;;;###autoload
+(defun bug--bz-field-name (field-name &optional instance)
+  "Resolve field names for Bugzilla"
+  (cond ((equal :bug-uuid field-name)
+         'id)
+        ((equal :bug-friendly-id field-name)
+         'id)
+        ((equal :bug-summary field-name)
+         'summary)))
+
 (provide 'bug-rpc-bz)
 ;;; bug-rpc-bz.el ends here

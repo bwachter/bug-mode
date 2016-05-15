@@ -67,7 +67,7 @@
 (defun bug-show (bug &optional instance)
   "Display an existing bug buffer in bug-mode"
   (bug--debug-log-time "bug-show")
-  (let ((tmp-bug-id (cdr (assoc (bug--friendly-id-field-name instance) bug))))
+  (let ((tmp-bug-id (cdr (assoc (bug--field-name :bug-friendly-id instance) bug))))
     (switch-to-buffer (format "*%s bug: %s*"
                               (prin1-to-string (bug--backend-type instance) t)
                               tmp-bug-id))
@@ -77,7 +77,7 @@
     (make-local-variable 'bug---id)
     (setq bug---id tmp-bug-id)
     (make-local-variable 'bug---uuid)
-    (setq bug---uuid (cdr (assoc (bug--uuid-field-name instance) bug)))
+    (setq bug---uuid (cdr (assoc (bug--field-name :bug-uuid instance) bug)))
     (make-local-variable 'bug--is-new)
     (setq bug---is-new (if bug---id nil t))
     (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))

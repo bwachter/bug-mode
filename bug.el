@@ -344,26 +344,20 @@ are used.
      (t
       '("id" "status" "summary" "last_change_time")))))
 
-(defun bug--uuid-field-name (&optional instance)
-  "Return the field used to uniquely identify an individual bug on a
-specific instance"
-  (if (bug--instance-property :bug-uuid instance)
-      (bug--instance-property :bug-uuid instance)
-    (cond
-     ((equal 'rally (bug--backend-type instance))
-      '_refObjectUUID)
-     (t
-      'id))))
+(defun bug--field-name (field-name instance)
+  "Return the instance-specific internal field name for `field-name'.
 
-(defun bug--friendly-id-field-name (&optional instance)
-  "Return the field used to show a friendly bug ID to the user"
-  (if (bug--instance-property :bug-friendly-id instance)
-      (bug--instance-property :bug-friendly-id instance)
-    (cond
-     ((equal 'rally (bug--backend-type instance))
-      'FormattedID)
-     (t
-      'id))))
+Field names currently handled this way are:
+- :bug-uuid -- the unique ID of the bug
+- :bug-friendly-id -- the ID to be presented to the user
+- :bug-summary -- the short bug summary/description
+
+For very special instances the backend specific types may be overridden by
+setting those values in the instance configuration.
+"
+  (if (bug--instance-property field-name instance)
+      (bug--instance-property field-name instance)
+    (bug--backend-function "bug--%s-field-name" field-name instance)))
 
 ;;;;;;
 ;; startup code to read persistent data

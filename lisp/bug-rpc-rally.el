@@ -167,5 +167,15 @@ The following additions are supported for Rally:
           (json-read-file rally-fields-file)
         (error "Field definition file for Rally not found"))))
 
+;;;###autoload
+(defun bug--rally-field-name (field-name &optional instance)
+  "Resolve field names for rally"
+  (cond ((equal :bug-uuid field-name)
+         '_refObjectUUID)
+        ((equal :bug-friendly-id field-name)
+         'FormattedID)
+        ((equal :bug-summary field-name)
+         'Description)))
+
 (provide 'bug-rpc-rally)
 ;;; bug-rpc-rally.el ends here
