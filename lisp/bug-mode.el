@@ -67,23 +67,17 @@
 (defun bug-show (bug &optional instance)
   "Display an existing bug buffer in bug-mode"
   (bug--debug-log-time "bug-show")
-  (let ((tmp-bug-id))
-    (cond ((equal 'rally (bug--backend-type instance))
-           (setq tmp-bug-id (cdr (assoc 'FormattedID bug)))
-           (switch-to-buffer (format "*rally bug: %s*"
-                                     tmp-bug-id)))
-          (t
-           (setq tmp-bug-id (cdr (assoc 'id bug)))
-           (switch-to-buffer (format "*bugzilla bug: %s*" tmp-bug-id))))
+  (let ((tmp-bug-id (cdr (assoc (bug--friendly-id-field-name instance) bug))))
+    (switch-to-buffer (format "*%s bug: %s*"
+                              (prin1-to-string (bug--backend-type instance) t)
+                              tmp-bug-id))
 
     (bug-mode)
     ;; the tmp-bug-id bit is needed as setting the mode clears buffer-local variables
     (make-local-variable 'bug---id)
     (setq bug---id tmp-bug-id)
     (make-local-variable 'bug---uuid)
-    (cond ((equal 'rally (bug--backend-type instance))
-           (setq bug---uuid (cdr (assoc '_refObjectUUID bug))))
-          (t (setq bug---uuid bug---id)))
+    (setq bug---uuid (cdr (assoc (bug--uuid-field-name instance) bug)))
     (make-local-variable 'bug--is-new)
     (setq bug---is-new (if bug---id nil t))
     (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))
@@ -181,7 +175,7 @@ via bug-handle-comments-response"
       (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
              (comments (cdr (cadr (car bugs)))))
         (save-excursion
-          (switch-to-buffer (format "*bugzilla bug: %s*" id))
+          (switch-to-buffer (format "*bz bug: %s*" id))
           (setq buffer-read-only nil)
           (goto-char 0)
           (if (re-search-forward "^COMMENTS:$" nil t)
@@ -414,7 +408,7 @@ via bug-handle-attachments-response"
       (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
              (attachments (cdr (car bugs))))
         (save-excursion
-          (switch-to-buffer (format "*bugzilla bug: %s*" id))
+          (switch-to-buffer (format "*bz bug: %s*" id))
           (setq buffer-read-only nil)
           (goto-char 0)
           (if (re-search-forward "^ATTACHMENTS:$" nil t)

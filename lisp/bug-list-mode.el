@@ -56,10 +56,9 @@
 (defun bug-list-show (query parsed &optional instance)
   "Display the result of a bug search returning a list of bugs"
   (bug--debug-log-time "bug-list-show")
-  (cond
-   ((equal 'rally (bug--backend-type instance))
-    (switch-to-buffer (format "*rally results: %s*" (pretty-kvs query))))
-   (t (switch-to-buffer (format "*bugzilla results: %s*" (pretty-kvs query)))))
+  (switch-to-buffer (format "*%s results: %s*"
+                            (prin1-to-string (bug--backend-type instance) t)
+                            (pretty-kvs query)))
   (bug-list-mode)
   (make-local-variable 'bug---query)
   (setq bug---query query)
