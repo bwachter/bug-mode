@@ -50,7 +50,7 @@ pagesize, ...) can't be supplied:
     (unless (assoc 'pagesize query)
       (add-to-list 'query '(pagesize 100)))
     (unless (assoc 'fetch query)
-      (add-to-list 'query '(fetch "FormattedID,LastUpdateDate,TaskStatus,Name")))
+      (add-to-list 'query '(fetch "FormattedID,LastUpdateDate,TaskStatus,Name,State,ScheduleState")))
     (bug--handle-rally-search-response
      query
      (bug-rpc `((resource . "artifact")

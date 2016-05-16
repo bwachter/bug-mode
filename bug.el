@@ -340,7 +340,7 @@ are used.
       (bug--instance-property :list-columns instance)
     (cond
      ((equal 'rally (bug--backend-type instance))
-      '("FormattedID" "Name" "LastUpdateDate"))
+      '("FormattedID" ("State" "ScheduleState") "Name" "LastUpdateDate"))
      (t
       '("id" "status" "summary" "last_change_time")))))
 
