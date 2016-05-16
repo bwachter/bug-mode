@@ -93,12 +93,26 @@
 (defun bug--list-format-header-field (header-field &optional instance)
   "Format a header field name for display, taking into account instance
 specific field descriptions."
-  (propertize
-   (prin1-to-string (or
-                     (bug--get-field-property
-                      (intern header-field) 'display_name instance)
-                     header-field) t)
-    'face 'bug-header-field))
+  (let ((header-field (if (listp header-field)
+                          (car header-field)
+                        header-field)))
+    (propertize
+     (prin1-to-string (or
+                       (bug--get-field-property
+                        (intern header-field) 'display_name instance)
+                       header-field) t)
+     'face 'bug-header-field)))
+
+(defun bug--get-field-by-key (bug key)
+  "Return the bug field matching the key. In case key is a list, return
+the first field matching any of the keys in the list."
+  (if (listp key)
+      (let ()
+        (catch 'return
+          (dolist (field key)
+            (if (assoc (intern field) (cdr bug))
+                (throw 'return (assoc (intern field) (cdr bug)))))))
+    (assoc (intern key) (cdr bug))))
 
 (defun bug-to-filtered-vector (bug list-columns)
   "Extract fields listed in the header from bug and return a vector suitable
@@ -106,7 +120,7 @@ for inclusion in tabulated-list-entries"
   (let ((data (make-vector (length list-columns) ""))
         (count 0))
     (dolist (header-item list-columns)
-      (let* ((field (assoc (intern header-item) (cdr bug)))
+      (let* ((field (bug--get-field-by-key bug header-item))
              (value (or (cdr field) ""))
              (map (make-sparse-keymap))
              (bug-uuid (cdr (assoc (bug--field-name :bug-uuid bug---instance) (cdr bug))))
