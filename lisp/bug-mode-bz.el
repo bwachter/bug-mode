@@ -30,7 +30,7 @@
 (require 'bug-rpc)
 
 ;;;###autoload
-(defun bug--fetch-bz-bug (id &optional instance)
+(defun bug--fetch-bz-bug (id instance)
   "Retrieve a single bug from Bugzilla"
   (let ((search-response
          (bug-rpc `((resource . "Bug")

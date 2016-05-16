@@ -60,7 +60,7 @@
   "Operate on a list of bugs"
   )
 
-(defun bug-list-show (query parsed &optional instance)
+(defun bug-list-show (query parsed instance)
   "Display the result of a bug search returning a list of bugs"
   (bug--debug-log-time "bug-list-show")
   (switch-to-buffer (format "*%s results: %s*"
@@ -96,7 +96,7 @@
     (tabulated-list-print t)
     (bug--debug-log-time "stop")))
 
-(defun bug--list-format-header-field (header-field &optional instance)
+(defun bug--list-format-header-field (header-field instance)
   "Format a header field name for display, taking into account instance
 specific field descriptions."
   (let ((header-field (if (listp header-field)

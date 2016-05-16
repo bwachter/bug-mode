@@ -63,7 +63,7 @@
    (should (equal (bug--instance-property :url "bug-1")
                   "https://bz.tracker1.example"))
    ;; check if retrieving default properties works
-   (should (equal (bug--instance-property :url)
+   (should (equal (bug--instance-property :url nil)
                   (bug--instance-property :url :bug-2)))))
 
 (ert-deftest bug-test-verify-backend-function-completeness ()

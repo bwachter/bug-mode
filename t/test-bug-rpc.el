@@ -30,19 +30,20 @@
 
 (ert-deftest test-bug-rpc-cache ()
   "Test functions for caching data"
-    (bug--with-dummy-config
-     (should (equal '(:bug-2 ((foo . "bar")))
-                    (bug--cache-put 'foo "bar")))
-     (should (equal '(:bug-2 ((foobar . "baz") (foo . "bar")))
-                    (bug--cache-put 'foobar "baz")))
-     (should (equal '(:bug-2 ((foobar . "baz") (foo . "barbaz")))
-                    (progn (bug--cache-put 'foo "barbaz") bug--cache)))
-     (should (equal '(:bug-2 ((foobar . "baz") (foo . "barbaz")) :new ((bar . "baz")))
-                    (bug--cache-put 'bar "baz" ':new)))
-     (should (equal '(:new ((bar . "baz")))
-                    (progn (bug-cache-clear ':bug-2) bug--cache)))
-     (should (equal nil (progn (bug-cache-clear) bug--cache)))
-     ))
+  (bug--with-dummy-config
+   (should-error (bug--cache-put 'foo "bar") :type 'wrong-number-of-arguments)
+   (should (equal '(:bug-2 ((foo . "bar")))
+                  (bug--cache-put 'foo "bar" nil)))
+   (should (equal '(:bug-2 ((foobar . "baz") (foo . "bar")))
+                  (bug--cache-put 'foobar "baz" nil)))
+   (should (equal '(:bug-2 ((foobar . "baz") (foo . "barbaz")))
+                  (progn (bug--cache-put 'foo "barbaz" nil) bug--cache)))
+   (should (equal '(:bug-2 ((foobar . "baz") (foo . "barbaz")) :new ((bar . "baz")))
+                  (bug--cache-put 'bar "baz" ':new)))
+   (should (equal '(:new ((bar . "baz")))
+                  (progn (bug-cache-clear ':bug-2) bug--cache)))
+   (should (equal nil (progn (bug-cache-clear) bug--cache)))
+   ))
 
 (ert-deftest test-bug-rpc-instance-to-symbolp ()
   "Test bug--instance-to-symbolp"

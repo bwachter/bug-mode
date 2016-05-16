@@ -36,7 +36,7 @@
 (require 'bug-debug)
 (require 'json)
 
-(defun bug--rpc-rally-auth-header (&optional instance)
+(defun bug--rpc-rally-auth-header (instance)
   "Generate an auth header for rally, either by using an API key, or -- if
 no API key is configured -- by using basic auth with username and password"
   (if (bug--instance-property :api-key instance)
@@ -93,7 +93,7 @@ no API key is configured -- by using basic auth with username and password"
           (concat resource "/" object-id))))))
 
 ;;;###autoload
-(defun bug--rpc-rally (args &optional instance)
+(defun bug--rpc-rally (args instance)
   "Send an RPC response to the given (or default) Rally instance and return the
 parsed response as alist.
 
@@ -153,7 +153,7 @@ object-id for read (or any other call requiring an object-id):
     response))
 
 ;;;###autoload
-(defun bug--rpc-rally-get-fields (&optional object instance)
+(defun bug--rpc-rally-get-fields (object instance)
     "Return a static list of valid field names for rally
 
 Unlike Bugzilla Rally does not have an API call to retrieve a list of
@@ -178,7 +178,7 @@ The following additions are supported for Rally:
         (error "Field definition file for Rally not found"))))
 
 ;;;###autoload
-(defun bug--rally-field-name (field-name &optional instance)
+(defun bug--rally-field-name (field-name instance)
   "Resolve field names for rally"
   (cond ((equal :bug-uuid field-name)
          '_refObjectUUID)

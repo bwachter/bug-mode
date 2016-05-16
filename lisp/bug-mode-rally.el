@@ -30,7 +30,7 @@
 (require 'bug-rpc)
 
 ;;;###autoload
-(defun bug--fetch-rally-bug (id &optional instance)
+(defun bug--fetch-rally-bug (id instance)
   "Retrieve a single bug from Rally"
   (let* ((search-response (bug-rpc `((resource . "artifact")
                                      (operation . "read")

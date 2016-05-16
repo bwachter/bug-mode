@@ -32,7 +32,7 @@
 (require 'bug-rpc)
 
 ;;;###autoload
-(defun bug--do-rally-search (params &optional instance method)
+(defun bug--do-rally-search (params instance)
   "Execute a search query in Rally
 
 This function takes either a query string in Rallys query string syntax,
@@ -65,7 +65,7 @@ pagesize, ...) can't be supplied:
 ;; TODO: Rally strips the letters, and just queries the number, leading to
 ;;       duplicate results. Check the query if we were searching for a single
 ;;       bug, and break it down, if necessary
-(defun bug--handle-rally-search-response (query response &optional instance)
+(defun bug--handle-rally-search-response (query response instance)
   "Parse the result of a Rally search"
   (if (and
        (assoc 'QueryResult response)
@@ -108,7 +108,7 @@ pagesize, ...) can't be supplied:
     response))
 
 ;;;###autoload
-(defun bug--parse-rally-search-query (query &optional instance)
+(defun bug--parse-rally-search-query (query instance)
   "Parse search query from minibuffer for rally"
   (cond ;; for userfriendly rally IDs, open bug directly
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)

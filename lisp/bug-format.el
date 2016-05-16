@@ -38,7 +38,7 @@
         (t
          (prin1-to-string value t))))
 
-(defun bug--format-field-name (field &optional instance)
+(defun bug--format-field-name (field instance)
   "Format a bug field name for display, taking into account instance specific
 field descriptions. `field' is expected to be a bug field cons cell."
   (let ((field-name (car field)))
@@ -52,7 +52,7 @@ field descriptions. `field' is expected to be a bug field cons cell."
      'face 'bug-field-description
      'bug-field-name field-name)))
 
-(defun bug--format-field-value (field &optional instance long)
+(defun bug--format-field-value (field instance &optional long)
   "Format a bug field value for display, taking into account instance specific
 field descriptions `field' is expected to be a bug field cons cell.
 

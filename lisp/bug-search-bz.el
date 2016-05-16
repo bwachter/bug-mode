@@ -32,7 +32,7 @@
 (require 'bug-rpc)
 
 ;;;###autoload
-(defun bug--do-bz-search (params &optional instance)
+(defun bug--do-bz-search (params instance)
   "Execute a search query in Bugzilla.
 
 This function takes a pre-parsed Bugzilla search query as argument.
@@ -44,7 +44,7 @@ This function takes a pre-parsed Bugzilla search query as argument.
                                         instance)
                                instance))
 
-(defun bug--handle-bz-search-response (query response &optional instance)
+(defun bug--handle-bz-search-response (query response instance)
   "Parse the result of a bug search and either show a single bug or a bug list"
   (if (and
        (assoc 'result response)
@@ -58,7 +58,7 @@ This function takes a pre-parsed Bugzilla search query as argument.
     response))
 
 ;;;###autoload
-(defun bug--parse-bz-search-query (query &optional instance)
+(defun bug--parse-bz-search-query (query instance)
   "Parse search query from minibuffer for Bugzilla"
   (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
       `((,(match-string 1 query) . ,(match-string 2 query)))

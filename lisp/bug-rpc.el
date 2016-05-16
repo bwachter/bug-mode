@@ -38,7 +38,7 @@
                                     emacs-major-version
                                     emacs-minor-version))
 
-(defun bug--cache-put (key value &optional instance)
+(defun bug--cache-put (key value instance)
   "Cache a key/value pair for a specific instance"
   (let* ((instance (bug--instance-to-symbolp instance))
          (tmp-alist (plist-get bug--cache instance)))
@@ -48,7 +48,7 @@
             (plist-put bug--cache instance
                        (push (cons key value) tmp-alist))))))
 
-(defun bug--cache-get (key &optional instance)
+(defun bug--cache-get (key instance)
   "Return a cached value for a specific instance"
   (let ((instance (bug--instance-to-symbolp instance)))
     (cdr (assoc key (plist-get bug--cache instance)))))
@@ -62,13 +62,13 @@
       (cl-remf bug--cache instance)
     (setq bug--cache nil)))
 
-(defun bug--rpc-cookie-header (&optional instance)
+(defun bug--rpc-cookie-header (instance)
   "Insert cookies stored for this particular instance, if any"
   (if (bug--cache-get 'cookies instance)
       (cons "Cookie" (mapconcat 'identity (bug--cache-get 'cookies instance) "; "))
     nil))
 
-(defun bug-rpc (args &optional instance)
+(defun bug-rpc (args instance)
   "Send an RPC response to the given (or default) bugtracker instance and return the
 parsed response as alist.
 
@@ -110,7 +110,7 @@ functions for details.
         (bug--backend-function "bug--rpc-%s-handle-error" response instance))
     (error "Failed to parse http response")))
 
-(defun bug--get-fields (&optional instance object)
+(defun bug--get-fields (instance &optional object)
   "Download fields used by this bug tracker instance or returns them from cache"
   (let* ((cache-key (if object
                         (intern (concat "fields-" (prin1-to-string object t)))

@@ -73,7 +73,7 @@
   (let* ((bug-content (bug--backend-function "bug--fetch-%s-bug" id instance)))
     (if bug-content (bug-show bug-content instance))))
 
-(defun bug-show (bug &optional instance)
+(defun bug-show (bug instance)
   "Display an existing bug buffer in bug-mode"
   (bug--debug-log-time "bug-show")
   (let ((tmp-bug-id (cdr (assoc (bug--field-name :bug-friendly-id instance) bug))))
@@ -108,7 +108,7 @@
           (bug--format-field-value prop instance t)
           'field (car prop))))
       (filter (lambda (prop)
-                (and (not (equal :json-false (bug--get-field-property (car prop) 'is_visible)))
+                (and (not (equal :json-false (bug--get-field-property (car prop) 'is_visible instance)))
                      ;; referenced objects are included as a list. If there's
                      ;; a `Count' property with value `0' it's safe to assume
                      ;; we don't need to retrieve it (might be rally only)
@@ -166,7 +166,7 @@ and keep the buffers modified marker accurate."
            (concat prefix ": " summary)
            'face face))))
 
-(defun bug-update (id fields &optional instance)
+(defun bug-update (id fields instance)
   "Update fields in the bug on Bugzilla"
   (let ((fields (append fields `((ids . ,id)))))
     (message (format "fields: %s" fields))
@@ -174,7 +174,7 @@ and keep the buffers modified marker accurate."
                (operation . "update")
                (post-data . ,fields)) instance)))
 
-(defun bug-get-comments (id &optional instance)
+(defun bug-get-comments (id instance)
   "Request comments for a bug and add it to an existing(!) bug buffer
 via bug-handle-comments-response"
   (bug-handle-comments-response id
@@ -412,7 +412,7 @@ This is mostly useful for debugging text properties"
   (quit-window t))
 
 ;; attachment handling functions
-(defun bug-get-attachments (id &optional instance)
+(defun bug-get-attachments (id instance)
     "Request attachment details for a bug and add it to an existing(!) bug buffer
 via bug-handle-attachments-response"
   (bug-handle-attachments-response id (bug-rpc `((resource . "Bug")
@@ -443,7 +443,7 @@ via bug-handle-attachments-response"
                 (setq buffer-read-only t))
             (error "Could not find area for attachments in buffer"))))))
 
-(defun bug-find-attachment-url (&optional instance)
+(defun bug-find-attachment-url (instance)
   "Construct the URL required to download an attachment"
   (save-excursion
     (let ((end (re-search-forward "$" nil t)))

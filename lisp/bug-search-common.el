@@ -29,7 +29,7 @@
 
 (require 'bug-common-functions)
 
-(defun bug--do-search (params &optional instance)
+(defun bug--do-search (params instance)
   "Execute a bug search query"
   (bug--backend-function "bug--do-%s-search" params instance))
 

@@ -58,7 +58,7 @@ Example usage:
                           (prin1-to-string (bug--backend-type instance) t))))
     (func args instance)))
 
-(defun bug--backend-type (&optional instance)
+(defun bug--backend-type (instance)
   "Return the backend type for the given bug tracker instance"
   (let ((type (bug--instance-property :type instance)))
     (if (equal nil type)
@@ -125,7 +125,7 @@ setting those values in the instance configuration.
 
 ;; TODO: - pass in object, and first check for property in object, and if not
 ;;       found, check generic one
-(defun bug--get-field-property (field-name property &optional instance object)
+(defun bug--get-field-property (field-name property instance &optional object)
   "Return a property for a bug field from the field definition.
 
 For example, to find the display name for the field 'foo' you could do
@@ -135,7 +135,7 @@ the following:
    (assoc property
           (gethash (symbol-name field-name) (bug--get-fields instance)))))
 
-(defun bug--instance-property (property &optional instance)
+(defun bug--instance-property (property instance)
   "Return the value for a PROPERTY of the instance INSTANCE, or the default
 instance if INSTANCE is empty"
   (let* ((instance(bug--instance-to-symbolp instance))
@@ -159,7 +159,7 @@ if instance is nil"
                      bug-default-instance)))
     instance))
 
-(defun bug--list-columns (&optional instance)
+(defun bug--list-columns (instance)
   "Read the list headers for a bugtracker instance.
 
 If the given instance does not have a :list-columns property defaults

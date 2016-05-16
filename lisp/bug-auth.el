@@ -31,7 +31,7 @@
 (require 'bug-rpc)
 (require 'bug-common-functions)
 
-(defun bug-credentials (&optional instance)
+(defun bug-credentials (instance)
   "Return credentials for the given bug tracker instances, if set. The
 configuration data for the instance and authinfo files will be searched, with
 the configuration data taking precedence. Search order for authinfo is :authinfo
@@ -75,8 +75,8 @@ The return value is a two element list (login password)
              (post-data .
                         ((login . ,(car (bug-credentials instance)))
                          (password . ,(cadr (bug-credentials instance)))
-                         (remember . t))) instance))
-  (bug--get-fields)
+                         (remember . t)))) instance)
+  (bug--get-fields instance)
   (message "Login successful"))
 
 (provide 'bug-auth)

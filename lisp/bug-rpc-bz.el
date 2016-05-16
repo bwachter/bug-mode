@@ -32,7 +32,7 @@
 (require 'json)
 
 ;;;###autoload
-(defun bug--rpc-bz (args &optional instance)
+(defun bug--rpc-bz (args instance)
   "Send an RPC response to the given (or default) Bugzilla instance and return the
 parsed response as alist"
   (let* ((method (concat (cdr (assoc 'resource args)) "."
@@ -57,7 +57,7 @@ parsed response as alist"
   response)
 
 ;;;###autoload
-(defun bug--rpc-bz-get-fields (&optional object instance)
+(defun bug--rpc-bz-get-fields (object instance)
   "Download the field list for Bugzilla"
   (bug-rpc '((resource . "Bug")
                           (operation . "fields")) instance))
@@ -75,7 +75,7 @@ don't match the fields found in a bug."
            "short-desc"))))
 
 ;;;###autoload
-(defun bug--bz-field-name (field-name &optional instance)
+(defun bug--bz-field-name (field-name instance)
   "Resolve field names for Bugzilla"
   (cond ((equal :bug-uuid field-name)
          'id)
