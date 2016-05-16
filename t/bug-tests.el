@@ -66,5 +66,20 @@
    (should (equal (bug--instance-property :url)
                   (bug--instance-property :url :bug-2)))))
 
+(ert-deftest bug-test-verify-backend-function-completeness ()
+  "Check if all backends implement all mandatory functions"
+  (let* ((backends '(bz rally))
+         (backend-functions '("bug--%s-field-name"
+                              "bug--browse-%s-bug"
+                              "bug--do-%s-search"
+                              "bug--fetch-%s-bug"
+                              "bug--parse-%s-search-query"
+                              "bug--rpc-%s"
+                              "bug--rpc-%s-get-fields"
+                              "bug--rpc-%s-handle-error")))
+    (dolist (backend backends)
+      (dolist (fn backend-functions)
+        (should (fboundp (intern (format fn backend))))))))
+
 (provide 'bug-tests)
 ;;; bug-tests.el ends here
