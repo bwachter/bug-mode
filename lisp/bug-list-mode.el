@@ -43,6 +43,7 @@
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
     (define-key keymap (kbd "RET") 'bug--list-mode-select-bug)
+    (define-key keymap "b"         'bug--list-mode-browse-bug)
     (define-key keymap "i"         'bug--list-mode-info)
     (define-key keymap "u"         'bug--list-mode-update-list)
     (define-key keymap "q"         'bug--mode-default-quit-window)
@@ -185,6 +186,16 @@ This is mostly useful for debugging text properties"
       (prin1-to-string bug-uuid)
       "; "
       ))))
+
+;;;###autoload
+(defun bug--list-mode-browse-bug ()
+  "Open the current bug from the list in a web browser. The assumption is that
+the backend can handle user friendly IDs for this."
+  (interactive)
+  (let* ((bug-info (bug-list-mode-bug-near-point))
+         (bug-id (cdr (assoc 'bug-id bug-info))))
+    (if 'bug-id
+        (bug--backend-function "bug--browse-%s-bug" bug-id bug---instance))))
 
 ;;;###autoload
 (defun bug--list-mode-select-bug-with-mouse (event)

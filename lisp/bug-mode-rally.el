@@ -41,5 +41,13 @@
     (push `(ObjectType . ,return-document-type) return-document)
     return-document))
 
+;;;###autoload
+(defun bug--browse-rally-bug (id instance)
+  "Open the current Rally bug in browser"
+  ;; this probably breaks with custom hosted rally instances. If you come across
+  ;; one of those please send me an email.
+  (let ((url (format "https://rally1.rallydev.com/#/search?keywords=%s" id)))
+    (browse-url url)))
+
 (provide 'bug-mode-rally)
 ;;; bug-mode-rally.el ends here

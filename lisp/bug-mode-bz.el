@@ -44,5 +44,11 @@
             (aref bugs 0))
            (t (message "You should never see this message")))))))
 
+;;;###autoload
+(defun bug--browse-bz-bug (id instance)
+  "Open the current bugzilla bug in browser"
+  (let ((url (concat (bug--instance-property :url instance) "/show_bug.cgi?id=" id)))
+    (browse-url url)))
+
 (provide 'bug-mode-bz)
 ;;; bug-mode-bz.el ends here

@@ -201,10 +201,12 @@ via bug-handle-comments-response"
 ;; functions usually called through keybindings in bug-mode
 ;;;###autoload
 (defun bug--bug-mode-browse-bug ()
-  "Open the current bug in browser"
+  "Open the current bug in browser.
+
+Note: This passes in the user friendly ID, and assumes that the backend
+function can handle it for browser display."
   (interactive)
-  (let ((url (concat (bug--instance-property :url bug---instance) "/show_bug.cgi?id=" bug---id)))
-    (browse-url url)))
+  (bug--backend-function "bug--browse-%s-bug" bug---id bug---instance))
 
 ;;;###autoload
 (defun bug--bug-mode-create-comment ()
