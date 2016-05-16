@@ -26,13 +26,17 @@
 ;;
 ;;; Code:
 
-(require 'cl)
+(require 'cl-lib)
+(require 'bug-custom)
+(require 'bug-common-functions)
+(require 'bug-debug)
+(require 'json)
 
-(setq bug--cache nil)
-(setq bug--url-patch-file (format "%s/patched-url/url-http-%d.%d.el"
-                                  (file-name-directory (or load-file-name (buffer-file-name)))
-                                  emacs-major-version
-                                  emacs-minor-version))
+(defvar bug--cache nil)
+(defvar bug--url-patch-file (format "%s/patched-url/url-http-%d.%d.el"
+                                    (file-name-directory (or load-file-name (buffer-file-name)))
+                                    emacs-major-version
+                                    emacs-minor-version))
 
 (defun bug--cache-put (key value &optional instance)
   "Cache a key/value pair for a specific instance"
@@ -55,7 +59,7 @@
    (if current-prefix-arg
        (list (bug--instance-to-symbolp (bug--query-instance)))))
   (if instance
-      (remf bug--cache instance)
+      (cl-remf bug--cache instance)
     (setq bug--cache nil)))
 
 (defun bug--rpc-cookie-header (&optional instance)
@@ -63,30 +67,6 @@
   (if (bug--cache-get 'cookies instance)
       (cons "Cookie" (mapconcat 'identity (bug--cache-get 'cookies instance) "; "))
     nil))
-
-(defun bug--instance-to-symbolp (instance)
-  "Make sure that the instance handle is symbolp; returns default instance
-if instance is nil"
-  (let* ( ; check if instance already is correct type, if not, check if it starts with :
-          ; if it does, just convert, otherwise prepend : and assume all is fine now
-          ; bug-default-instance is always assumed to be correct
-         (instance (if instance
-                       (cond ((symbolp instance) instance)
-                             ((string-match "^:" instance) (intern instance))
-                             (t (intern (concat ":" instance))))
-                     bug-default-instance)))
-    instance))
-
-(defun bug--instance-property (property &optional instance)
-  "Return the value for a PROPERTY of the instance INSTANCE, or the default
-instance if INSTANCE is empty"
-  (let* ((instance(bug--instance-to-symbolp instance))
-         (property-list (plist-get bug-instance-plist instance)))
-    (if (and (equal property :url)
-             (equal 'rally (bug--backend-type instance)))
-        (let ((rally-url (plist-get property-list property)))
-          (or rally-url bug-rally-url))
-    (plist-get property-list property))))
 
 (defun bug-rpc (args &optional instance)
   "Send an RPC response to the given (or default) bugtracker instance and return the

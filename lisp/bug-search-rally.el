@@ -27,6 +27,9 @@
 ;;; Code:
 
 (require 'bug-common-functions)
+(require 'bug-mode)
+(require 'bug-list-mode)
+(require 'bug-rpc)
 
 ;;;###autoload
 (defun bug--do-rally-search (params &optional instance method)

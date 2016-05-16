@@ -28,6 +28,9 @@
 
 (require 'bug-mode)
 
+(defvar bug---id)
+(defvar bug---instance)
+
 (defvar bug-comment-mode-map (let ((keymap (copy-keymap text-mode-map)))
                           (define-key keymap "\C-c\C-c"         'bug-comment-commit)
                           keymap)
@@ -38,8 +41,8 @@
   )
 
 ;; TODO: make sure that a comment gets comitted to the bug on the right instance
-(let ((fields '((status . "RESOLVED") (resolution . "FIXED"))))
-  (append fields '((id . "123"))))
+;;;(let ((fields '((status . "RESOLVED") (resolution . "FIXED"))))
+;;;  (append fields '((id . "123"))))
 ;; as that only should be run in the context of a bug the local
 ;; variable bug---instance should be valid there, and instance
 ;; query is not needed
@@ -56,7 +59,9 @@
       (re-search-forward "^[^\n]" nil t)
       (move-beginning-of-line nil)
       (puthash "comment" (buffer-substring (point) (point-max)) params)
-      (let ((result (bug-rpc "Bug.add_comment" params bug---instance)))
+      (let ((result (bug-rpc `((resource . "Bug")
+                               (operation . "add_comment")
+                               (post-data . ,params)) bug---instance)))
         (message (format "comment id: %s" (cdr (cadr (car result)))))
         (kill-buffer (current-buffer))))
     (bug-open bug---id bug---instance)))

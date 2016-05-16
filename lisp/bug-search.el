@@ -27,8 +27,10 @@
 ;;; Code:
 
 (require 'bug-search-common)
-(require 'bug-list-mode)
-(require 'bug-mode)
+(require 'bug-debug)
+(require 'bug-persistent-data)
+;; for (bug--instance-to-symbolp)
+(require 'bug-rpc)
 
 ;;;###autoload
 (defun bug-stored-bugs (list-name &optional instance)
@@ -75,7 +77,8 @@ prompts and execute them"
     (while (not (string= term ""))
       (setq term (read-from-minibuffer "query term: "))
       (if (not (string= term ""))
-          (let* ((parsed (bug--parse-bz-search-query term))
+          (let* ((parsed (bug--backend-function "bug--parse-%s-search-query"
+                                                term instance))
                  (key (car parsed))
                  (value (cdr parsed))
                  (current (gethash key terms)))

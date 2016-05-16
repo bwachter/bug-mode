@@ -26,9 +26,44 @@
 ;;
 ;;; Code:
 
+(require 'bug-persistent-data)
+(require 'cl-lib)
+
 (defun filter (condp lst)
   (delq nil
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
+
+(defun bug--backend-function (format-string &optional args instance)
+  "Call a backend specific function, selected based on the backend specified by
+the configuration for `instance'
+
+The `format-string' needs to contain exactly one placeholder for a string (%s),
+which will get replaced by a backend identifier. The backend functions need to
+be defined with two arguments, `args' and `instance'. If more than one argument
+is required they should be passed as list in `args'.
+
+Example usage:
+
+(defun some-bz-function (&optional args instance)
+  (message \"Bugzilla\"))
+
+(defun some-rally-function (&optional args instance)
+  (message \"Rally\"))
+
+(bug--backend-function \"some-%s-function\" nil instance)
+"
+  (let ((func))
+    (fset 'func
+          (intern (format format-string
+                          (prin1-to-string (bug--backend-type instance) t))))
+    (func args instance)))
+
+(defun bug--backend-type (&optional instance)
+  "Return the backend type for the given bug tracker instance"
+  (let ((type (bug--instance-property :type instance)))
+    (if (equal nil type)
+        'bz
+      type)))
 
 (defun bug--position-in-array (data field field-value)
   "Search for a bug with a value 'field-value' in field 'field' in a query
@@ -37,9 +72,9 @@ the call would look like this:
 
  (bug--position-in-array results 'FormattedID \"US815\")"
   (let ((pos))
-    (let ((count (- (length results) 1 )))
+    (let ((count (- (length data) 1 )))
       (while (>= count 0)
-        (if (string= field-value (cdr (assoc field (aref results count))))
+        (if (string= field-value (cdr (assoc field (aref data count))))
             (progn
               (setq pos count)
               (setq count 0)))
@@ -52,7 +87,7 @@ configured in bug-instance-plist. Returns the entered bug tracker instance.
 
 Instance name only needs to be entered enough to get a match."
   (let ((completions
-         (remove-if nil
+         (cl-remove-if nil
                     (cl-loop for record in bug-instance-plist collect
                              (unless (listp record)
                                (replace-regexp-in-string "^:" "" (prin1-to-string record)))))))
@@ -73,8 +108,22 @@ with names of lists across all bug tracker instances"
     (delete-dups category-keys)
     (completing-read "List name: " category-keys nil nil)))
 
-;;;###autoload
-;; TODO: pass in object, and first check for property in object, and if not
+(defun bug--field-name (field-name instance)
+  "Return the instance-specific internal field name for `field-name'.
+
+Field names currently handled this way are:
+- :bug-uuid -- the unique ID of the bug
+- :bug-friendly-id -- the ID to be presented to the user
+- :bug-summary -- the short bug summary/description
+
+For very special instances the backend specific types may be overridden by
+setting those values in the instance configuration.
+"
+  (if (bug--instance-property field-name instance)
+      (bug--instance-property field-name instance)
+    (bug--backend-function "bug--%s-field-name" field-name instance)))
+
+;; TODO: - pass in object, and first check for property in object, and if not
 ;;       found, check generic one
 (defun bug--get-field-property (field-name property &optional instance object)
   "Return a property for a bug field from the field definition.
@@ -85,6 +134,44 @@ the following:
   (cdr
    (assoc property
           (gethash (symbol-name field-name) (bug--get-fields instance)))))
+
+(defun bug--instance-property (property &optional instance)
+  "Return the value for a PROPERTY of the instance INSTANCE, or the default
+instance if INSTANCE is empty"
+  (let* ((instance(bug--instance-to-symbolp instance))
+         (property-list (plist-get bug-instance-plist instance)))
+    (if (and (equal property :url)
+             (equal 'rally (bug--backend-type instance)))
+        (let ((rally-url (plist-get property-list property)))
+          (or rally-url bug-rally-url))
+    (plist-get property-list property))))
+
+(defun bug--instance-to-symbolp (instance)
+  "Make sure that the instance handle is symbolp; returns default instance
+if instance is nil"
+  (let* ( ; check if instance already is correct type, if not, check if it starts with :
+          ; if it does, just convert, otherwise prepend : and assume all is fine now
+          ; bug-default-instance is always assumed to be correct
+         (instance (if instance
+                       (cond ((symbolp instance) instance)
+                             ((string-match "^:" instance) (intern instance))
+                             (t (intern (concat ":" instance))))
+                     bug-default-instance)))
+    instance))
+
+(defun bug--list-columns (&optional instance)
+  "Read the list headers for a bugtracker instance.
+
+If the given instance does not have a :list-columns property defaults
+are used.
+"
+  (if (bug--instance-property :list-columns instance)
+      (bug--instance-property :list-columns instance)
+    (cond
+     ((equal 'rally (bug--backend-type instance))
+      '("FormattedID" ("State" "ScheduleState") "Name" "LastUpdateDate"))
+     (t
+      '("id" "status" "summary" "last_change_time")))))
 
 ;;;;;;
 ;; functions suitable as defaults for use from modes keymaps

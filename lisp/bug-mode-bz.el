@@ -27,6 +27,8 @@
 ;;
 ;;; Code:
 
+(require 'bug-rpc)
+
 ;;;###autoload
 (defun bug--fetch-bz-bug (id &optional instance)
   "Retrieve a single bug from Bugzilla"

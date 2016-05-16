@@ -26,6 +26,11 @@
 ;;
 ;;; Code:
 
+(require 'bug-common-functions)
+(require 'bug-rpc)
+(require 'bug-debug)
+(require 'json)
+
 ;;;###autoload
 (defun bug--rpc-bz (args &optional instance)
   "Send an RPC response to the given (or default) Bugzilla instance and return the

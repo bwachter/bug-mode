@@ -26,6 +26,9 @@
 ;;
 ;;; Code:
 
+(require 'bug-common-functions)
+(require 'bug-custom)
+
 (defun bug--format-bool (value)
   "Format a bool converted from JSON to `yes' or `no'"
   (cond ((equal value t)
@@ -49,7 +52,6 @@ field descriptions. `field' is expected to be a bug field cons cell."
      'face 'bug-field-description
      'bug-field-name field-name)))
 
-;;;###autoload
 (defun bug--format-field-value (field &optional instance long)
   "Format a bug field value for display, taking into account instance specific
 field descriptions `field' is expected to be a bug field cons cell.

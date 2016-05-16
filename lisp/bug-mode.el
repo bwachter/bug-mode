@@ -29,6 +29,15 @@
 (require 'bug-rpc)
 (require 'bug-common-functions)
 (require 'bug-format)
+(require 'bug-debug)
+(require 'bug-persistent-data)
+
+(defvar bug---id)
+(defvar bug---uuid)
+(defvar bug---is-new)
+(defvar bug---data)
+(defvar bug---instance)
+(defvar bug---changed-data)
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -78,7 +87,7 @@
     (setq bug---id tmp-bug-id)
     (make-local-variable 'bug---uuid)
     (setq bug---uuid (cdr (assoc (bug--field-name :bug-uuid instance) bug)))
-    (make-local-variable 'bug--is-new)
+    (make-local-variable 'bug---is-new)
     (setq bug---is-new (if bug---id nil t))
     (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))
     (make-local-variable 'bug---data)

@@ -26,18 +26,36 @@
 ;;
 ;;; Code:
 
+(require 'bug-search-common)
+(require 'bug-mode)
+(require 'bug-list-mode)
+(require 'bug-rpc)
+
 ;;;###autoload
 (defun bug--do-bz-search (params &optional instance)
   "Execute a search query in Bugzilla.
 
 This function takes a pre-parsed Bugzilla search query as argument.
 "
-  (bug--handle-search-response params
+  (bug--handle-bz-search-response params
                                (bug-rpc `((resource . "Bug")
                                           (operation . "search")
                                           (post-data . ,params))
                                         instance)
                                instance))
+
+(defun bug--handle-bz-search-response (query response &optional instance)
+  "Parse the result of a bug search and either show a single bug or a bug list"
+  (if (and
+       (assoc 'result response)
+       (assoc 'bugs (assoc 'result response)))
+      (let ((bugs (cdr (assoc 'bugs (assoc 'result response)))))
+        (if (= (length bugs) 0)
+            (message "No results")
+          (if (= (length bugs) 1)
+              (bug-show (aref bugs 0) instance)
+            (bug-list-show query bugs instance))))
+    response))
 
 ;;;###autoload
 (defun bug--parse-bz-search-query (query &optional instance)

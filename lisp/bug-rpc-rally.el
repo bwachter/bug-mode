@@ -30,6 +30,12 @@
 ;;   https://rally1.rallydev.com/slm/doc/webservice/
 ;; For some reason accessing the documentation requires a subscription.
 
+(require 'bug-auth)
+(require 'bug-common-functions)
+(require 'bug-custom)
+(require 'bug-debug)
+(require 'json)
+
 (defun bug--rpc-rally-auth-header (&optional instance)
   "Generate an auth header for rally, either by using an API key, or -- if
 no API key is configured -- by using basic auth with username and password"

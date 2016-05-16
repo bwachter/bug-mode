@@ -1,5 +1,4 @@
-;;; bug-search-common.el -- search functions shared between different modules
-;; TODO: this might need reworking
+;; bug-persistent-data.el --- handling persistent data for bug-mode
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;
@@ -27,11 +26,29 @@
 ;;
 ;;; Code:
 
-(require 'bug-common-functions)
+;;;;;;
+;; helper functions and variables for reading static data and user settings
 
-(defun bug--do-search (params &optional instance)
-  "Execute a bug search query"
-  (bug--backend-function "bug--do-%s-search" params instance))
+(require 'bug-custom)
 
-(provide 'bug-search-common)
-;;; bug-search-common.el ends here
+(defvar bug-remember-list)
+
+(unless (boundp 'bug-remember-list)
+  (setq bug-remember-list (make-hash-table :test 'equal)))
+
+(defun bug--write-data-file ()
+  "Write user data to disk"
+  (with-temp-buffer
+    (insert ";; Foo\n")
+    (insert "(setq bug-remember-list ")
+    (pp bug-remember-list (current-buffer))
+    (insert ")\n")
+    (write-file bug-data-file)))
+
+(defun bug--read-data-file ()
+  "Restore user data from disk"
+  (if (file-exists-p bug-data-file)
+      (load (expand-file-name bug-data-file))))
+
+(provide 'bug-persistent-data)
+;;; bug-persistent-data.el ends here

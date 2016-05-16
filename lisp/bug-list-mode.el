@@ -35,10 +35,16 @@
 ;;
 ;;; Code:
 
+(require 'cl-lib)
 (require 'bug-rpc)
 (require 'bug-search-common)
 (require 'bug-common-functions)
 (require 'bug-format)
+(require 'bug-debug)
+(require 'bug-mode)
+
+(defvar bug---instance)
+(defvar bug---query)
 
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -141,14 +147,14 @@ for inclusion in tabulated-list-entries"
 (defun bug-header-widths (bugs list-columns)
   "Check the longest field for each header entries in a list of bug and return
 an alist with (type . length) cells containing the longest length"
-  (mapcar* (lambda (x y)
-             `(,x . ,y))
-           list-columns
-           (reduce (lambda (l1 l2)
-                     (mapcar* 'max l1 l2))
-                   (mapcar (lambda (bug)
-                             (mapcar (lambda (prop) (+ (length (format "%s" prop)) 5)) bug))
-                           bugs))))
+  (cl-mapcar (lambda (x y)
+               `(,x . ,y))
+             list-columns
+             (cl-reduce (lambda (l1 l2)
+                          (cl-mapcar 'max l1 l2))
+                        (cl-mapcar (lambda (bug)
+                                   (mapcar (lambda (prop) (+ (length (format "%s" prop)) 5)) bug))
+                                 bugs))))
 
 (defun pretty-kvs (kvs)
   (if (hash-table-p kvs)
