@@ -19,8 +19,8 @@ for more details.
 #+END_SRC
 - =M-x customize-group RET bug= and adjust at least the the list of instances and the name of the default instance. The instance plist configuration could look like this:
 #+BEGIN_SRC emacs-lisp
-(:foo (:url "https://foo.example")
- :bar (:url "https://bar.example" :authinfo "~/.netrc")
+(:foo (:url "https://foo.example" :type bz)
+ :bar (:url "https://bar.example" :authinfo "~/.netrc" :type bz)
  :rally (:api-key "_yourapikey" :type rally))
 #+END_SRC
 - =M-x customize-group RET bug-faces= if you don't like the default faces

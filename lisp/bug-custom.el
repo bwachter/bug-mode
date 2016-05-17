@@ -57,9 +57,10 @@ be printed, and the default url used (which may fail)"
   "A list of bug tracker instances to use.
 
 Example:
-'(:work   (:url \"https://bz.work.example\")
-  :secure (:url \"https://bz.secure.example\" :authinfo \"~/.netrc\")
+'(:work   (:url \"https://bz.work.example\" :type bz)
+  :secure (:url \"https://bz.secure.example\" :authinfo \"~/.netrc\" :type bz)
   :fun    (:url \"https://bz.fun.example\"
+           :type bz
            :login \"username\" :password \"password\"))
 
 The :work instance is either without auth, with auth-data in ~/.authinfo, or
@@ -71,6 +72,9 @@ It requires a call to (bug-login \"secure\") before you can modify bugs.
 The :fun instance uses regular bz auth, with credentials stored inside the
 configuration, which you should try to avoid for security reasons. It also
 requires a call to (bug-login \"fun\") before you can modify bugs.
+
+:type is a mandatory option defining the backend type, valid values include `bz'
+and `rally'
 "
   :type 'sexp
   :group 'bug)

@@ -62,7 +62,8 @@ Example usage:
   "Return the backend type for the given bug tracker instance"
   (let ((type (bug--instance-property :type instance)))
     (if (equal nil type)
-        'bz
+        (error (format "Instance '%s' is missing the backend type"
+                       (prin1-to-string instance t)))
       type)))
 
 (defun bug--position-in-array (data field field-value)

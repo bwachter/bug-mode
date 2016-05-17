@@ -34,8 +34,10 @@
 
 (defmacro bug--with-dummy-config (&rest body)
   `(let ((bug-instance-plist `(:bug-1 (:url "https://bz.tracker1.example"
+                                            :type bz
                                             :authinfo ,(concat bug--test-data-dir "netrc"))
                                       :bug-2 (:url "https://bz.tracker2.example"
+                                                   :type bz
                                                    :authinfo ,(concat bug--test-data-dir "netrc"))
                                       :rally-1 (:api-key "thisIsNotAnApiKey"
                                                          :type rally)

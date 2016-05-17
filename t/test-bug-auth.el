@@ -37,8 +37,7 @@
                   (bug-credentials :bug-2)))
    (should (equal '("rally-user" "rally-password")
                   (bug-credentials :rally-2)))
-   (should (equal '(nil nil)
-                  (bug-credentials :bug-nil)))
+   (should-error (bug-credentials :bug-nil))
    ))
 
 ;; TODO:
