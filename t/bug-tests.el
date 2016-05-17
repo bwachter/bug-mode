@@ -70,6 +70,7 @@
   "Check if all backends implement all mandatory functions"
   (let* ((backends '(bz rally))
          (backend-functions '("bug--%s-field-name"
+                              "bug--%s-list-columns"
                               "bug--browse-%s-bug"
                               "bug--do-%s-search"
                               "bug--fetch-%s-bug"

@@ -80,7 +80,7 @@
     ;; populate header
     ;; as all entries are strings list can be sorted by any column
     (setq tabulated-list-format
-          (make-vector (length (bug--list-columns instance)) nil))
+          (make-vector (length list-columns) nil))
     (let ((count 0)
           (header-widths (bug-header-widths bugs list-columns)))
       (dolist (element list-columns)

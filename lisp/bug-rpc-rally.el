@@ -176,6 +176,12 @@ The following additions are supported for Rally:
         (error "Field definition file for Rally not found"))))
 
 ;;;###autoload
+(defun bug--rally-list-columns (object instance)
+  "Return list columns for Rally. If `object' is set object-specific columns
+may be returned."
+  '("FormattedID" ("State" "ScheduleState") "Name" "LastUpdateDate"))
+
+;;;###autoload
 (defun bug--rally-field-name (field-name instance)
   "Resolve field names for rally"
   (cond ((equal :bug-uuid field-name)

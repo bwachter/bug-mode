@@ -75,6 +75,11 @@ don't match the fields found in a bug."
            "short-desc"))))
 
 ;;;###autoload
+(defun bug--bz-list-columns (object instance)
+  "Return list columns for Bugzilla"
+  '("id" "status" "summary" "last_change_time"))
+
+;;;###autoload
 (defun bug--bz-field-name (field-name instance)
   "Resolve field names for Bugzilla"
   (cond ((equal :bug-uuid field-name)

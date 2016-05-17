@@ -213,7 +213,7 @@ if instance is nil"
                      bug-default-instance)))
     instance))
 
-(defun bug--list-columns (instance)
+(defun bug--list-columns (instance &optional object)
   "Read the list headers for a bugtracker instance.
 
 If the given instance does not have a :list-columns property defaults
@@ -221,11 +221,7 @@ are used.
 "
   (if (bug--instance-property :list-columns instance)
       (bug--instance-property :list-columns instance)
-    (cond
-     ((equal 'rally (bug--backend-type instance))
-      '("FormattedID" ("State" "ScheduleState") "Name" "LastUpdateDate"))
-     (t
-      '("id" "status" "summary" "last_change_time")))))
+    (bug--backend-function "bug--%s-list-columns" object instance)))
 
 ;;;;;;
 ;; functions suitable as defaults for use from modes keymaps
