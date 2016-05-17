@@ -1,4 +1,4 @@
-;; bug-rpc-bz.el --- RPC functions for Bugzilla
+;; bug-backend-bz-rpc.el --- backend implementation for Bugzilla JSON-RPC
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;
@@ -25,6 +25,10 @@
 ;; Check the git history for details.
 ;;
 ;;; Code:
+
+(require 'bug-search-common)
+(require 'bug-mode)
+(require 'bug-list-mode)
 
 (require 'bug-common-functions)
 (require 'bug-rpc)
@@ -89,5 +93,71 @@ don't match the fields found in a bug."
         ((equal :bug-summary field-name)
          'summary)))
 
-(provide 'bug-rpc-bz)
-;;; bug-rpc-bz.el ends here
+
+;;;;;;
+;; search functions
+
+;;;###autoload
+(defun bug--do-bz-search (params instance)
+  "Execute a search query in Bugzilla.
+
+This function takes a pre-parsed Bugzilla search query as argument.
+"
+  (bug--handle-bz-search-response params
+                               (bug-rpc `((resource . "Bug")
+                                          (operation . "search")
+                                          (data . ,params))
+                                        instance)
+                               instance))
+
+(defun bug--handle-bz-search-response (query response instance)
+  "Parse the result of a bug search and either show a single bug or a bug list"
+  (if (and
+       (assoc 'result response)
+       (assoc 'bugs (assoc 'result response)))
+      (let ((bugs (cdr (assoc 'bugs (assoc 'result response)))))
+        (if (= (length bugs) 0)
+            (message "No results")
+          (if (= (length bugs) 1)
+              (bug-show (aref bugs 0) instance)
+            (bug-list-show query bugs instance))))
+    response))
+
+;;;###autoload
+(defun bug--parse-bz-search-query (query instance)
+  "Parse search query from minibuffer for Bugzilla"
+  (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
+      `((,(match-string 1 query) . ,(match-string 2 query)))
+    (if (string-match "[[:space:]]*[0-9]+[:space:]*" query)
+        `((id . ,(string-to-number query)))
+      `((summary . ,query)))))
+
+
+;;;;;;
+;; bug-mode functions
+
+;;;###autoload
+(defun bug--fetch-bz-bug (id instance)
+  "Retrieve a single bug from Bugzilla"
+  (let ((search-response
+         (bug-rpc `((resource . "Bug")
+                    (operation . "get")
+                    (data . (("ids" . ,id)))) instance)))
+    (if (and (assoc 'result search-response)
+             (assoc 'bugs (assoc 'result search-response)))
+        (let ((bugs (cdr (assoc 'bugs (assoc 'result search-response)))))
+          (cond
+           ((= (length bugs) 0)
+            (message (concat "Bug " id " not found.")))
+           ((= (length bugs) 1)
+            (aref bugs 0))
+           (t (message "You should never see this message")))))))
+
+;;;###autoload
+(defun bug--browse-bz-bug (id instance)
+  "Open the current bugzilla bug in browser"
+  (let ((url (concat (bug--instance-property :url instance) "/show_bug.cgi?id=" id)))
+    (browse-url url)))
+
+(provide 'bug-backend-bz-rpc)
+;;; bug-backend-bz-rpc.el ends here

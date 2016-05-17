@@ -5,12 +5,13 @@ ALL: bug-autoloads.el
 SOURCES = bug-auth.el bug-mode.el bug-comment-mode.el
 SOURCES += bug-list-mode.el bug-rpc.el bug-search.el
 SOURCES += bug-search-common.el bug-common-functions.el
-SOURCES += bug-rpc-bz.el bug-rpc-rally.el
-SOURCES += bug-search-rally.el bug-search-bz.el
-SOURCES += bug-mode-bz.el bug-mode-rally.el
+SOURCES += bug-rpc-rally.el
+SOURCES += bug-search-rally.el
+SOURCES += bug-mode-rally.el
 SOURCES += bug-rally-subscription-mode.el
 SOURCES += bug-format.el bug-custom.el
 SOURCES += bug-debug.el bug-persistent-data.el
+SOURCES += bug-backend-bz-rpc.el
 SOURCES += org-bug.el
 ELC = $(SOURCES:.el=.elc)
 
