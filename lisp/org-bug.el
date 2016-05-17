@@ -28,6 +28,7 @@
 
 (require 'org)
 (require 'bug-list-mode)
+(require 'bug-search)
 
 (org-add-link-type "bug" 'org-bug-open)
 (org-add-link-type "bug-search" 'org-bug-open-search)
