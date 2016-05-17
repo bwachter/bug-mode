@@ -44,19 +44,24 @@ is required they should be passed as list in `args'.
 
 Example usage:
 
-(defun some-bz-function (&optional args instance)
+ (defun some-bz-function (&optional args instance)
   (message \"Bugzilla\"))
 
-(defun some-rally-function (&optional args instance)
+ (defun some-rally-function (&optional args instance)
   (message \"Rally\"))
 
-(bug--backend-function \"some-%s-function\" nil instance)
+ (bug--backend-function \"some-%s-function\" nil instance)
 "
-  (let ((func))
-    (fset 'func
-          (intern (format format-string
-                          (prin1-to-string (bug--backend-type instance) t))))
-    (func args instance)))
+  (let ((function-name (format format-string
+                               (prin1-to-string (bug--backend-type instance) t)))
+        (func))
+    (if (fboundp (intern function-name))
+        (progn
+          (fset 'func
+                (intern function-name))
+          (func args instance))
+      (error (format "Backend function '%s' not defined"
+                     function-name)))))
 
 (defun bug--backend-type (instance)
   "Return the backend type for the given bug tracker instance"
