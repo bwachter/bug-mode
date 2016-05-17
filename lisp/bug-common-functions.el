@@ -108,6 +108,60 @@ with names of lists across all bug tracker instances"
     (delete-dups category-keys)
     (completing-read "List name: " category-keys nil nil)))
 
+;;;;;;
+;; caching functions
+
+(defvar bug--cache nil)
+
+(defun bug--cache-put (key value instance)
+  "Cache a key/value pair for a specific instance"
+  (let* ((instance (bug--instance-to-symbolp instance))
+         (tmp-alist (plist-get bug--cache instance)))
+    (if (assoc key tmp-alist)
+        (setf (cdr (assoc key tmp-alist)) value)
+      (setq bug--cache
+            (plist-put bug--cache instance
+                       (push (cons key value) tmp-alist))))))
+
+(defun bug--cache-get (key instance)
+  "Return a cached value for a specific instance"
+  (let ((instance (bug--instance-to-symbolp instance)))
+    (cdr (assoc key (plist-get bug--cache instance)))))
+
+(defun bug-cache-clear (&optional instance)
+  "Clear the cache, either globally, or for a specific instance"
+  (interactive
+   (if current-prefix-arg
+       (list (bug--instance-to-symbolp (bug--query-instance)))))
+  (if instance
+      (cl-remf bug--cache instance)
+    (setq bug--cache nil)))
+
+(defun bug--get-fields (instance &optional object)
+  "Download fields used by this bug tracker instance or returns them from cache"
+  (let* ((cache-key (if object
+                        (intern (concat "fields-" (prin1-to-string object t)))
+                      'fields))
+         (instance (bug--instance-to-symbolp instance))
+         (fields (if (bug--cache-get cache-key instance) nil
+                   (bug--backend-function "bug--rpc-%s-get-fields" object instance)))
+         (field-hash (make-hash-table :test 'equal)))
+    (if fields
+        (progn
+          (mapc (lambda (field)
+                    (let* ((key (cdr (assoc 'name field)))
+                           (bz-mapped-field (bug--rpc-bz-map-field key)))
+                      ;; workaround for missing or oddly named fields in
+                      ;; Bugzillas field list
+                      (if (and bz-mapped-field
+                               (not (gethash bz-mapped-field field-hash)))
+                          (puthash bz-mapped-field field field-hash))
+                      (puthash key field field-hash)))
+                  (cdr (car (cdr (car fields)))))
+          (bug--cache-put cache-key field-hash instance)
+          ))
+    (bug--cache-get cache-key instance)))
+
 (defun bug--field-name (field-name instance)
   "Return the instance-specific internal field name for `field-name'.
 

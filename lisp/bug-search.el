@@ -29,8 +29,6 @@
 (require 'bug-search-common)
 (require 'bug-debug)
 (require 'bug-persistent-data)
-;; for (bug--instance-to-symbolp)
-(require 'bug-rpc)
 
 ;;;###autoload
 (defun bug-stored-bugs (list-name &optional instance)
