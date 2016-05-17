@@ -1,4 +1,4 @@
-;; test-bug-rpc-rally.el --- tests for bug-rpc-rally
+;; test-bug-backend-rally.el --- tests for bug-backend-rally
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;
@@ -26,10 +26,9 @@
 ;;
 ;;; Code:
 
-(require 'bug-rpc)
-(require 'bug-rpc-rally)
+(require 'bug-backend-rally)
 
-(ert-deftest test-bug-rpc-rally-auth-header ()
+(ert-deftest test-bug-backend-rally-auth-header ()
   "Test functions for checking the Rally auth header"
     (bug--with-dummy-config
      (should (equal '("zsessionid" . "thisIsNotAnApiKey")
@@ -38,7 +37,7 @@
                     (bug--rpc-rally-auth-header :rally-2)))
      ))
 
-(ert-deftest test-bug-rpc-rally-request-method ()
+(ert-deftest test-bug-backend-rally-request-method ()
   "Test request method mapping"
   (bug--with-dummy-config
    (should (equal "DELETE"
@@ -63,7 +62,7 @@
                   (bug--rpc-rally-request-method "anything")))
    ))
 
-(ert-deftest test-bug-rpc-rally-url-map-operation ()
+(ert-deftest test-bug-backend-rally-url-map-operation ()
   "Test url operation mapping"
   (bug--with-dummy-config
    (should (equal "security/authorize"
@@ -137,5 +136,5 @@
 ;; - bug--rpc-rally-handle-error
 ;; - bug--rpc-rally-get-fields
 
-(provide 'test-bug-rpc-rally)
-;;; test-bug-rpc-rally.el ends here
+(provide 'test-bug-backend-rally)
+;;; test-bug-backend-rally.el ends here
