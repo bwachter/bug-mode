@@ -68,7 +68,7 @@
 
 (ert-deftest bug-test-verify-backend-function-completeness ()
   "Check if all backends implement all mandatory functions"
-  (let* ((backends '(bz rally))
+  (let* ((backends '(bz-rpc rally))
          (backend-functions '("bug--%s-field-name"
                               "bug--%s-list-columns"
                               "bug--browse-%s-bug"

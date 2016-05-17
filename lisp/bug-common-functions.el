@@ -156,7 +156,7 @@ with names of lists across all bug tracker instances"
         (progn
           (mapc (lambda (field)
                     (let* ((key (cdr (assoc 'name field)))
-                           (bz-mapped-field (bug--rpc-bz-map-field key)))
+                           (bz-mapped-field (bug--rpc-bz-rpc-map-field key)))
                       ;; workaround for missing or oddly named fields in
                       ;; Bugzillas field list
                       (if (and bz-mapped-field

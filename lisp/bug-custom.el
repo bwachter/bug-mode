@@ -57,10 +57,10 @@ be printed, and the default url used (which may fail)"
   "A list of bug tracker instances to use.
 
 Example:
-'(:work   (:url \"https://bz.work.example\" :type bz)
-  :secure (:url \"https://bz.secure.example\" :authinfo \"~/.netrc\" :type bz)
+'(:work   (:url \"https://bz.work.example\" :type bz-rpc)
+  :secure (:url \"https://bz.secure.example\" :authinfo \"~/.netrc\" :type bz-rpc)
   :fun    (:url \"https://bz.fun.example\"
-           :type bz
+           :type bz-rpc
            :login \"username\" :password \"password\"))
 
 The :work instance is either without auth, with auth-data in ~/.authinfo, or

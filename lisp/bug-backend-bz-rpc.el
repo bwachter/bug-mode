@@ -36,7 +36,12 @@
 (require 'json)
 
 ;;;###autoload
-(defun bug--rpc-bz (args instance)
+(defun bug--backend-bz-rpc-features (arg instance)
+  "Features supported by Bugzilla JSON-RPC backend"
+  '(:read))
+
+;;;###autoload
+(defun bug--rpc-bz-rpc (args instance)
   "Send an RPC response to the given (or default) Bugzilla instance and return the
 parsed response as alist"
   (let* ((method (concat (cdr (assoc 'resource args)) "."
@@ -54,20 +59,20 @@ parsed response as alist"
       (bug--parse-rpc-response instance))))
 
 ;;;###autoload
-(defun bug--rpc-bz-handle-error (response instance)
+(defun bug--rpc-bz-rpc-handle-error (response instance)
   "Check data returned from Bugzilla for errors"
   (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
       (error (cdr (assoc 'message (assoc 'error response)))))
   response)
 
 ;;;###autoload
-(defun bug--rpc-bz-get-fields (object instance)
+(defun bug--rpc-bz-rpc-get-fields (object instance)
   "Download the field list for Bugzilla"
   (bug-rpc '((resource . "Bug")
                           (operation . "fields")) instance))
 
 ;;;###autoload
-(defun bug--rpc-bz-map-field (field-name)
+(defun bug--rpc-bz-rpc-map-field (field-name)
   "Try to guess what the definition of a field in a bug is by
 either throwing away ^bug_ or looking up the key in a list.
 
@@ -79,12 +84,12 @@ don't match the fields found in a bug."
            "short-desc"))))
 
 ;;;###autoload
-(defun bug--bz-list-columns (object instance)
+(defun bug--bz-rpc-list-columns (object instance)
   "Return list columns for Bugzilla"
   '("id" "status" "summary" "last_change_time"))
 
 ;;;###autoload
-(defun bug--bz-field-name (field-name instance)
+(defun bug--bz-rpc-field-name (field-name instance)
   "Resolve field names for Bugzilla"
   (cond ((equal :bug-uuid field-name)
          'id)
@@ -98,19 +103,19 @@ don't match the fields found in a bug."
 ;; search functions
 
 ;;;###autoload
-(defun bug--do-bz-search (params instance)
+(defun bug--do-bz-rpc-search (params instance)
   "Execute a search query in Bugzilla.
 
 This function takes a pre-parsed Bugzilla search query as argument.
 "
-  (bug--handle-bz-search-response params
+  (bug--handle-bz-rpc-search-response params
                                (bug-rpc `((resource . "Bug")
                                           (operation . "search")
                                           (data . ,params))
                                         instance)
                                instance))
 
-(defun bug--handle-bz-search-response (query response instance)
+(defun bug--handle-bz-rpc-search-response (query response instance)
   "Parse the result of a bug search and either show a single bug or a bug list"
   (if (and
        (assoc 'result response)
@@ -124,7 +129,7 @@ This function takes a pre-parsed Bugzilla search query as argument.
     response))
 
 ;;;###autoload
-(defun bug--parse-bz-search-query (query instance)
+(defun bug--parse-bz-rpc-search-query (query instance)
   "Parse search query from minibuffer for Bugzilla"
   (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
       `((,(match-string 1 query) . ,(match-string 2 query)))
@@ -137,7 +142,7 @@ This function takes a pre-parsed Bugzilla search query as argument.
 ;; bug-mode functions
 
 ;;;###autoload
-(defun bug--fetch-bz-bug (id instance)
+(defun bug--fetch-bz-rpc-bug (id instance)
   "Retrieve a single bug from Bugzilla"
   (let ((search-response
          (bug-rpc `((resource . "Bug")
@@ -154,7 +159,7 @@ This function takes a pre-parsed Bugzilla search query as argument.
            (t (message "You should never see this message")))))))
 
 ;;;###autoload
-(defun bug--browse-bz-bug (id instance)
+(defun bug--browse-bz-rpc-bug (id instance)
   "Open the current bugzilla bug in browser"
   (let ((url (concat (bug--instance-property :url instance) "/show_bug.cgi?id=" id)))
     (browse-url url)))
