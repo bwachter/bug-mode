@@ -37,8 +37,8 @@
 parsed response as alist"
   (let* ((method (concat (cdr (assoc 'resource args)) "."
                          (cdr (assoc 'operation args))))
-         (post-data (cdr (assoc 'post-data args)))
-         (json-str (json-encode `((method . ,method) (params . [,post-data]) (id 11))))
+         (data (cdr (assoc 'data args)))
+         (json-str (json-encode `((method . ,method) (params . [,data]) (id 11))))
          (url (concat (bug--instance-property :url instance) "/jsonrpc.cgi"))
          (url-request-method "POST")
          (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?

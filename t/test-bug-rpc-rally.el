@@ -82,54 +82,54 @@
                      (resource . "artifact")
                      (operation . "copy")
                      (object-type . nil)
-                     (query-data . ((query "(FormattedID = \"foo\")")))))))
+                     (data . ((query "(FormattedID = \"foo\")")))))))
    (should (equal "artifact/an-object-id"
                   (bug--rpc-rally-url-map-operation
                    '((object-id . "an-object-id")
                      (resource . "artifact")
                      (operation . "update")
                      (object-type . nil)
-                     (query-data . ((query "(FormattedID = \"foo\")")))))))
+                     (data . ((query "(FormattedID = \"foo\")")))))))
    (should (equal "artifact/an-object-id/type"
                   (bug--rpc-rally-url-map-operation
                    '((object-id . "an-object-id")
                      (resource . "artifact")
                      (operation . "update")
                      (object-type . "type")
-                     (query-data . ((query "(FormattedID = \"foo\")")))))))
+                     (data . ((query "(FormattedID = \"foo\")")))))))
    (should (equal "artifact/an-object-id"
                   (bug--rpc-rally-url-map-operation
                    '((object-id . "an-object-id")
                      (resource . "artifact")
                      (operation . "delete")
                      (object-type . nil)
-                     (query-data . ((query "(FormattedID = \"foo\")")))))))
+                     (data . ((query "(FormattedID = \"foo\")")))))))
    (should (equal "artifact/an-object-id/type"
                   (bug--rpc-rally-url-map-operation
                    '((object-id . "an-object-id")
                      (resource . "artifact")
                      (operation . "delete")
                      (object-type . "type")
-                     (query-data . ((query "(FormattedID = \"foo\")")))))))
+                     (data . ((query "(FormattedID = \"foo\")")))))))
    (should (equal "artifact?query=%28FormattedID%20%3D%20%22foo%22%29"
                   (bug--rpc-rally-url-map-operation
                    '((object-id . "an-object-id")
                      (resource . "artifact")
                      (operation . "query")
                      (object-type . nil)
-                     (query-data . ((query "(FormattedID = \"foo\")")))))))
+                     (data . ((query "(FormattedID = \"foo\")")))))))
    (should (equal "artifact?query=%28FormattedID%20%3D%20%22foo%22%29"
                   (bug--rpc-rally-url-map-operation
                    '((object-id . "an-object-id")
                      (resource . "artifact")
                      (operation . "query")
                      (object-type . "type")
-                     (query-data . ((query "(FormattedID = \"foo\")")))))))
+                     (data . ((query "(FormattedID = \"foo\")")))))))
    (should (equal "artifact?query=%28FormattedID%20%3D%20%22foo%22%29"
                   (bug--rpc-rally-url-map-operation
                    '((resource . "artifact")
                      (operation . "query")
-                     (query-data . ((query "(FormattedID = \"foo\")")))))))
+                     (data . ((query "(FormattedID = \"foo\")")))))))
    ))
 
 ;; TODO:

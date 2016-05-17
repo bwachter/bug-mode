@@ -76,8 +76,8 @@ The `args' alist usually has at least two elements:
 - resource: a string representing the resource to use
 - operation: what to do with the resource
 
-If data needs to be posted a `post-data' element containing an alist with
-data needs to be added.
+If data needs to be sent a `data' element containing an alist with data needs
+to be added.
 
 Backends may define additional keys, check the documentation of their RPC
 functions for details.

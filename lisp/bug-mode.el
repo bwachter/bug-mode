@@ -172,7 +172,7 @@ and keep the buffers modified marker accurate."
     (message (format "fields: %s" fields))
     (bug-rpc `((resource . "Bug")
                (operation . "update")
-               (post-data . ,fields)) instance)))
+               (data . ,fields)) instance)))
 
 (defun bug-get-comments (id instance)
   "Request comments for a bug and add it to an existing(!) bug buffer
@@ -180,7 +180,7 @@ via bug-handle-comments-response"
   (bug-handle-comments-response id
                                 (bug-rpc `((resource . "Bug")
                                            (operation . "comments")
-                                           (post-data . (("ids" . ,id)))) instance)))
+                                           (data . (("ids" . ,id)))) instance)))
 
 (defun bug-handle-comments-response (id response)
   "Add received comments into an existing bug buffer"
@@ -417,7 +417,7 @@ This is mostly useful for debugging text properties"
 via bug-handle-attachments-response"
   (bug-handle-attachments-response id (bug-rpc `((resource . "Bug")
                                                  (operation . "attachments")
-                                                 (post-data . (("ids" . ,id)))) instance)))
+                                                 (data . (("ids" . ,id)))) instance)))
 
 (defun bug-handle-attachments-response (id response)
   "Add received attachment info into an existing bug buffer"

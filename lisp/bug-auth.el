@@ -72,10 +72,10 @@ The return value is a two element list (login password)
        (list (bug--query-instance))))
   (bug-rpc `((resource . "User")
              (operation . "login")
-             (post-data .
-                        ((login . ,(car (bug-credentials instance)))
-                         (password . ,(cadr (bug-credentials instance)))
-                         (remember . t)))) instance)
+             (data .
+                   ((login . ,(car (bug-credentials instance)))
+                    (password . ,(cadr (bug-credentials instance)))
+                    (remember . t)))) instance)
   (bug--get-fields instance)
   (message "Login successful"))
 

@@ -35,7 +35,7 @@
   (let ((search-response
          (bug-rpc `((resource . "Bug")
                     (operation . "get")
-                    (post-data . (("ids" . ,id)))) instance)))
+                    (data . (("ids" . ,id)))) instance)))
     (if (and (assoc 'result search-response)
              (assoc 'bugs (assoc 'result search-response)))
         (let ((bugs (cdr (assoc 'bugs (assoc 'result search-response)))))

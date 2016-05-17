@@ -61,7 +61,7 @@
       (puthash "comment" (buffer-substring (point) (point-max)) params)
       (let ((result (bug-rpc `((resource . "Bug")
                                (operation . "add_comment")
-                               (post-data . ,params)) bug---instance)))
+                               (data . ,params)) bug---instance)))
         (message (format "comment id: %s" (cdr (cadr (car result)))))
         (kill-buffer (current-buffer))))
     (bug-open bug---id bug---instance)))

@@ -40,7 +40,7 @@ This function takes a pre-parsed Bugzilla search query as argument.
   (bug--handle-bz-search-response params
                                (bug-rpc `((resource . "Bug")
                                           (operation . "search")
-                                          (post-data . ,params))
+                                          (data . ,params))
                                         instance)
                                instance))
 

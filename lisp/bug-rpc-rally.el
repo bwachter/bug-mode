@@ -46,8 +46,6 @@ no API key is configured -- by using basic auth with username and password"
                                    (concat (car (bug-credentials instance))
                                            ":" (cadr (bug-credentials instance))))))))
 
-;; TODO: POSTing data is currently not implemented
-;;
 ;; The following table contains supported operations, and mappins
 ;; to HTTP methods used as well as URL transformations.
 ;; +--------+--------+--------------------------+
@@ -78,7 +76,7 @@ no API key is configured -- by using basic auth with username and password"
         (object-type (cdr (assoc 'object-type args)))
         (resource (cdr (assoc 'resource args)))
         (operation (cdr (assoc 'operation args)))
-        (query-string (url-build-query-string (cdr (assoc 'query-data args)))))
+        (query-string (url-build-query-string (cdr (assoc 'data args)))))
     (cond
      ((string= operation "authorize") (concat resource "/authorize"))
      ;; TODO: operations like create need to use a security key
@@ -106,14 +104,13 @@ args is an alist, whith the following keys:
 - operation: what to do with the resource
 - object-id: a string representing the object-id
 - object-type: a string describing a referenced object to retrieve
-- query-data: an alist containing query parameters
-- post-data: an alist containing data for the POST body
+- data: an alist containing data for the POST body or query
 
 The call to search for US1234 and return additional fields Name, Description,
 Type and FormattedID would look like this:
 
  (bug--rpc-rally \"hierarchicalrequirement.query\"
-               '((query-data .
+               '((data .
                              ((query \"( FormattedID = \"US1234\" )\")
                               (fetch \"Name,Description,Type,FormattedID\")))))
 
@@ -130,7 +127,8 @@ object-id for read (or any other call requiring an object-id):
          (url (concat bug-rally-url url-str))
          ;; don't accept any cookie, see issue 6 for details
          (url-cookie-untrusted-urls '(".*"))
-         (url-request-data (json-encode (list (cdr (assoc 'post-data args)))))
+         (url-request-data (if (string= "POST" url-request-method)
+                               (json-encode (list (cdr (assoc 'data args))))))
          (url-request-extra-headers `(("Content-Type" . "application/json")
                                       ,(bug--rpc-cookie-header instance)
                                       ,(bug--rpc-rally-auth-header instance))))
