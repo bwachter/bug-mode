@@ -71,6 +71,7 @@
   (let* ((backends '(bz-rpc rally))
          (backend-functions '("bug--%s-field-name"
                               "bug--%s-list-columns"
+                              "bug--backend-%s-features"
                               "bug--browse-%s-bug"
                               "bug--do-%s-search"
                               "bug--fetch-%s-bug"

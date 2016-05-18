@@ -40,6 +40,11 @@
 (require 'bug-debug)
 (require 'json)
 
+;;;###autoload
+(defun bug--backend-rally-features (arg instance)
+  "Features supported by Rally backend"
+  '(:read))
+
 (defun bug--rpc-rally-auth-header (instance)
   "Generate an auth header for rally, either by using an API key, or -- if
 no API key is configured -- by using basic auth with username and password"

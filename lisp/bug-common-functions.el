@@ -33,6 +33,15 @@
   (delq nil
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
+(defun bug--backend-feature (instance &optional feature)
+  "Without optional argument returns all features of a backend. Otherwise
+checks with `memq' if `feature' is present"
+  (let* ((features (bug--backend-function "bug--backend-%s-features"
+                                          nil instance)))
+    (if feature
+        (memq feature features)
+      features)))
+
 (defun bug--backend-function (format-string &optional args instance)
   "Call a backend specific function, selected based on the backend specified by
 the configuration for `instance'
