@@ -275,6 +275,8 @@ If no (valid) field was found `nil' is returned."
   "Query new value for a field, with different input methods based
 on field type (minibuffer or a separate popup buffer). Returns the new field
 value, or the old field value if nothing has changed."
+  (unless (bug--backend-feature bug---instance :write)
+    (error "Backend does not support editing"))
   (cond ((equal field-type 0)
          (let ((my-history (list field-value)))
            (read-string (concat (prin1-to-string field-name) ": ")
@@ -288,6 +290,8 @@ value, or the old field value if nothing has changed."
   "Edit the bug field at or near point"
   ;; TODO: when called with prefix argument, prompt for which field to edit
   (interactive)
+  (unless (bug--backend-feature bug---instance :write)
+    (error "Backend does not support editing"))
   (let ((field-name (or (get-text-property (point) 'bug-field-name)
                         (save-excursion
                           (forward-line 0)
