@@ -1,10 +1,27 @@
-* Notes about working on bug-mode
+* Developers guide to working on bug-mode                             :TOC_4:
+ - [[#introduction][Introduction]]
+ - [[#naming-conventions][Naming conventions]]
+   - [[#backend-identifiers][Backend identifiers]]
+   - [[#public-interactive-functions][Public (interactive) functions]]
+   - [[#non-public-interactive-functions][Non-public (interactive) functions]]
+   - [[#backend-implementation-details][Backend implementation details]]
+   - [[#functions-only-available-on-a-single-backend][Functions only available on a single backend]]
+   - [[#buffer-local-variables][Buffer local variables]]
+ - [[#use-of-autoloads][Use of autoloads]]
+   - [[#interactive-functions][Interactive functions]]
+   - [[#backend-implementation-details-1][Backend implementation details]]
+   - [[#backend-specific-modes][Backend specific modes]]
+ - [[#passing-the-instance-identifier][Passing the instance identifier]]
+   - [[#interactive-functions-1][Interactive functions]]
+   - [[#non-interactive-functions][Non-interactive functions]]
+   - [[#backend-implementation-details-2][Backend implementation details]]
 
+* Introduction
 Currently bug-mode is an organically grown dung heap. This document tries to
 assist in fixing this, and keep it clean in the future.
 
-** Naming conventions
-*** Backend identifiers
+* Naming conventions
+** Backend identifiers
 Functions, names and documentation sometimes needs to include references to a
 specific bug tracking engine. The following identifiers are currently used in
 bug-mode:
@@ -13,41 +30,41 @@ bug-mode:
 - bz-rpc (Bugzilla, old RPC API)
 - rally (Rally)
 
-*** Public (interactive) functions
+** Public (interactive) functions
 Public functions, both interactive or supposed to be called from 3rd party code,
 should be prefixed with =bug-=.
-*** Non-public (interactive) functions
+** Non-public (interactive) functions
 Internal functions, which includes functions not supposed to be called from 3rd
 party code as well as interactive functions only useful when called in one of
 the modes provided by bug-mode should be prefixed with =bug--=.
-*** Backend implementation details
+** Backend implementation details
 For a backend specific implementation detail add a backend identifier suffix
 to the function. For example, search details for Rally would be implemented
 in =bug-search-rally=, and the function =bug-search= would check which
 backend handles the current request, and calls the correct function.
-*** Functions only available on a single backend
+** Functions only available on a single backend
 Some features are only provided by a single supported backend. In this case
 instead of providing a generic function and implementing backend details
 for it a function name with a backend infix should be chosen instead.
 
 One example is the function to display details about a Rally subscription,
 =bug-rally-subscription=.
-*** Buffer local variables
+** Buffer local variables
 If buffer local variables are required to store state (=make-local-variable=)
 the name should be prefixed with =bug---=.
-** Use of autoloads
+* Use of autoloads
 Functions described in the following sections (and only those) should define
 autoloads.
 
-*** Interactive functions
+** Interactive functions
 All interactive functions (including the ones only suitable for being called via key bindings) should be marked for autoloading.
-*** Backend implementation details
+** Backend implementation details
 The implementations of mandatory backend functions should be marked for
 autoloading. Implementation details only called by those functions, but not
 mandated by the framework don't require autoloading.
-*** Backend specific modes
+** Backend specific modes
 The entry functions to backend specific modes should be marked for autoloading.
-** Passing the instance identifier
+* Passing the instance identifier
 Most functions need to know which bugtracker instance they need to operate on.
 For this functions may define an instance argument, containing an identifier
 to one configuration in =bug-instance-plist=. This allows looking up both
@@ -86,17 +103,17 @@ to sanitize input already passed in as symbol.
 The last expression evaluates to =:rally-1= as well -- if =nil= is passed as
 value a lookup for the default instance is performed.
 
-*** Interactive functions
+** Interactive functions
 Interactive functions should accept an instance identifier as optional argument
 if they either need to operate on a specific instance, or need to pass it on.
 
 When called with a prefix argument the function should query for an instance,
 otherwise the default instance is used.
-*** Non-interactive functions
+** Non-interactive functions
 Non-interactive functions only should take an instance argument if they either
 need to operate on a specific instance, or need to pass it on. In that case it
 must be a mandatory argument.
-*** Backend implementation details
+** Backend implementation details
 Backend functions expected by the framework are defined as =(func args instance)=,
 so even if the function itself does not require knowledge about the current
 instance it must define a mandatory instance argument.
