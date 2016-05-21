@@ -5,10 +5,12 @@ assist in fixing this, and keep it clean in the future.
 
 ** Naming conventions
 *** Backend identifiers
-Functions, names and documentation sometimes needs to include references to
-a specific bug tracking engine. The following identifiers are used in bug-mode:
+Functions, names and documentation sometimes needs to include references to a
+specific bug tracking engine. The following identifiers are currently used in
+bug-mode:
 
 - bz (Bugzilla)
+- bz-rpc (Bugzilla, old RPC API)
 - rally (Rally)
 
 *** Public (interactive) functions
@@ -33,3 +35,68 @@ One example is the function to display details about a Rally subscription,
 *** Buffer local variables
 If buffer local variables are required to store state (=make-local-variable=)
 the name should be prefixed with =bug---=.
+** Use of autoloads
+Functions described in the following sections (and only those) should define
+autoloads.
+
+*** Interactive functions
+All interactive functions (including the ones only suitable for being called via key bindings) should be marked for autoloading.
+*** Backend implementation details
+The implementations of mandatory backend functions should be marked for
+autoloading. Implementation details only called by those functions, but not
+mandated by the framework don't require autoloading.
+*** Backend specific modes
+The entry functions to backend specific modes should be marked for autoloading.
+** Passing the instance identifier
+Most functions need to know which bugtracker instance they need to operate on.
+For this functions may define an instance argument, containing an identifier
+to one configuration in =bug-instance-plist=. This allows looking up both
+configuration details and backend specific functionality.
+
+As an example, the following configuration would make =:rally-1= and =:rally-2=
+valid instances, both using the Rally backend:
+
+#+BEGIN_SRC emacs-lisp
+(setq bug-instance-plist
+      '(:rally-1 (:api-key "VGhpcyBpcyBub3QgYW4gQVBJIGtleSwgbm9zeSBiYXN0YXJkLg=="
+                           :type rally)
+                 :rally-1 (:api-key "VGhpcyBpc24ndCBhbiBBUEkga2V5IGFzIHdlbGwu"
+                                    :type rally)))
+(setq bug-default-instance :rally-1)
+#+END_SRC
+
+As minibuffer prompts return a string sometimes type conversion before lookup
+is necessary. The function =bug--instance-to-symbolp= takes care of that, and
+should be called by any function doing more than just passing the instance
+identifier through, before trying to use it.
+
+#+BEGIN_SRC emacs-lisp
+(bug--instance-to-symbolp :rally-1)
+(bug--instance-to-symbolp ":rally-1")
+(bug--instance-to-symbolp "rally-1")
+(bug--instance-to-symbolp 'rally-1)
+(bug--instance-to-symbolp nil)
+#+END_SRC
+
+The first three expressions will evaluate to =:rally-1=, and therefore are valid
+ways to specify an instance. The second to last one will evaluate to =rally-1=
+-- without the colon, making it invalid. =bug--instance-to-symbolp= will not try
+to sanitize input already passed in as symbol.
+
+The last expression evaluates to =:rally-1= as well -- if =nil= is passed as
+value a lookup for the default instance is performed.
+
+*** Interactive functions
+Interactive functions should accept an instance identifier as optional argument
+if they either need to operate on a specific instance, or need to pass it on.
+
+When called with a prefix argument the function should query for an instance,
+otherwise the default instance is used.
+*** Non-interactive functions
+Non-interactive functions only should take an instance argument if they either
+need to operate on a specific instance, or need to pass it on. In that case it
+must be a mandatory argument.
+*** Backend implementation details
+Backend functions expected by the framework are defined as =(func args instance)=,
+so even if the function itself does not require knowledge about the current
+instance it must define a mandatory instance argument.

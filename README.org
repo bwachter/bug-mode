@@ -10,7 +10,7 @@ Currently somewhat working bug trackers are:
 ** Quick start
 
 This is a quick start guide. Have a look at the [[./doc/manual.org][full manual]]
-for more details.
+for more details. If you're a developer, read [[./doc/hacking.org][this]].
 
 - call =make= to generate autoloads
 - Edit your ~/.emacs or ~/.emacs.d/init.el:

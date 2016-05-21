@@ -40,6 +40,8 @@ To get an overview of open issues, report bugs, or suggest improvements please v
 
 To report a bug, please first try if you can reproduce it. If you can, temporarily enable debug output for both bug-mode (=(setq bug-debug t)=) and url (=(setq url-debug t)=), reproduce the issue again, and include the contents of the =*bug-debug*= and =*URL-DEBUG*= buffers with your bug report. Make sure to replace the contents of /Authorization/ and /zsessionid/ headers before submission. Also include backtraces, if any.
 
+If you're interested in contributing please have a look at the [[./hacking.org][developer documentation]].
+
 * Installation
 ** Requirements
 - [[http://cvs.savannah.gnu.org/viewvc/*checkout*/emacs/lisp/json.el?root=emacs][json.el]], which nowadays should be included in your copy of emacs already.
