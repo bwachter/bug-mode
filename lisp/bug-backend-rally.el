@@ -200,7 +200,6 @@ may be returned."
         ((equal :bug-summary field-name)
          'Description)))
 
-
 ;;;;;;
 ;; search functions
 
@@ -208,32 +207,33 @@ may be returned."
 (defun bug--do-rally-search (params instance)
   "Execute a search query in Rally
 
-This function takes either a query string in Rallys query string syntax,
-or an alist as documented for bug--rpc-rally.
+This function takes an alist as documented for bug--rpc-rally as argument.
+Usually the parameter list is created by `bug--parse-rally-search-query'.
 
-When providing just the query string additional options (like fetch, order,
-pagesize, ...) can't be supplied:
+Default options are added to the list, if not present:
 
- (bug--do-rally-search \"( FormattedID = \"US1234\" )\")
+- resource: artifact
+- operation: query
+- data.fetch: \"FormattedID,LastUpdateDate,TaskStatus,Name,State,ScheduleState\"
+- date.pagesize: 100
 "
-  (let* ((query (cond ((stringp params)
-                       `((query ,params)))
-                      ((listp params)
-                       (if (assoc 'query params)
-                           params
-                         (error "Parameter list needs 'query' member")))
-                      (t (error "Invalid type for search parameters")))))
-    (unless (assoc 'pagesize query)
-      (add-to-list 'query '(pagesize 100)))
-    (unless (assoc 'fetch query)
-      (add-to-list 'query '(fetch "FormattedID,LastUpdateDate,TaskStatus,Name,State,ScheduleState")))
+  (let* ((data (assoc 'data params)))
+    (unless (listp params)
+      (error "Argument not a list"))
+    (unless (assoc 'pagesize (cdr data))
+      (push '(pagesize 100) (cdr data)))
+    (unless (assoc 'fetch (cdr data))
+      (push
+       '(fetch
+         "FormattedID,LastUpdateDate,TaskStatus,Name,State,ScheduleState")
+       (cdr data)))
+    (unless (assoc 'resource params)
+      (add-to-list 'params '(resource . "artifact")))
+    (unless (assoc 'operation params)
+      (add-to-list 'params '(operation . "query")))
     (bug--handle-rally-search-response
-     query
-     (bug-rpc `((resource . "artifact")
-                (operation ."query")
-                (data . ,query)) instance) instance)))
-     ;(bug-rpc (or method "artifact.query")
-     ;        `((data . ,query)) instance) instance)))
+     params (bug-rpc params instance) instance)))
+
 
 ;; TODO: Rally strips the letters, and just queries the number, leading to
 ;;       duplicate results. Check the query if we were searching for a single
@@ -258,7 +258,7 @@ pagesize, ...) can't be supplied:
                    (stripped-query
                     (replace-regexp-in-string
                      "[ ()\"]" ""
-                     (cadr (assoc 'query query)))))
+                     (cadr (assoc 'query (cdr (assoc 'data query)))))))
               ;; check if the query was for a single bug
               (if (string-match
                    "^FormattedID=\\(\\(F\\|DE\\|TA\\|US\\)\\{1\\}[0-9]+\\)$"
@@ -285,16 +285,16 @@ pagesize, ...) can't be supplied:
   "Parse search query from minibuffer for rally"
   (cond ;; for userfriendly rally IDs, open bug directly
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)
-    `(( query ,(format "( FormattedID = \"%s\" )" query))))
+    `((data . ((query ,(format "( FormattedID = \"%s\" )" query))))))
    ;; string contains parentheses -> assume it's a complex rally expression
    ((string-match "\\((\\|)\\)" query)
-    `((query ,query)))
+    `((data . ((query ,query)))))
    ;; search Name, Notes, Description
    ;; TODO: searching discussion seems to be problematic
    (t
-    `(( query
-        ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
-                 query query query))))))
+    `((data . ((query
+                  ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
+                           query query query))))))))
 
 
 ;;;;;;
