@@ -227,6 +227,22 @@ A rendering of a bug using /all/ of Rallys Rich Text elements looks like this:
 [[./rally-bug-richtext.png]]
 * Related modes and modules
 ** [[https://github.com/seanleblanc/rally-mode][rally-mode]]
+=rally-mode= queries all /tasks/ for the user in the current iteration, and allows displaying details. This only works if tasks are added to an iteration, not user stories.
+
+A very similar result can be obtained with bug-mode with the following code:
+
+#+BEGIN_SRC emacs-lisp
+(bug--do-rally-search
+ '((resource . "Task")
+   (list-columns . ("FormattedID" "Name" "State" "Estimate" "ToDo"))
+   (data .
+         ((fetch "true,WorkProduct,Tasks,Iteration,Estimate,State,ToDo,Name,Description,Type,FormattedID")
+          (query "(( Owner.Name = <your_user> ) AND (( Iteration.StartDate <= today ) AND ( Iteration.EndDate >= today )))"))))
+ :<rally-instance>)
+#+END_SRC
+
+To query for user stories instead of tasks replace the =Task= with =HierarchicalRequirement=
+
 ** [[http://www.jemarch.net/git/bugz-mode.git/][bugz-mode]]
 A mode for using Bugzilla, wrapping the pybugz utility. Of limited use, as
 pybugz is rather picky about which Bugzilla instances it likes to work with.

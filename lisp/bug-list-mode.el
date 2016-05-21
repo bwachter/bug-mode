@@ -73,7 +73,8 @@
   (setq bug---instance instance)
   (setq buffer-read-only nil)
 
-  (let* ((list-columns (bug--list-columns instance))
+  (let* ((list-columns (or (cdr (assoc 'list-columns query))
+                           (bug--list-columns instance)))
          (bugs (mapcar (lambda (bug)
                          (bug-to-filtered-vector bug list-columns))
                        parsed)))
