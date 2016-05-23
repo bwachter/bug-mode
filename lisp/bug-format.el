@@ -90,8 +90,9 @@ is formatted to take more space"
        (let ((html-string
               (replace-regexp-in-string "[[:space:]\n]+\\'" ""
                                         (bug--format-html (cdr field)))))
-         (add-face-text-property 0 (length html-string)
-                                 'bug-field-type-99 t html-string)
+         (if (fboundp 'add-face-text-property)
+             (add-face-text-property 0 (length html-string)
+                                     'bug-field-type-99 t html-string))
          html-string))
       (t
        (prin1-to-string (cdr field) t)))

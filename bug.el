@@ -26,6 +26,11 @@
 ;;
 ;;; Code:
 
+(unless (or (> emacs-major-version 24)
+            (and (= emacs-major-version 24)
+                 (>= emacs-minor-version 3)))
+  (error "Your emacs is too old, you need at least 24.3"))
+
 (add-to-list 'load-path
              (directory-file-name
               (concat
