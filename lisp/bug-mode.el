@@ -66,9 +66,9 @@
   "Retrieve and show a single bug"
   (interactive
    (if current-prefix-arg
-       (list
-        (read-string "Bug ID: " nil nil t)
-        (bug--query-instance))
+       (nreverse (list
+                  (bug--query-instance)
+                  (read-string "Bug ID: " nil nil t)))
      (list (read-string "Bug ID: " nil nil t))))
   (let* ((bug-content (bug--backend-function "bug--fetch-%s-bug" id instance)))
     (if bug-content (bug-show bug-content instance))))

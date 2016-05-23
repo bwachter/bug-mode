@@ -35,7 +35,7 @@
   "Display a stored list of bugs"
   (interactive
    (if current-prefix-arg
-       (list (bug--query-remembered-lists) (bug--query-instance))
+       (nreverse (list(bug--query-instance) (bug--query-remembered-lists)))
      (list
       (bug--query-remembered-lists))))
   (let* ((instance (bug--instance-to-symbolp instance))
@@ -54,9 +54,9 @@
   "Take a search query from the minibuffer and execute it"
   (interactive
    (if current-prefix-arg
-       (list
-        (read-string "Search query: " nil nil t)
-        (bug--query-instance))
+       (nreverse (list
+                  (bug--query-instance)
+                  (read-string "Search query: " nil nil t)))
      (list (read-string "Search query: " nil nil t))))
   (bug--debug-log-time "start")
   (bug--do-search
