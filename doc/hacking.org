@@ -15,6 +15,17 @@
    - [[#interactive-functions-1][Interactive functions]]
    - [[#non-interactive-functions][Non-interactive functions]]
    - [[#backend-implementation-details-2][Backend implementation details]]
+ - [[#writing-backends][Writing backends]]
+   - [[#mandatory-functions-for-read-support-read][Mandatory functions for read support (:read)]]
+     - [[#bug--s-field-name-field-name-instance][bug--%s-field-name (field-name instance)]]
+     - [[#bug--s-list-columns-object-instance][bug--%s-list-columns (object instance)]]
+     - [[#bug--browse-s-bug-id-instance][bug--browse-%s-bug (id instance)]]
+     - [[#bug--do-s-search-params-instance][bug--do-%s-search (params instance)]]
+     - [[#bug--fetch-s-bug-id-instance][bug--fetch-%s-bug (id instance)]]
+     - [[#bug--parse-s-search-query-query-instance][bug--parse-%s-search-query (query instance)]]
+     - [[#bug--rpc-s-args-instance][bug--rpc-%s (args instance)]]
+     - [[#bug--rpc-s-get-fields-object-instance][bug--rpc-%s-get-fields (object instance)]]
+     - [[#bug--rpc-s-handle-error-response-instance][bug--rpc-%s-handle-error (response instance)]]
 
 * Introduction
 Currently bug-mode is an organically grown dung heap. This document tries to
@@ -30,6 +41,10 @@ bug-mode:
 - bz-rpc (Bugzilla, old RPC API)
 - rally (Rally)
 
+An identifier should be relatively short (ideally 5-6 characters). If the name
+of the bug tracker is longer, try to use an abbreviation. Only use longer
+identifiers if there's no established abbreviation for a name, or abbreviation
+does not make sense.
 ** Public (interactive) functions
 Public functions, both interactive or supposed to be called from 3rd party code,
 should be prefixed with =bug-=.
@@ -65,7 +80,7 @@ mandated by the framework don't require autoloading.
 ** Backend specific modes
 The entry functions to backend specific modes should be marked for autoloading.
 * Passing the instance identifier
-Most functions need to know which bugtracker instance they need to operate on.
+Most functions need to know which bug tracker instance they need to operate on.
 For this functions may define an instance argument, containing an identifier
 to one configuration in =bug-instance-plist=. This allows looking up both
 configuration details and backend specific functionality.
@@ -117,3 +132,161 @@ must be a mandatory argument.
 Backend functions expected by the framework are defined as =(func args instance)=,
 so even if the function itself does not require knowledge about the current
 instance it must define a mandatory instance argument.
+* Writing backends
+The main bankend code should be implemented in a file called bug-backend-<backend-identifier>.el in the lisp subdirectory. This file should contain the mandatory methods for implementing read support. Helper functions may be loaded from additional files, for bug tracker specific modes it's encouraged to put them to individual files.
+
+A minimalistic backend file not doing anything would look like this:
+
+#+BEGIN_SRC emacs-lisp
+;; bug-backend-<identifier>.el --- backend implementation for <identifier>
+;;
+;; Copyright (c) 2010-2015 bug-mode developers
+;;
+;; See the AUTHORS.md file for a full list:
+;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
+;;
+;; Keywords: tools
+;;
+;; COPYRIGHT NOTICE
+;;
+;; This program is free software; you can redistribute it and/or modify it
+;; under the terms of the GNU General Public License as published by the Free
+;; Software Foundation; either version 2 of the License, or (at your option)
+;; any later version.
+;;
+;; This program is distributed in the hope that it will be useful, but
+;; WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+;; or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
+;; for more details. http://www.gnu.org/copyleft/gpl.html
+;;
+;;; History:
+;;
+;; This file is maintained at https://github.com/bwachter/bug-mode/
+;; Check the git history for details.
+;;
+;;; Code:
+
+;;;###autoload
+(defun bug--backend-<identifier>-features (arg instance)
+  "Features supported by <identifier> backend"
+  '())
+
+(provide 'bug-backend-<identifier>)
+;;; bug-backend-<identifier>.el ends here
+#+END_SRC
+
+The =bug--backend-<identifier>-features= function defines what is implemented by this backend. It is expected to return a list with all supported feature identifiers (e.g. '(:read :write)). The possible features and mandatory functions for each feature are explained in the following sections. A test checking if available backends define all functions mandated by the features they claim to implement exists, and is executed by running =make test=.
+
+A backend may mark features as experimental by prefixing them with "experimental" (e.g. :experimental-write). A bug-mode with default configuration will behave as if those features are not implemented, and will offer them if =bug-experimental= is set to non-nil.
+
+** Mandatory functions for read support (:read)
+*** bug--%s-field-name (field-name instance)
+Resolve instance specific field names for special fields. Currently defined fields are:
+
+- :bug-uuid, a unique bug identifier
+- :bug-friendly-id, a bug identifier suitable for displaying to the user
+- :bug-summary, the summary field of a bug
+
+=:bug-uuid= and =:bug-friendly-id= may be the same field on some bug tracker implementations. The implementation should just be a =cond= statement mapping bug-mode field names to instance specific field names:
+
+#+BEGIN_SRC emacs_lisp
+(defun bug--rally-field-name (field-name instance)
+  "Resolve field names for rally"
+  (cond ((equal :bug-uuid field-name)
+         '_refObjectUUID)
+        ((equal :bug-friendly-id field-name)
+         'FormattedID)
+        ((equal :bug-summary field-name)
+         'Description)))
+#+END_SRC
+
+*** bug--%s-list-columns (object instance)
+Return a list of column headers for a search result display. For bug trackers without type specific fields a static list may be suitable, as implemented for Bugzilla:
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--bz-rpc-list-columns (object instance)
+  "Return list columns for Bugzilla"
+  '("id" "status" "summary" "last_change_time"))
+#+END_SRC
+
+Other bug trackers may need to evaluate the object (a string with the queried object name), and return object specific  list columns.
+
+*** bug--browse-%s-bug (id instance)
+Open the given bug in a web browser. The ID passed is the friendly ID, not UUID -- the function is expected to convert the ID, if necessary.
+
+In most cases the implementation should not be more complex than the one for Bugzilla:
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--browse-bz-rpc-bug (id instance)
+  "Open the current Bugzilla bug in browser"
+  (let ((url (concat (bug--instance-property :url instance) "/show_bug.cgi?id=" id)))
+    (browse-url url)))
+#+END_SRC
+
+*** bug--do-%s-search (params instance)
+Query a Bugzilla backend with the [[#datastructures_query][query structure]] in =params= -- adding any missing details -- and show the result either with =bug-show= (for a single match) or =bug-list-show= (for a list), after transforming the returned data to a [[#datastructures_buglist][bug list structure]].
+
+*** bug--fetch-%s-bug (id instance)
+Fetch a bug, identified by an instances =:bug-uuid= field. It should return a [[#datastructures_bug][bug data structure]] on success, or inform the user if no such bug has been found.
+
+*** bug--parse-%s-search-query (query instance)
+Parse the string =query= (which was read from the minibuffer) into a search query as understood by the instances =bug--do-%s-search= function. It is recommended to use a [[#datastructures_query][query structure]] for this for consistency.
+
+*** bug--rpc-%s (args instance)
+Transform the data in =args= (a [[#datastructures_query][query structure]]) into a form which can be sent to the backend, send the request using =url=, and return the server response, parsed through =bug--parse-rpc-response=. Additional data present in the query structure may be used for fine tuning the data sent to the server.
+
+The RPC function for a backend which
+
+- only supports POST
+- has the complete url in the =:url= property of the configuration
+- needs a mandatory auth header, generated by the =bug--rpc-sample-auth-header= function
+- expects the =data= member of the query structure suitable for being passed to the backend after just transforming it to a JSON string
+
+could look like this:
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--rpc-sample (args instance)
+  "Sample RPC function"
+  (let* ((url (bug--instance-property :url instance))
+         (url-request-extra-headers `(("Content-Type" . "application/json")
+                                      ,(bug--rpc-sample-auth-header instance)))
+         (url-request-method "POST")
+         (url-request-data (json-encode (cdr (assoc 'data args)))))
+    (with-current-buffer (url-retrieve-synchronously url)
+      (bug--parse-rpc-response instance))))
+#+END_SRC
+
+*** bug--rpc-%s-get-fields (object instance)
+Return the field names for a specific instance in a [[#datastructures_fieldnames][field names structure]], translating attributes between native and bug-mode format, if necessary. If the bug tracker uses per-object field names, and object is a non empty string the fields for the object should be returned.
+
+If the bug tracker does not provide a method to query fields a field definition JSON file should be shipped with bug-mode, and returned by this function. Even if the bug tracker supports a field query using a field definition file initially may speed up backend development:
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--rpc-sample-get-fields (object instance)
+  "Read field definitions from a JSON file"
+  (let ((fields-file (concat
+                      bug-json-data-dir
+                      "/sample-fields.json")))
+    (if (file-exists-p fields-file)
+        (json-read-file fields-file)
+      (error "Field definition file not found"))))
+#+END_SRC
+
+*** bug--rpc-%s-handle-error (response instance)
+Check the =response=, which is the complete JSON string returned by the server for errors. If no error was detected return the response.
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--rpc-rally-handle-error (response instance)
+  "Check data returned from Rally for errors"
+  (let* ((return-document (cdr (car response)))
+         (error-messages (assoc 'Errors return-document)))
+    (if (>= (length (cdr error-messages)) 1)
+        (error (aref (cdr error-messages) 0)))
+    response))
+
+(defun bug--rpc-bz-rpc-handle-error (response instance)
+  "Check data returned from Bugzilla for errors"
+  (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
+      (error (cdr (assoc 'message (assoc 'error response)))))
+  response)
+#+END_SRC
