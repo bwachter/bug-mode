@@ -68,8 +68,9 @@
 
 (ert-deftest bug-test-verify-backend-function-completeness ()
   "Check if all backends implement all mandatory functions"
-  (let* ((backends '(bz-rpc rally))
-         (backend-functions '("bug--%s-field-name"
+  (unless bug--available-backends
+    (error "No backends found"))
+  (let* ((backend-functions '("bug--%s-field-name"
                               "bug--%s-list-columns"
                               "bug--backend-%s-features"
                               "bug--browse-%s-bug"
@@ -79,7 +80,9 @@
                               "bug--rpc-%s"
                               "bug--rpc-%s-get-fields"
                               "bug--rpc-%s-handle-error")))
-    (dolist (backend backends)
+    (dolist (backend bug--available-backends)
+      (message (format "Checking backend '%s'"
+                       (prin1-to-string backend t)))
       (dolist (fn backend-functions)
         (should (fboundp (intern (format fn backend))))))))
 

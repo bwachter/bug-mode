@@ -37,6 +37,20 @@
                (file-name-directory (or load-file-name (buffer-file-name)))
                "lisp")))
 
+(defvar bug--available-backends
+  (let (backends)
+    (dolist (backend-file
+             (directory-files
+              (concat (file-name-directory (or load-file-name
+                                               (buffer-file-name)))
+                      "/lisp/")
+              nil "bug-backend-.*.el$"))
+      (let (backend)
+        (setq backend (replace-regexp-in-string "^bug-backend-" "" backend-file))
+        (setq backend (replace-regexp-in-string ".el$" "" backend))
+        (push backend backends)))
+    backends))
+
 (require 'bug-autoloads)
 (require 'bug-custom)
 (require 'bug-persistent-data)
