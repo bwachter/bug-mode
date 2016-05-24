@@ -73,13 +73,17 @@
   (let* ((bug-content (bug--backend-function "bug--fetch-%s-bug" id instance)))
     (if bug-content (bug-show bug-content instance))))
 
+(defun bug--buffer-string (bug-id instance)
+  "Return a buffer name string for bug-id/instance combination"
+  (format "*%s bug: %s*"
+          (prin1-to-string (bug--backend-type instance) t)
+          bug-id))
+
 (defun bug-show (bug instance)
   "Display an existing bug buffer in bug-mode"
   (bug--debug-log-time "bug-show")
   (let ((tmp-bug-id (cdr (assoc (bug--field-name :bug-friendly-id instance) bug))))
-    (switch-to-buffer (format "*%s bug: %s*"
-                              (prin1-to-string (bug--backend-type instance) t)
-                              tmp-bug-id))
+    (switch-to-buffer (bug--buffer-string tmp-bug-id instance))
 
     (bug-mode)
     ;; the tmp-bug-id bit is needed as setting the mode clears buffer-local variables
@@ -190,7 +194,7 @@ via bug-handle-comments-response"
       (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
              (comments (cdr (cadr (car bugs)))))
         (save-excursion
-          (switch-to-buffer (format "*bz bug: %s*" id))
+          (switch-to-buffer (bug--buffer-string id bug---instance))
           (setq buffer-read-only nil)
           (goto-char 0)
           (if (re-search-forward "^COMMENTS:$" nil t)
@@ -431,7 +435,7 @@ via bug-handle-attachments-response"
       (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
              (attachments (cdr (car bugs))))
         (save-excursion
-          (switch-to-buffer (format "*bz bug: %s*" id))
+          (switch-to-buffer (bug--buffer-string id bug---instance))
           (setq buffer-read-only nil)
           (goto-char 0)
           (if (re-search-forward "^ATTACHMENTS:$" nil t)
