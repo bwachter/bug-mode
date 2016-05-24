@@ -26,6 +26,9 @@
      - [[#bug--rpc-s-args-instance][bug--rpc-%s (args instance)]]
      - [[#bug--rpc-s-get-fields-object-instance][bug--rpc-%s-get-fields (object instance)]]
      - [[#bug--rpc-s-handle-error-response-instance][bug--rpc-%s-handle-error (response instance)]]
+ - [[#data-structures][Data structures]]
+   - [[#bug-list-structure][Bug list structure]]
+   - [[#bug-structure][Bug structure]]
 
 * Introduction
 Currently bug-mode is an organically grown dung heap. This document tries to
@@ -189,7 +192,7 @@ Resolve instance specific field names for special fields. Currently defined fiel
 
 =:bug-uuid= and =:bug-friendly-id= may be the same field on some bug tracker implementations. The implementation should just be a =cond= statement mapping bug-mode field names to instance specific field names:
 
-#+BEGIN_SRC emacs_lisp
+#+BEGIN_SRC emacs-lisp
 (defun bug--rally-field-name (field-name instance)
   "Resolve field names for rally"
   (cond ((equal :bug-uuid field-name)
@@ -290,3 +293,44 @@ Check the =response=, which is the complete JSON string returned by the server f
       (error (cdr (assoc 'message (assoc 'error response)))))
   response)
 #+END_SRC
+
+** Mandatory functions for write support (:write)
+* Data structures
+** Bug list structure
+   :PROPERTIES:
+   :CUSTOM_ID: datastructures_buglist
+   :END:
+A bug list (as result of a search, for example) is an array consisting of one or more alists with bug details:
+
+#+BEGIN_SRC emacs-lisp
+`[
+  ((dropped . "dropped")(foo . "bar")(bar . "baz")(baz . "foobar"))
+  ((dropped . "dropped")(foo . "bar")(bar . "baz")(baz . "foo-bar"))
+  ]
+#+END_SRC
+
+=bug-lists-show= will display all fields which are part of the list columns definition. As it accepts an override in the query string evaluating the following code will show a bug list with the elements foo, bar and baz:
+
+#+BEGIN_SRC emacs-lisp
+(bug-list-show '((list-columns . ("foo" "bar" "baz")))
+               `[
+                 ((dropped . "")(foo . "bar")(bar . "baz")(baz . "foobar"))
+                 ((dropped . "")(foo . "bar")(bar . "baz")(baz . "fooba"))
+                 ] nil)
+#+END_SRC
+
+** Bug structure
+   :PROPERTIES:
+   :CUSTOM_ID: datastructures_bug
+   :END:
+A bug is a simple alist containing key/value pairs. Values may be a list. A bug without =:bug-uuid= is treated as a new bug, therefore the following code will display a bug, showing it as new:
+
+#+BEGIN_SRC emacs-lisp
+(bug-show
+ '((foo . "bar")
+   (bar . "baz")
+   (description . "some description"))
+   nil)
+#+END_SRC
+
+In theory an array element of a search list could be directly displayed as bug. However, most bug trackers only return a subset of bug fields in the search query, so it almost always is required to explicitely fetch a bug.
