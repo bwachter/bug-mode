@@ -120,9 +120,9 @@ the first field matching any of the keys in the list."
       (let ()
         (catch 'return
           (dolist (field key)
-            (if (assoc (intern field) (cdr bug))
-                (throw 'return (assoc (intern field) (cdr bug)))))))
-    (assoc (intern key) (cdr bug))))
+            (if (assoc (intern field) bug)
+                (throw 'return (assoc (intern field) bug))))))
+    (assoc (intern key) bug)))
 
 (defun bug-to-filtered-vector (bug list-columns)
   "Extract fields listed in the header from bug and return a vector suitable
