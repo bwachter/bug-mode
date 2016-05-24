@@ -45,6 +45,7 @@
 
 (defvar bug---instance)
 (defvar bug---query)
+(defvar bug---field-length)
 
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -71,6 +72,8 @@
   (setq bug---query query)
   (make-local-variable 'bug---instance)
   (setq bug---instance instance)
+  (make-local-variable 'bug---field-length)
+  (setq bug---field-length nil)
   (setq buffer-read-only nil)
 
   (let* ((list-columns (or (cdr (assoc 'list-columns query))
@@ -128,10 +131,12 @@ for inclusion in tabulated-list-entries"
         (count 0))
     (dolist (header-item list-columns)
       (let* ((field (bug--get-field-by-key bug header-item))
+             (field-name (if (listp header-item) (car header-item) header-item))
              (value (or (cdr field) ""))
              (map (make-sparse-keymap))
              (bug-uuid (cdr (assoc (bug--field-name :bug-uuid bug---instance) (cdr bug))))
              (bug-id (cdr (assoc (bug--field-name :bug-friendly-id bug---instance) (cdr bug))))
+             (cached-length (cdr (assoc field-name bug---field-length)))
              (formatted-string))
         (define-key map [mouse-1] 'bug--list-mode-select-bug-with-mouse)
         (define-key map [mouse-2] 'bug--list-mode-select-bug-with-mouse)
@@ -141,6 +146,13 @@ for inclusion in tabulated-list-entries"
                'bug-uuid bug-uuid
                'bug-id bug-id
                'keymap map))
+        ;; keep track of the longest field values for header length calculation
+        (if (numberp cached-length)
+            (when (> (length formatted-string) cached-length)
+              (push (cons field-name  (length formatted-string))
+                    bug---field-length))
+          (push (cons field-name (length formatted-string)) bug---field-length))
+
         (aset data count formatted-string))
       (setq count (+ 1 count)))
     data))
