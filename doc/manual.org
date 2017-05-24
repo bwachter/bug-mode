@@ -76,6 +76,8 @@ For Rally REST/JSON based [[https://rally1.rallydev.com/slm/doc/webservice/][Web
 - q - kill bug buffer
 - C-c C-c - Commit changes made to the bug tracker
 
+The keybindings marked as deprecated rely on Bugzilla specific behaviour, and will be removed or change behaviour once backend agnostic support for those features is available.
+
 *** bug-list-mode
      :PROPERTIES:
      :CUSTOM_ID: bug-list-mode
