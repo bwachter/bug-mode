@@ -1,0 +1,984 @@
+{
+  "result": {
+    "fields": [
+      {
+        "visibility_field": null,
+        "type": 0,
+        "id": 1,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Bug #",
+        "name": "bug_id",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 2,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Summary",
+        "name": "short_desc",
+        "is_mandatory": true
+      },
+      {
+        "visibility_field": null,
+        "type": 2,
+        "id": 3,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": null,
+        "is_custom": false,
+        "display_name": "Classification",
+        "values": [
+          {
+            "sort_key": 0,
+            "name": "Unclassified",
+            "sortkey": 0,
+            "visibility_values": []
+          }
+        ],
+        "name": "classification",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 4,
+        "type": 2,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Product",
+        "name": "product",
+        "is_mandatory": true
+      },
+      {
+        "visibility_field": null,
+        "type": 0,
+        "id": 5,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": "product",
+        "is_custom": false,
+        "display_name": "Version",
+        "values": [
+          {
+            "sort_key": 0,
+            "name": "unspecified",
+            "sortkey": 0,
+            "is_active": true,
+            "visibility_values": [
+              "TestProduct"
+            ]
+          }
+        ],
+        "name": "version",
+        "is_mandatory": true
+      },
+      {
+        "visibility_field": null,
+        "type": 2,
+        "id": 6,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": null,
+        "is_custom": false,
+        "display_name": "Platform",
+        "values": [
+          {
+            "sort_key": 100,
+            "name": "All",
+            "sortkey": 100,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 200,
+            "name": "PC",
+            "sortkey": 200,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 300,
+            "name": "Macintosh",
+            "sortkey": 300,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 400,
+            "name": "Other",
+            "sortkey": 400,
+            "visibility_values": []
+          }
+        ],
+        "name": "rep_platform",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 7,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "URL",
+        "name": "bug_file_loc",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "type": 2,
+        "id": 8,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": null,
+        "is_custom": false,
+        "display_name": "OS\/Version",
+        "values": [
+          {
+            "sort_key": 100,
+            "name": "All",
+            "sortkey": 100,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 200,
+            "name": "Windows",
+            "sortkey": 200,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 300,
+            "name": "Mac OS",
+            "sortkey": 300,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 400,
+            "name": "Linux",
+            "sortkey": 400,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 500,
+            "name": "Other",
+            "sortkey": 500,
+            "visibility_values": []
+          }
+        ],
+        "name": "op_sys",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "type": 2,
+        "id": 9,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": null,
+        "is_custom": false,
+        "display_name": "Status",
+        "values": [
+          {
+            "sort_key": 0,
+            "can_change_to": [
+              {
+                "comment_required": false,
+                "name": "UNCONFIRMED"
+              },
+              {
+                "comment_required": false,
+                "name": "CONFIRMED"
+              },
+              {
+                "comment_required": false,
+                "name": "IN_PROGRESS"
+              }
+            ],
+            "name": null,
+            "is_open": true,
+            "sortkey": 0,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 100,
+            "can_change_to": [
+              {
+                "comment_required": false,
+                "name": "CONFIRMED"
+              },
+              {
+                "comment_required": false,
+                "name": "IN_PROGRESS"
+              },
+              {
+                "comment_required": false,
+                "name": "RESOLVED"
+              }
+            ],
+            "name": "UNCONFIRMED",
+            "is_open": true,
+            "sortkey": 100,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 200,
+            "can_change_to": [
+              {
+                "comment_required": false,
+                "name": "IN_PROGRESS"
+              },
+              {
+                "comment_required": false,
+                "name": "RESOLVED"
+              }
+            ],
+            "name": "CONFIRMED",
+            "is_open": true,
+            "sortkey": 200,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 300,
+            "can_change_to": [
+              {
+                "comment_required": false,
+                "name": "CONFIRMED"
+              },
+              {
+                "comment_required": false,
+                "name": "RESOLVED"
+              }
+            ],
+            "name": "IN_PROGRESS",
+            "is_open": true,
+            "sortkey": 300,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 400,
+            "can_change_to": [
+              {
+                "comment_required": false,
+                "name": "UNCONFIRMED"
+              },
+              {
+                "comment_required": false,
+                "name": "CONFIRMED"
+              },
+              {
+                "comment_required": false,
+                "name": "VERIFIED"
+              }
+            ],
+            "name": "RESOLVED",
+            "is_open": false,
+            "sortkey": 400,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 500,
+            "can_change_to": [
+              {
+                "comment_required": false,
+                "name": "UNCONFIRMED"
+              },
+              {
+                "comment_required": false,
+                "name": "CONFIRMED"
+              }
+            ],
+            "name": "VERIFIED",
+            "is_open": false,
+            "sortkey": 500,
+            "visibility_values": []
+          }
+        ],
+        "name": "bug_status",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 10,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Status Whiteboard",
+        "name": "status_whiteboard",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "type": 8,
+        "id": 11,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": null,
+        "is_custom": false,
+        "display_name": "Keywords",
+        "values": [],
+        "name": "keywords",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "type": 2,
+        "id": 12,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": null,
+        "is_custom": false,
+        "display_name": "Resolution",
+        "values": [
+          {
+            "sort_key": 100,
+            "name": "",
+            "sortkey": 100,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 200,
+            "name": "FIXED",
+            "sortkey": 200,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 300,
+            "name": "INVALID",
+            "sortkey": 300,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 400,
+            "name": "WONTFIX",
+            "sortkey": 400,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 500,
+            "name": "DUPLICATE",
+            "sortkey": 500,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 600,
+            "name": "WORKSFORME",
+            "sortkey": 600,
+            "visibility_values": []
+          }
+        ],
+        "name": "resolution",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "type": 2,
+        "id": 13,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": null,
+        "is_custom": false,
+        "display_name": "Severity",
+        "values": [
+          {
+            "sort_key": 100,
+            "name": "blocker",
+            "sortkey": 100,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 200,
+            "name": "critical",
+            "sortkey": 200,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 300,
+            "name": "major",
+            "sortkey": 300,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 400,
+            "name": "normal",
+            "sortkey": 400,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 500,
+            "name": "minor",
+            "sortkey": 500,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 600,
+            "name": "trivial",
+            "sortkey": 600,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 700,
+            "name": "enhancement",
+            "sortkey": 700,
+            "visibility_values": []
+          }
+        ],
+        "name": "bug_severity",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "type": 2,
+        "id": 14,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": null,
+        "is_custom": false,
+        "display_name": "Priority",
+        "values": [
+          {
+            "sort_key": 100,
+            "name": "Highest",
+            "sortkey": 100,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 200,
+            "name": "High",
+            "sortkey": 200,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 300,
+            "name": "Normal",
+            "sortkey": 300,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 400,
+            "name": "Low",
+            "sortkey": 400,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 500,
+            "name": "Lowest",
+            "sortkey": 500,
+            "visibility_values": []
+          },
+          {
+            "sort_key": 600,
+            "name": "---",
+            "sortkey": 600,
+            "visibility_values": []
+          }
+        ],
+        "name": "priority",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "type": 2,
+        "id": 15,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": "product",
+        "is_custom": false,
+        "display_name": "Component",
+        "values": [
+          {
+            "sort_key": 0,
+            "name": "TestComponent",
+            "sortkey": 0,
+            "is_active": true,
+            "visibility_values": [
+              "TestProduct"
+            ]
+          }
+        ],
+        "name": "component",
+        "is_mandatory": true
+      },
+      {
+        "visibility_field": null,
+        "id": 16,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "AssignedTo",
+        "name": "assigned_to",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 17,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "ReportedBy",
+        "name": "reporter",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 18,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "QAContact",
+        "name": "qa_contact",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 19,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "AssignedToName",
+        "name": "assigned_to_realname",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 20,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "ReportedByName",
+        "name": "reporter_realname",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 21,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "QAContactName",
+        "name": "qa_contact_realname",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 22,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "CC",
+        "name": "cc",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 23,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Depends on",
+        "name": "dependson",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 24,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Blocks",
+        "name": "blocked",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 25,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Attachment description",
+        "name": "attachments.description",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 26,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Attachment filename",
+        "name": "attachments.filename",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 27,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Attachment mime type",
+        "name": "attachments.mimetype",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 28,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Attachment is patch",
+        "name": "attachments.ispatch",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 29,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Attachment is obsolete",
+        "name": "attachments.isobsolete",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 30,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Attachment is private",
+        "name": "attachments.isprivate",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 31,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Attachment creator",
+        "name": "attachments.submitter",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "type": 0,
+        "id": 32,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "value_field": "product",
+        "is_custom": false,
+        "display_name": "Target Milestone",
+        "values": [
+          {
+            "sort_key": 0,
+            "name": "---",
+            "sortkey": 0,
+            "is_active": true,
+            "visibility_values": [
+              "TestProduct"
+            ]
+          }
+        ],
+        "name": "target_milestone",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 33,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Creation date",
+        "name": "creation_ts",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 34,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Last changed date",
+        "name": "delta_ts",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 35,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Comment",
+        "name": "longdesc",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 36,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Comment is private",
+        "name": "longdescs.isprivate",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 37,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Number of Comments",
+        "name": "longdescs.count",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 38,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Alias",
+        "name": "alias",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 39,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Ever Confirmed",
+        "name": "everconfirmed",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 40,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Reporter Accessible",
+        "name": "reporter_accessible",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 41,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "CC Accessible",
+        "name": "cclist_accessible",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 42,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Group",
+        "name": "bug_group",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 43,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Estimated Hours",
+        "name": "estimated_time",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 44,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Remaining Hours",
+        "name": "remaining_time",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 45,
+        "type": 5,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Deadline",
+        "name": "deadline",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 46,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Commenter",
+        "name": "commenter",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 47,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Flags",
+        "name": "flagtypes.name",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 48,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Flag Requestee",
+        "name": "requestees.login_name",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 49,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Flag Setter",
+        "name": "setters.login_name",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 50,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Hours Worked",
+        "name": "work_time",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 51,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Percentage Complete",
+        "name": "percentage_complete",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 52,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Content",
+        "name": "content",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 53,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Attachment data",
+        "name": "attach_data.thedata",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 54,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Time Since Assignee Touched",
+        "name": "owner_idle_time",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 55,
+        "type": 7,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "See Also",
+        "name": "see_also",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 56,
+        "type": 8,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Tags",
+        "name": "tag",
+        "is_mandatory": false
+      },
+      {
+        "visibility_field": null,
+        "id": 57,
+        "type": 0,
+        "is_on_bug_entry": false,
+        "visibility_values": [],
+        "is_custom": false,
+        "display_name": "Days since bug changed",
+        "name": "days_elapsed",
+        "is_mandatory": false
+      }
+    ]
+  },
+  "id": [
+    11
+  ],
+  "error": null
+}

@@ -5,7 +5,7 @@ ALL: module-tests functional-tests
 TESTS =
 TESTS += test-bug-auth.el
 #TESTS += test-bug-comment-mode.el
-#TESTS += test-bug-common-functions.el
+TESTS += test-bug-common-functions.el
 TESTS += test-bug-format.el
 #TESTS += test-bug-list-mode.el
 #TESTS += test-bug-mode.el
