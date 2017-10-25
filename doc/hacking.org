@@ -26,9 +26,12 @@
      - [[#bug--rpc-s-args-instance][bug--rpc-%s (args instance)]]
      - [[#bug--rpc-s-get-fields-object-instance][bug--rpc-%s-get-fields (object instance)]]
      - [[#bug--rpc-s-handle-error-response-instance][bug--rpc-%s-handle-error (response instance)]]
+   - [[#mandatory-functions-for-write-support-write][Mandatory functions for write support (:write)]]
  - [[#data-structures][Data structures]]
    - [[#bug-list-structure][Bug list structure]]
    - [[#bug-structure][Bug structure]]
+   - [[#field-name-structure][Field name structure]]
+   - [[#query-structure][Query structure]]
 
 * Introduction
 Currently bug-mode is an organically grown dung heap. This document tries to
@@ -126,7 +129,28 @@ Interactive functions should accept an instance identifier as optional argument
 if they either need to operate on a specific instance, or need to pass it on.
 
 When called with a prefix argument the function should query for an instance,
-otherwise the default instance is used.
+otherwise the default instance is used. The instance prompt should come before
+any additional prompts a function may require. A completing function for
+querying instances is provided with =bug--query-instance=.
+
+A typical interactive function starts like this:
+
+#+BEGIN_SRC emacs-lisp
+(defun bug-do-something (query &optional instance)
+  "Read a query string and an optional instance (when called with prefix argument)"
+  (interactive
+   (if current-prefix-arg
+       (nreverse (list
+                  (bug--query-instance)
+                  (read-string "Additional query: " nil nil t)))
+     (list (read-string "Additional query: " nil nil t))))
+  (
+    ...))
+#+END_SRC
+
+Note that the arguments are read in reverse order compared to the function
+definition, and therefore need to be reversed.
+
 ** Non-interactive functions
 Non-interactive functions only should take an instance argument if they either
 need to operate on a specific instance, or need to pass it on. In that case it
@@ -334,3 +358,12 @@ A bug is a simple alist containing key/value pairs. Values may be a list. A bug 
 #+END_SRC
 
 In theory an array element of a search list could be directly displayed as bug. However, most bug trackers only return a subset of bug fields in the search query, so it almost always is required to explicitely fetch a bug.
+
+** Field name structure
+   :PROPERTIES:
+   :CUSTOM_ID: datastructures_fieldnames
+   :END:
+** Query structure
+   :PROPERTIES:
+   :CUSTOM_ID: datastructures_query
+   :END:
