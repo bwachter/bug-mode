@@ -1,4 +1,4 @@
-;;; bug-auth.el --- functions related to authentication and credentials handling
+;;; bug-auth.el --- functions related to authentication and credentials handling -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

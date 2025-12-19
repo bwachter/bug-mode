@@ -1,4 +1,4 @@
-;; bug-rally-subscription-mode.el --- display details for a Rally subscription
+;; bug-rally-subscription-mode.el --- display details for a Rally subscription -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

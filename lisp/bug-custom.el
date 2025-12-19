@@ -1,4 +1,4 @@
-;; bug-custom.el --- customization options for bug-mode
+;; bug-custom.el --- customization options for bug-mode -*- lexical-binding: t; -*-
 ;; (c) 2016 Bernd Wachter <bwachter@lart.info>
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers

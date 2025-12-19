@@ -1,4 +1,4 @@
-;;; bug-comment-mode.el --- handle commenting on a bug
+;;; bug-comment-mode.el --- handle commenting on a bug -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

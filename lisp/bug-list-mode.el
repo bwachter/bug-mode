@@ -1,4 +1,4 @@
-;;; bug-list-mode.el --- handle a list of bugs
+;;; bug-list-mode.el --- handle a list of bugs -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

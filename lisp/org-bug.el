@@ -1,4 +1,4 @@
-;; org-bug.el --- org-mode integration for bug-mode
+;; org-bug.el --- org-mode integration for bug-mode -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

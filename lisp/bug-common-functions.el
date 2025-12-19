@@ -1,4 +1,4 @@
-;;; bug-common-functions.el --- simple functions shared by several modules
+;;; bug-common-functions.el --- simple functions shared by several modules -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

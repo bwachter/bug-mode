@@ -1,4 +1,4 @@
-;; bug-format.el --- functions to nicely format bug details
+;; bug-format.el --- functions to nicely format bug details -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

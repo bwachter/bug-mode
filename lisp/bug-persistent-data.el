@@ -1,4 +1,4 @@
-;; bug-persistent-data.el --- handling persistent data for bug-mode
+;; bug-persistent-data.el --- handling persistent data for bug-mode -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

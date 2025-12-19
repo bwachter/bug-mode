@@ -1,4 +1,4 @@
-;; bug-rally-iteration.el --- queries for Rally iterations
+;; bug-rally-iteration.el --- queries for Rally iterations -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

@@ -1,4 +1,4 @@
-;;; bug-rpc.el --- rpc and BZ instance specific code
+;;; bug-rpc.el --- rpc and BZ instance specific code -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;

@@ -1,4 +1,4 @@
-;;; bug-mode.el --- display a single bug
+;;; bug-mode.el --- display a single bug -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;
@@ -144,6 +144,7 @@
 (defun bug--bug-mode-update-header ()
   "Update the buffers headerline with bug modified status and name,
 and keep the buffers modified marker accurate."
+  ;; TODO: should be handled in backend stuff
   (let* ((summary (or (cdr (assoc 'summary bug---data))
                      (cdr (assoc 'Name bug---data))
                      "<Missing summary!>"))

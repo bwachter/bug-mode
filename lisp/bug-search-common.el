@@ -1,4 +1,4 @@
-;;; bug-search-common.el -- search functions shared between different modules
+;;; bug-search-common.el -- search functions shared between different modules -*- lexical-binding: t; -*-
 ;; TODO: this might need reworking
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers

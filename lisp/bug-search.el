@@ -1,4 +1,4 @@
-;;; bug-search.el --- handle bug searches
+;;; bug-search.el --- handle bug searches -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;
