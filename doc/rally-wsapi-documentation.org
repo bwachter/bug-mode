@@ -1,0 +1,1348 @@
+* Rally Web Services API (WSAPI) - Complete Reference
+:PROPERTIES:
+:CUSTOM_ID: rally-web-services-api-wsapi---complete-reference
+:END:
+*Version:* 2.0 *Documentation Last Updated:* December 19, 2025 *Source:*
+Broadcom Rally® ValueOps
+
+--------------
+
+** Table of Contents
+:PROPERTIES:
+:CUSTOM_ID: table-of-contents
+:END:
+1. [[#introduction][Introduction]]
+2. [[#rest-services-overview][REST Services Overview]]
+3. [[#authorization--authentication][Authorization & Authentication]]
+4. [[#api-versioning][API Versioning]]
+5. [[#query-parameters][Query Parameters]]
+6. [[#project-scoping][Project Scoping]]
+7. [[#schema--metadata][Schema & Metadata]]
+8. [[#attributes][Attributes]]
+9. [[#user-creation-and-management][User Creation and Management]]
+10. [[#client-integration-information][Client Integration Information]]
+11. [[#advanced-topics][Advanced Topics]]
+12. [[#frequently-asked-questions][Frequently Asked Questions]]
+13. [[#api-deprecation-policy][API Deprecation Policy]]
+
+--------------
+
+** Introduction
+:PROPERTIES:
+:CUSTOM_ID: introduction
+:END:
+The Rally Web Services API (WSAPI) enables third-party integration with
+Rally using a REST-based architecture with JSON as the primary data
+format. The API provides comprehensive access to Rally's object model,
+allowing developers to create, read, update, and delete Rally artifacts
+programmatically.
+
+*** Key Concepts
+:PROPERTIES:
+:CUSTOM_ID: key-concepts
+:END:
+- *Reference Objects*: Key-value pairs that point to other objects
+- *Full Objects*: Complete object representations (e.g., a Defect with
+  all its attributes)
+- *Metalinks*: Return full objects, which may include the object itself
+- *Requirement*: Referenced objects must exist before being referenced
+  in API calls
+
+--------------
+
+** REST Services Overview
+:PROPERTIES:
+:CUSTOM_ID: rest-services-overview
+:END:
+*** Core Principles
+:PROPERTIES:
+:CUSTOM_ID: core-principles
+:END:
+REST (Representational State Transfer) is a set of guidelines for web
+services over HTTP. The Rally API exposes resources through URL
+endpoints and uses standard HTTP methods for operations.
+
+*** HTTP Methods and Operations
+:PROPERTIES:
+:CUSTOM_ID: http-methods-and-operations
+:END:
+| Operation           | HTTP Method | Description                            |
+|---------------------+-------------+----------------------------------------|
+| Read Object         | GET         | Retrieve a single object by ID         |
+| Create Object       | POST or PUT | Create a new object                    |
+| Update Object       | POST        | Modify an existing object              |
+| Query/Fetch Objects | GET         | Retrieve multiple objects with filters |
+| Delete Object       | DELETE      | Remove an object                       |
+
+*** Data Format
+:PROPERTIES:
+:CUSTOM_ID: data-format
+:END:
+JSON is the exclusive exchange format for WSAPI v2.0. Construct JSON
+documents and transmit them via HTTP to create or update resources.
+
+*** Curl Command Examples
+:PROPERTIES:
+:CUSTOM_ID: curl-command-examples
+:END:
+**** Basic Authentication
+:PROPERTIES:
+:CUSTOM_ID: basic-authentication
+:END:
+#+begin_src sh
+# GET request
+curl -u 'username:password' url
+
+# PUT request (create)
+curl -u 'username:password' -T filename url
+
+# POST request (update)
+curl -u 'username:password' \
+  -H 'Content-Type: text/javascript;charset=utf-8' \
+  -d @filename url
+
+# DELETE request
+curl -u 'username:password' -X delete url
+#+end_src
+
+**** API Key Authentication
+:PROPERTIES:
+:CUSTOM_ID: api-key-authentication
+:END:
+#+begin_src sh
+# PUT with API Key
+curl -H 'zsessionid: <API Key>' -T filename url
+#+end_src
+
+*Important:* All REST API calls require HTTP authentication.
+
+*** Object Browser
+:PROPERTIES:
+:CUSTOM_ID: object-browser
+:END:
+Start exploring the Rally object model hierarchy at:
+
+#+begin_example
+https://rally1.rallydev.com/slm/webservice/v2.0/subscription
+#+end_example
+
+This allows traversing: Subscription → Workspace → Project
+
+--------------
+
+** Authorization & Authentication
+:PROPERTIES:
+:CUSTOM_ID: authorization-authentication
+:END:
+*** Security Token Overview
+:PROPERTIES:
+:CUSTOM_ID: security-token-overview
+:END:
+Rally employs security tokens to protect against cross-site request
+forgery (CSRF) attacks. Tokens are mandatory for data modification
+operations:
+
+- PUT/POST requests (Create operations)
+- POST requests (Update operations)
+- DELETE requests (Delete operations)
+
+*Note:* Rally recommends using security tokens only with basic
+authentication. For other approaches, use API keys sent via the
+=zsessionid= header.
+
+*** Obtaining a Security Token
+:PROPERTIES:
+:CUSTOM_ID: obtaining-a-security-token
+:END:
+*Endpoint:*
+
+#+begin_example
+https://rally1.rallydev.com/slm/webservice/v2.0/security/authorize
+#+end_example
+
+*Method:* GET with HTTP Basic Authentication header
+
+*Response Structure:*
+
+#+begin_src json
+{
+  "_rallyAPIMajor": 2,
+  "_rallyAPIMinor": 0,
+  "Errors": [],
+  "Warnings": [],
+  "SecurityToken": "<TOKEN_VALUE>"
+}
+#+end_src
+
+*** Using Security Tokens
+:PROPERTIES:
+:CUSTOM_ID: using-security-tokens
+:END:
+Append tokens as query parameters in modification requests:
+
+#+begin_example
+https://rally1.rallydev.com/slm/webservice/v2.0/defect/create?key=<SECURITY_TOKEN>
+#+end_example
+
+*Error Response:* Missing or invalid tokens return:
+
+#+begin_example
+"Not authorized to perform action: Invalid key"
+#+end_example
+
+*** Automatic Token Management
+:PROPERTIES:
+:CUSTOM_ID: automatic-token-management
+:END:
+REST Toolkits and App SDK handle token management automatically.
+
+--------------
+
+** API Versioning
+:PROPERTIES:
+:CUSTOM_ID: api-versioning
+:END:
+*** Version Structure
+:PROPERTIES:
+:CUSTOM_ID: version-structure
+:END:
+Version numbers are embedded in API URLs:
+
+#+begin_example
+https://rally1.rallydev.com/slm/webservice/<VERSION>/defect/123
+#+end_example
+
+Example: For defect with ObjectID 123 using v1.08:
+
+#+begin_example
+https://rally1.rallydev.com/slm/webservice/1.08/defect/123
+#+end_example
+
+*** Current Version Information
+:PROPERTIES:
+:CUSTOM_ID: current-version-information
+:END:
+- *Latest Version:* v2.0
+- *Supported Versions:* 1.08 through 1.43, plus v2.0
+
+*** Major Version Changes
+:PROPERTIES:
+:CUSTOM_ID: major-version-changes
+:END:
+**** v2.0 Breaking Changes
+:PROPERTIES:
+:CUSTOM_ID: v2.0-breaking-changes
+:END:
+- SOAP API removed; JSON-only REST API
+- Custom fields now prefixed with =c_=
+- ObjectIDs changed from Long Integer to String
+- Child collections accessible via dedicated endpoints
+- New attributes:
+  - Latest Discussion Age In Minutes
+  - Expedite
+  - Task Status
+
+**** Historical Changes (v1.08 - v1.43)
+:PROPERTIES:
+:CUSTOM_ID: historical-changes-v1.08---v1.43
+:END:
+*v1.08-1.19:* Foundation features including TestSet, batch queries,
+EmailAddress relocation
+
+*v1.20-1.30:* Collections renamed (projects→teamMemberships), SCM
+integration, attachment support, timezone-aware dates
+
+*v1.31-1.40:* Queryable attachments, workspace configuration, portfolio
+items
+
+*v1.41-1.43:* User object enrichments (CostCenter, NetworkID,
+OfficeLocation, Phone, Department), Feature attribute for User Stories,
+Display Color for Artifacts
+
+*Important:* The “current” version designation was deprecated in v1.17
+and should not be used.
+
+--------------
+
+** Query Parameters
+:PROPERTIES:
+:CUSTOM_ID: query-parameters
+:END:
+*** Core Parameters
+:PROPERTIES:
+:CUSTOM_ID: core-parameters
+:END:
+**** =query=
+:PROPERTIES:
+:CUSTOM_ID: query
+:END:
+Filters results using query strings.
+
+*Example:*
+
+#+begin_example
+?query=(FormattedID = S40330)
+#+end_example
+
+**** =order=
+:PROPERTIES:
+:CUSTOM_ID: order
+:END:
+Controls result ordering. Use “Desc” for descending.
+
+*Example:*
+
+#+begin_example
+?order=Name desc
+#+end_example
+
+**** =pagesize=
+:PROPERTIES:
+:CUSTOM_ID: pagesize
+:END:
+Sets results per page: - v1.x API: 1-200 (default: 20) - v2.x API:
+1-2000 (default: 20)
+
+*Example:*
+
+#+begin_example
+?pagesize=30
+#+end_example
+
+**** =start=
+:PROPERTIES:
+:CUSTOM_ID: start
+:END:
+Specifies starting index for results (begins at 1, default: 1).
+
+*Example:*
+
+#+begin_example
+?start=1
+#+end_example
+
+**** =fetch=
+:PROPERTIES:
+:CUSTOM_ID: fetch
+:END:
+Controls which attributes appear in returned objects. Some attributes
+only return when explicitly listed.
+
+*Example:*
+
+#+begin_example
+?fetch=FormattedID,Name,Project,Parent
+#+end_example
+
+**** =workspace=
+:PROPERTIES:
+:CUSTOM_ID: workspace
+:END:
+Limits searches to a specific workspace using its URL. When omitted,
+uses the default user workspace.
+
+*Example:*
+
+#+begin_example
+?workspace=/workspace/12345
+#+end_example
+
+**** =project=
+:PROPERTIES:
+:CUSTOM_ID: project
+:END:
+Restricts queries to a specific project using its URL. Makes the
+workspace parameter unnecessary.
+
+*Example:*
+
+#+begin_example
+?project=/project/67890
+#+end_example
+
+**** =projectScopeUp=
+:PROPERTIES:
+:CUSTOM_ID: projectscopeup
+:END:
+Includes parent projects above the specified project (default: true).
+
+*Example:*
+
+#+begin_example
+?projectScopeUp=false
+#+end_example
+
+**** =projectScopeDown=
+:PROPERTIES:
+:CUSTOM_ID: projectscopedown
+:END:
+Includes child projects below the specified project (default: true).
+
+*Example:*
+
+#+begin_example
+?projectScopeDown=false
+#+end_example
+
+**** =limit=
+:PROPERTIES:
+:CUSTOM_ID: limit
+:END:
+Sets the maximum number of results to return.
+
+*Example:*
+
+#+begin_example
+?limit=100
+#+end_example
+
+*** Combining Parameters
+:PROPERTIES:
+:CUSTOM_ID: combining-parameters
+:END:
+Parameters can be chained using =&=:
+
+#+begin_example
+?query=(State = "In-Progress")&pagesize=50&fetch=FormattedID,Name,Owner&order=CreationDate desc
+#+end_example
+
+--------------
+
+** Project Scoping
+:PROPERTIES:
+:CUSTOM_ID: project-scoping
+:END:
+*** Project Hierarchy
+:PROPERTIES:
+:CUSTOM_ID: project-hierarchy
+:END:
+All artifacts in Rally are scoped to a project, including: -
+Requirements - Cards - Tasks - Iterations - Releases
+
+*Key Principle:* “All artifacts are scoped to a project.”
+
+*** Project Assignment
+:PROPERTIES:
+:CUSTOM_ID: project-assignment
+:END:
+Any object's Project attribute can be assigned to any project within
+your workspace, providing organizational flexibility.
+
+*** Legacy Considerations
+:PROPERTIES:
+:CUSTOM_ID: legacy-considerations
+:END:
+Earlier versions (1.03 and earlier) used “null” references for single
+parent projects. This approach requires a single root project. When
+multiple root projects exist, an explicit non-null project reference is
+necessary.
+
+*** Query Parameters for Scoping
+:PROPERTIES:
+:CUSTOM_ID: query-parameters-for-scoping
+:END:
+Two Boolean parameters control project scope in searches:
+
+1. *projectScopeUp* --- Includes parent projects
+2. *projectScopeDown* --- Includes child projects
+
+*Default Behavior:* When unspecified, these parameters default to the
+user's Project Picker settings.
+
+*Best Practice:* Explicitly set both parameters for predictable results
+rather than relying on defaults.
+
+--------------
+
+** Schema & Metadata
+:PROPERTIES:
+:CUSTOM_ID: schema-metadata
+:END:
+*** Schema Endpoint (Recommended)
+:PROPERTIES:
+:CUSTOM_ID: schema-endpoint-recommended
+:END:
+The Schema endpoint optimizes type and attribute definition discovery by
+returning all enabled type definitions and metadata in a single request.
+
+**** Features
+:PROPERTIES:
+:CUSTOM_ID: features
+:END:
+- Workspace-specific responses
+- Returns JSON with type definitions, attributes, allowed values, and
+  types
+- Eliminates need for multiple TypeDefinition endpoint requests
+- One-year TTL for browser caching
+- Automatic hash management with redirects for outdated hashes
+
+**** Endpoint URLs
+:PROPERTIES:
+:CUSTOM_ID: endpoint-urls
+:END:
+*By Workspace:*
+
+#+begin_example
+https://rally1.rallydev.com/slm/schema/v2.0/workspace/<ObjectID>/<Hash>
+#+end_example
+
+*By Project:*
+
+#+begin_example
+https://rally1.rallydev.com/slm/schema/v2.0/project/<ObjectID>/<Hash>
+#+end_example
+
+When using project ObjectID, the service automatically locates the
+associated workspace while maintaining project-level attribute
+visibility.
+
+**** Optional Hash Parameter
+:PROPERTIES:
+:CUSTOM_ID: optional-hash-parameter
+:END:
+If omitted, the service determines and redirects to the correct hash.
+Outdated hashes trigger automatic redirects to current versions.
+
+*** Metadata via TypeDefinition (Legacy)
+:PROPERTIES:
+:CUSTOM_ID: metadata-via-typedefinition-legacy
+:END:
+**** TypeDefinition Collection
+:PROPERTIES:
+:CUSTOM_ID: typedefinition-collection
+:END:
+The TypeDefinition collection on the Workspace object provides access to
+object model metadata for querying type structures and definitions.
+
+*Example Query:* Returns the definition of the ‘Defect’ type using
+name-based filtering and fetch parameters.
+
+**** Accessing Attribute Definitions
+:PROPERTIES:
+:CUSTOM_ID: accessing-attribute-definitions
+:END:
+Use the ObjectID from TypeDefinition queries with the Attributes
+endpoint:
+
+#+begin_example
+TypeDefinition/<ObjectID>/Attributes
+#+end_example
+
+The system defaults to the default workspace unless overridden with a
+workspace parameter.
+
+*Note:* The Schema endpoint is preferred over TypeDefinition as it
+combines type definitions and attributes into a single request.
+
+--------------
+
+** Attributes
+:PROPERTIES:
+:CUSTOM_ID: attributes
+:END:
+*** Standard Response Attributes
+:PROPERTIES:
+:CUSTOM_ID: standard-response-attributes
+:END:
+**** =_rallyAPIMajor=
+:PROPERTIES:
+:CUSTOM_ID: rallyapimajor
+:END:
+Major version number of the Web Services API. For v2.0, this value is 2.
+
+*Type:* Integer
+
+**** =_rallyAPIMinor=
+:PROPERTIES:
+:CUSTOM_ID: rallyapiminor
+:END:
+Minor version component of the API. For v2.0, this value is 0.
+
+*Type:* Integer
+
+**** =_ref=
+:PROPERTIES:
+:CUSTOM_ID: ref
+:END:
+If the element represents an object (such as a Defect), this contains
+the URL for that object. Used as the unique identifier for update and
+delete operations.
+
+*Type:* String (URL)
+
+*Example:*
+
+#+begin_src json
+"_ref": "https://rally1.rallydev.com/slm/webservice/v2.0/defect/12345"
+#+end_src
+
+**** =_refObjectName=
+:PROPERTIES:
+:CUSTOM_ID: refobjectname
+:END:
+The name designation of the referenced object.
+
+*Type:* String
+
+**** =_refObjectUUID=
+:PROPERTIES:
+:CUSTOM_ID: refobjectuuid
+:END:
+The Global ID (UUID) assigned to an object for identification purposes.
+
+*Type:* String (UUID)
+
+**** =_type=
+:PROPERTIES:
+:CUSTOM_ID: type
+:END:
+Specifies the classification of the object instance.
+
+*Type:* String
+
+*Examples:* - ="HierarchicalRequirement"= - ="Discussion"= - ="Defect"=
+
+*** Using Attributes
+:PROPERTIES:
+:CUSTOM_ID: using-attributes
+:END:
+Attributes appear in all API responses and provide essential metadata
+about objects. Use =_ref= for subsequent operations on objects, and
+=_type= to determine object types in polymorphic collections.
+
+--------------
+
+** User Creation and Management
+:PROPERTIES:
+:CUSTOM_ID: user-creation-and-management
+:END:
+*** Creating Users
+:PROPERTIES:
+:CUSTOM_ID: creating-users
+:END:
+**** Access Requirements
+:PROPERTIES:
+:CUSTOM_ID: access-requirements
+:END:
+Only these roles can create user accounts: - Subscription
+Administrators - Workspace Administrators
+
+**** API Endpoint
+:PROPERTIES:
+:CUSTOM_ID: api-endpoint
+:END:
+#+begin_example
+POST https://rally1.rallydev.com/slm/webservice/v2.0/user/create
+#+end_example
+
+**** Example Payload Structure
+:PROPERTIES:
+:CUSTOM_ID: example-payload-structure
+:END:
+#+begin_src json
+{
+  "User": {
+    "EmailAddress": "user@example.com",
+    "FirstName": "John",
+    "LastName": "Doe",
+    "DisplayName": "John Doe",
+    "UserName": "user@example.com"
+  }
+}
+#+end_src
+
+**** Automatic Actions
+:PROPERTIES:
+:CUSTOM_ID: automatic-actions
+:END:
+After user creation, the system automatically sends a password-reset
+email to the configured login address.
+
+**** Default Permissions
+:PROPERTIES:
+:CUSTOM_ID: default-permissions
+:END:
+New users receive: - “Workspace User” permissions - “Project Viewer”
+permissions
+
+These are based on subscription administrator defaults. If defaults
+aren't configured, the system assigns users to the first
+alphabetically-ordered open project.
+
+*** Permission Management
+:PROPERTIES:
+:CUSTOM_ID: permission-management
+:END:
+**** Permission Objects
+:PROPERTIES:
+:CUSTOM_ID: permission-objects
+:END:
+The permission model includes three permission-related objects: -
+*UserPermission* (abstract base class) - *WorkspacePermission* -
+*ProjectPermission*
+
+**** API Limitations
+:PROPERTIES:
+:CUSTOM_ID: api-limitations
+:END:
+*Important:* The API currently supports querying permissions only. Users
+must utilize Rally's graphical tools to modify permissions.
+
+*** Custom Fields for Users
+:PROPERTIES:
+:CUSTOM_ID: custom-fields-for-users
+:END:
+Users support custom fields with behavior identical to artifact custom
+fields.
+
+*Example Query:*
+
+#+begin_example
+https://rally1.rallydev.com/slm/webservice/v2.0/Users?query=(CustomField = foo)
+#+end_example
+
+This filters users by custom field values.
+
+--------------
+
+** Client Integration Information
+:PROPERTIES:
+:CUSTOM_ID: client-integration-information
+:END:
+*** Purpose
+:PROPERTIES:
+:CUSTOM_ID: purpose
+:END:
+Broadcom collects optional, non-proprietary integration metadata to
+understand usage patterns and improve products.
+
+*** Required Information Fields
+:PROPERTIES:
+:CUSTOM_ID: required-information-fields
+:END:
+Six data points can be submitted:
+
+1. *Name*: Integration identifier (e.g., “Subversion Plugin”)
+2. *Vendor*: Integration source (e.g., “Rally”)
+3. *Version*: Release number (e.g., “2.01”)
+4. *OS*: Operating system details (e.g., “Linux 2.6.18-8.1.1.el5 amd64”)
+5. *Platform*: Runtime environment info (e.g., “Java 1.6.0_41”)
+6. *Library*: Framework specifics (e.g., “Rally Ruby REST API” or
+   “Apache Axis 1.4”)
+
+*** REST API Submission Method
+:PROPERTIES:
+:CUSTOM_ID: rest-api-submission-method
+:END:
+Integration data is transmitted via HTTP headers:
+
+#+begin_src http
+X-RallyIntegrationName: Subversion Plugin
+X-RallyIntegrationVendor: Rally
+X-RallyIntegrationVersion: 2.01
+X-RallyIntegrationOS: Linux 2.6.18-8.1.1.el5 amd64
+X-RallyIntegrationPlatform: Java 1.6.0_41
+X-RallyIntegrationLibrary: Rally Ruby REST API
+#+end_src
+
+*** Example with Curl
+:PROPERTIES:
+:CUSTOM_ID: example-with-curl
+:END:
+#+begin_src sh
+curl -u 'username:password' \
+  -H 'X-RallyIntegrationName: My Integration' \
+  -H 'X-RallyIntegrationVendor: MyCompany' \
+  -H 'X-RallyIntegrationVersion: 1.0' \
+  -H 'X-RallyIntegrationOS: Linux' \
+  -H 'X-RallyIntegrationPlatform: Python 3.9' \
+  -H 'X-RallyIntegrationLibrary: pyRally' \
+  https://rally1.rallydev.com/slm/webservice/v2.0/...
+#+end_src
+
+This voluntary sharing allows developers to provide environmental
+context without exposing sensitive proprietary information.
+
+--------------
+
+** Advanced Topics
+:PROPERTIES:
+:CUSTOM_ID: advanced-topics
+:END:
+*** Mapping Rally Projects to Custom Fields with TFS
+:PROPERTIES:
+:CUSTOM_ID: mapping-rally-projects-to-custom-fields-with-tfs
+:END:
+Use the =RallyReferenceFieldHandler= tag to map Rally reference fields
+when integrating with Team Foundation Server.
+
+*Steps:* 1. Export bug definition files 2. Modify XML configuration with
+RallyReferenceFieldHandler 3. Validate changes to enable Rally Project
+dropdown functionality in TFS
+
+*** SSL Certificate Issues
+:PROPERTIES:
+:CUSTOM_ID: ssl-certificate-issues
+:END:
+**** Problem
+:PROPERTIES:
+:CUSTOM_ID: problem
+:END:
+cURL fails to connect using SSL due to certificate negotiation problems.
+While Rally's wildcard certificate works with major browsers, cURL has
+compatibility challenges.
+
+**** Workaround
+:PROPERTIES:
+:CUSTOM_ID: workaround
+:END:
+Use the insecure flag to bypass certificate validation while maintaining
+SSL encryption:
+
+#+begin_src sh
+curl -k <url>
+# or
+curl --insecure <url>
+#+end_src
+
+*Note:* This bypasses certificate validation but still uses encrypted
+connections.
+
+*** Time Zone Handling
+:PROPERTIES:
+:CUSTOM_ID: time-zone-handling
+:END:
+**** Changes in v1.30
+:PROPERTIES:
+:CUSTOM_ID: changes-in-v1.30
+:END:
+The API was updated to address discrepancies when user and workspace
+time zones differ.
+
+**** Behavior
+:PROPERTIES:
+:CUSTOM_ID: behavior
+:END:
+When dates are adjusted to workspace time zone boundaries, “the shifted
+date always reflects a moment in time that falls on the same day as the
+provided date.”
+
+This ensures consistent date handling for Iterations and Releases: -
+Dates align with workspace timezone settings - Automatically shift to
+start or end of day as appropriate
+
+*** User Preference Access Control
+:PROPERTIES:
+:CUSTOM_ID: user-preference-access-control
+:END:
+**** Permission Rules
+:PROPERTIES:
+:CUSTOM_ID: permission-rules
+:END:
+Specific permissions govern who can read or modify user preferences: -
+Subscription administrators - Workspace administrators - The user
+themselves
+
+*** Finding Object IDs Without Admin Access
+:PROPERTIES:
+:CUSTOM_ID: finding-object-ids-without-admin-access
+:END:
+**** Challenge
+:PROPERTIES:
+:CUSTOM_ID: challenge
+:END:
+Non-administrators cannot access workspace and project Object IDs (OIDs)
+through the GUI.
+
+**** Solution
+:PROPERTIES:
+:CUSTOM_ID: solution
+:END:
+Query workspace and project OIDs through webservices by creating custom
+pages:
+
+*Workspace Query:*
+
+#+begin_example
+https://rally1.rallydev.com/slm/webservice/v2.0/subscription/SUBSCRIPTION_ID/Workspaces
+#+end_example
+
+*Project Query:*
+
+#+begin_example
+https://rally1.rallydev.com/slm/webservice/v2.0/workspace/WORKSPACE_ID/Projects
+#+end_example
+
+Parse the =_ref= attributes from the response to extract ObjectIDs.
+
+--------------
+
+** Frequently Asked Questions
+:PROPERTIES:
+:CUSTOM_ID: frequently-asked-questions
+:END:
+*** What is a User Story?
+:PROPERTIES:
+:CUSTOM_ID: what-is-a-user-story
+:END:
+*Answer:* A User Story is not a native object; it is a special case of
+the Hierarchical Requirement object. This design provides flexibility
+for future enhancements and custom object labeling.
+
+*** How are dates handled for Iterations and Releases?
+:PROPERTIES:
+:CUSTOM_ID: how-are-dates-handled-for-iterations-and-releases
+:END:
+*Answer:* The system automatically adjusts dates to align with workspace
+timezone settings, shifting to either the start or end of the day. This
+ensures dates reflect the correct moment in time for the workspace's
+timezone.
+
+*** How do Boolean attributes work?
+:PROPERTIES:
+:CUSTOM_ID: how-do-boolean-attributes-work
+:END:
+*Answer:* Boolean fields function differently from other data types.
+Since they inherently represent true/false states, they're implicitly
+required, though displayed as non-required. If not explicitly set during
+artifact creation, boolean values default to null, which the application
+interprets as false.
+
+*** Can I use the “current” API version?
+:PROPERTIES:
+:CUSTOM_ID: can-i-use-the-current-api-version
+:END:
+*Answer:* No. The “current” API version designation was deprecated in
+version 1.17 and should not be used. Always specify an explicit version
+number.
+
+*** Do I need security tokens?
+:PROPERTIES:
+:CUSTOM_ID: do-i-need-security-tokens
+:END:
+*Answer:* Security tokens are required for data modification operations
+(PUT, POST, DELETE) when using basic authentication. When using API keys
+via the =zsessionid= header, token management is handled automatically.
+
+*** What's the difference between _ref and _refObjectName?
+:PROPERTIES:
+:CUSTOM_ID: whats-the-difference-between-_ref-and-_refobjectname
+:END:
+*Answer:* - =_ref= contains the full URL to the object, used for
+operations - =_refObjectName= contains the human-readable name of the
+object
+
+*** How do I know which attributes are available for an object type?
+:PROPERTIES:
+:CUSTOM_ID: how-do-i-know-which-attributes-are-available-for-an-object-type
+:END:
+*Answer:* Use the Schema endpoint (recommended) or TypeDefinition
+endpoint to discover available attributes for each object type. The
+Schema endpoint is preferred as it returns all information in a single
+request.
+
+--------------
+
+** API Deprecation Policy
+:PROPERTIES:
+:CUSTOM_ID: api-deprecation-policy
+:END:
+*** Core Policy
+:PROPERTIES:
+:CUSTOM_ID: core-policy
+:END:
+Broadcom may modify, discontinue, or deprecate APIs, Language Specific
+Toolkits, and SDKs at its discretion.
+
+*** Support Duration
+:PROPERTIES:
+:CUSTOM_ID: support-duration
+:END:
+The company commits to supporting the previous version of any deprecated
+product for approximately one year (the “deprecation period”).
+
+**** Exceptions
+:PROPERTIES:
+:CUSTOM_ID: exceptions
+:END:
+Support may end earlier under these conditions: - Security or
+intellectual property risks - Financial or technical infeasibility -
+Legal or governmental compliance requirements
+
+*** Timeline and Status
+:PROPERTIES:
+:CUSTOM_ID: timeline-and-status
+:END:
+- *Policy Start:* October 1, 2012
+- *First Unsupported Date:* October 1, 2013
+
+Once the one-year deprecation window closes, products receive no further
+support or maintenance and cannot be assumed usable.
+
+*** API Response Behavior
+:PROPERTIES:
+:CUSTOM_ID: api-response-behavior
+:END:
+Requests targeting deprecated or unsupported API versions return warning
+messages indicating their status: - Warnings appear in JSON responses -
+Warnings appear in XML collection responses - Warnings are omitted from
+XML responses for individual artifacts
+
+*** Policy Modifications
+:PROPERTIES:
+:CUSTOM_ID: policy-modifications
+:END:
+Broadcom reserves the right to modify this deprecation policy
+unilaterally and at any time without notice.
+
+*** Best Practices
+:PROPERTIES:
+:CUSTOM_ID: best-practices
+:END:
+- Stay updated on deprecation announcements
+- Migrate to supported versions before deprecation periods end
+- Test integrations against new versions early
+- Subscribe to Rally API announcements for updates
+
+--------------
+
+** Quick Reference
+:PROPERTIES:
+:CUSTOM_ID: quick-reference
+:END:
+*** Base URLs
+:PROPERTIES:
+:CUSTOM_ID: base-urls
+:END:
+#+begin_example
+Production: https://rally1.rallydev.com/slm/webservice/v2.0/
+Schema: https://rally1.rallydev.com/slm/schema/v2.0/
+#+end_example
+
+*** Common Operations
+:PROPERTIES:
+:CUSTOM_ID: common-operations
+:END:
+**** Create a Defect
+:PROPERTIES:
+:CUSTOM_ID: create-a-defect
+:END:
+#+begin_src sh
+curl -u 'username:password' \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  -d '{"Defect": {"Name": "Bug title", "Project": "/project/12345"}}' \
+  https://rally1.rallydev.com/slm/webservice/v2.0/defect/create
+#+end_src
+
+**** Query User Stories
+:PROPERTIES:
+:CUSTOM_ID: query-user-stories
+:END:
+#+begin_src sh
+curl -u 'username:password' \
+  'https://rally1.rallydev.com/slm/webservice/v2.0/hierarchicalrequirement?query=(Iteration.Name = "Sprint 1")&fetch=FormattedID,Name,Owner&pagesize=50'
+#+end_src
+
+**** Update an Object
+:PROPERTIES:
+:CUSTOM_ID: update-an-object
+:END:
+#+begin_src sh
+curl -u 'username:password' \
+  -H 'Content-Type: application/json' \
+  -X POST \
+  -d '{"Defect": {"State": "Fixed"}}' \
+  https://rally1.rallydev.com/slm/webservice/v2.0/defect/12345
+#+end_src
+
+**** Delete an Object
+:PROPERTIES:
+:CUSTOM_ID: delete-an-object
+:END:
+#+begin_src sh
+curl -u 'username:password' \
+  -X DELETE \
+  https://rally1.rallydev.com/slm/webservice/v2.0/defect/12345
+#+end_src
+
+*** HTTP Status Codes
+:PROPERTIES:
+:CUSTOM_ID: http-status-codes
+:END:
+| Code | Meaning                                          |
+|------+--------------------------------------------------|
+| 200  | OK - Request successful                          |
+| 201  | Created - Object created successfully            |
+| 400  | Bad Request - Invalid syntax or parameters       |
+| 401  | Unauthorized - Authentication required or failed |
+| 403  | Forbidden - Authenticated but not authorized     |
+| 404  | Not Found - Object doesn't exist                 |
+| 500  | Internal Server Error - Server-side error        |
+
+*** Common Query Operators
+:PROPERTIES:
+:CUSTOM_ID: common-query-operators
+:END:
+#+begin_example
+= : Equals
+!= : Not equals
+< : Less than
+> : Greater than
+<= : Less than or equal
+>= : Greater than or equal
+contains : String contains
+!contains : String does not contain
+#+end_example
+
+*** Boolean Logic in Queries
+:PROPERTIES:
+:CUSTOM_ID: boolean-logic-in-queries
+:END:
+#+begin_example
+AND : (Condition1 AND Condition2)
+OR : (Condition1 OR Condition2)
+NOT : NOT(Condition)
+#+end_example
+
+*Example:*
+
+#+begin_example
+?query=((State = "In-Progress") AND (Owner.Name = "John Doe"))
+#+end_example
+
+--------------
+
+** Development Best Practices
+:PROPERTIES:
+:CUSTOM_ID: development-best-practices
+:END:
+*** 1. Use API Keys Instead of Basic Auth
+:PROPERTIES:
+:CUSTOM_ID: use-api-keys-instead-of-basic-auth
+:END:
+API keys provide better security and are easier to rotate. Send via
+=zsessionid= header:
+
+#+begin_src sh
+curl -H 'zsessionid: <API_KEY>' <url>
+#+end_src
+
+*** 2. Always Specify fetch Parameters
+:PROPERTIES:
+:CUSTOM_ID: always-specify-fetch-parameters
+:END:
+Only request the attributes you need to reduce payload size and improve
+performance:
+
+#+begin_example
+?fetch=FormattedID,Name,State,Owner
+#+end_example
+
+*** 3. Use Appropriate Page Sizes
+:PROPERTIES:
+:CUSTOM_ID: use-appropriate-page-sizes
+:END:
+Balance between request overhead and memory usage: - Small datasets:
+pagesize=200 - Large datasets: pagesize=2000 (v2.0 only) - Default:
+pagesize=20
+
+*** 4. Implement Pagination
+:PROPERTIES:
+:CUSTOM_ID: implement-pagination
+:END:
+Always handle pagination for queries that might return many results:
+
+#+begin_src python
+start = 1
+pagesize = 200
+while True:
+    response = fetch(f"?start={start}&pagesize={pagesize}")
+    if not response.results:
+        break
+    process(response.results)
+    start += pagesize
+#+end_src
+
+*** 5. Cache Schema Information
+:PROPERTIES:
+:CUSTOM_ID: cache-schema-information
+:END:
+Schema responses have a one-year TTL. Cache them locally to avoid
+repeated requests:
+
+#+begin_src python
+schema = fetch_and_cache_schema(workspace_id)
+# Use schema for validation and type information
+#+end_src
+
+*** 6. Include Integration Headers
+:PROPERTIES:
+:CUSTOM_ID: include-integration-headers
+:END:
+Always include integration information headers for better support:
+
+#+begin_src sh
+-H 'X-RallyIntegrationName: MyApp'
+-H 'X-RallyIntegrationVendor: MyCompany'
+-H 'X-RallyIntegrationVersion: 1.0'
+#+end_src
+
+*** 7. Handle Time Zones Properly
+:PROPERTIES:
+:CUSTOM_ID: handle-time-zones-properly
+:END:
+Be aware that dates for Iterations and Releases adjust to workspace
+timezone settings. Always specify dates in ISO 8601 format:
+
+#+begin_src json
+"StartDate": "2025-01-15T00:00:00.000Z"
+#+end_src
+
+*** 8. Explicit Project Scoping
+:PROPERTIES:
+:CUSTOM_ID: explicit-project-scoping
+:END:
+Always explicitly set =projectScopeUp= and =projectScopeDown= for
+predictable results:
+
+#+begin_example
+?project=/project/12345&projectScopeUp=false&projectScopeDown=true
+#+end_example
+
+*** 9. Error Handling
+:PROPERTIES:
+:CUSTOM_ID: error-handling
+:END:
+Check for errors in all responses:
+
+#+begin_src json
+{
+  "CreateResult": {
+    "Errors": ["Error message here"],
+    "Warnings": ["Warning message here"]
+  }
+}
+#+end_src
+
+*** 10. Use Schema Endpoint for Metadata
+:PROPERTIES:
+:CUSTOM_ID: use-schema-endpoint-for-metadata
+:END:
+Prefer Schema endpoint over TypeDefinition for better performance:
+
+#+begin_example
+GET /slm/schema/v2.0/workspace/<ObjectID>
+#+end_example
+
+--------------
+
+** Troubleshooting
+:PROPERTIES:
+:CUSTOM_ID: troubleshooting
+:END:
+*** Issue: “Not authorized to perform action: Invalid key”
+:PROPERTIES:
+:CUSTOM_ID: issue-not-authorized-to-perform-action-invalid-key
+:END:
+*Cause:* Missing or invalid security token
+
+*Solution:* 1. Obtain a valid security token from
+=/security/authorize= 2. Append to URL: =?key=<SECURITY_TOKEN>= 3. Or
+switch to API key authentication via =zsessionid= header
+
+*** Issue: SSL Certificate Errors with cURL
+:PROPERTIES:
+:CUSTOM_ID: issue-ssl-certificate-errors-with-curl
+:END:
+*Cause:* cURL has compatibility issues with Rally's wildcard certificate
+
+*Solution:*
+
+#+begin_src sh
+curl -k <url>
+# or
+curl --insecure <url>
+#+end_src
+
+*** Issue: Query Returns No Results
+:PROPERTIES:
+:CUSTOM_ID: issue-query-returns-no-results
+:END:
+*Possible Causes:* 1. Project scoping excludes the objects 2. Workspace
+parameter incorrect 3. Query syntax error
+
+*Solutions:* 1. Check =projectScopeUp= and =projectScopeDown=
+parameters 2. Verify workspace/project ObjectIDs 3. Test query syntax
+incrementally
+
+*** Issue: Custom Fields Not Appearing
+:PROPERTIES:
+:CUSTOM_ID: issue-custom-fields-not-appearing
+:END:
+*Cause:* Custom fields require =c_= prefix in v2.0
+
+*Solution:*
+
+#+begin_example
+?fetch=FormattedID,Name,c_CustomFieldName
+#+end_example
+
+*** Issue: Date Values Unexpected
+:PROPERTIES:
+:CUSTOM_ID: issue-date-values-unexpected
+:END:
+*Cause:* Timezone adjustment to workspace settings
+
+*Solution:* Be aware that Iteration and Release dates automatically
+adjust to workspace timezone. Use ISO 8601 format and account for
+workspace timezone settings.
+
+*** Issue: Boolean Field Showing as Null
+:PROPERTIES:
+:CUSTOM_ID: issue-boolean-field-showing-as-null
+:END:
+*Cause:* Boolean fields default to null if not explicitly set,
+interpreted as false
+
+*Solution:* Always explicitly set boolean values during creation:
+
+#+begin_src json
+{"Defect": {"Name": "Bug", "Ready": true}}
+#+end_src
+
+--------------
+
+** Additional Resources
+:PROPERTIES:
+:CUSTOM_ID: additional-resources
+:END:
+*** Official Documentation
+:PROPERTIES:
+:CUSTOM_ID: official-documentation
+:END:
+- Original Source:
+  https://techdocs.broadcom.com/us/en/ca-enterprise-software/valueops/rally/rally-help/reference/rally-web-services-api.html
+
+*** API Explorer
+:PROPERTIES:
+:CUSTOM_ID: api-explorer
+:END:
+- Object Browser:
+  https://rally1.rallydev.com/slm/webservice/v2.0/subscription
+
+*** Support
+:PROPERTIES:
+:CUSTOM_ID: support
+:END:
+- Broadcom Rally Support Portal
+- Rally Community Forums
+
+--------------
+
+*Document Generated:* December 19, 2025 *API Version Documented:* v2.0
+*Publisher:* Broadcom Inc.
+
+This documentation is compiled from official Broadcom Rally® technical
+documentation and is intended for developers building integrations with
+the Rally Web Services API.
