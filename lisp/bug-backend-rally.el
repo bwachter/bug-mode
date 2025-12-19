@@ -132,7 +132,7 @@ object-id for read (or any other call requiring an object-id):
   (let* ((resource (cdr (assoc 'resource args)))
          (operation (cdr (assoc 'operation args)))
          (url-request-method (bug--rpc-rally-request-method operation))
-         (url-str (bug--rpc-rally-url-map-operation args))
+         (url-str (bug--rpc-rally-url-map-operation args instance))
          (url (concat bug-rally-url url-str))
          ;; don't accept any cookie, see issue 6 for details
          (url-cookie-untrusted-urls '(".*"))
@@ -144,6 +144,7 @@ object-id for read (or any other call requiring an object-id):
     (bug--debug (concat "request " url " instance " (prin1-to-string instance t) "\n"))
     (bug--debug-log-time "RPC init")
     (with-current-buffer (url-retrieve-synchronously url)
+      (bug--debug (format "url: %s\ndata: %s\nheaders: %s\n" url url-request-data url-request-extra-headers))
       (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
       (bug--rpc-response-store-cookies instance)
       (bug--parse-rpc-response instance))))
