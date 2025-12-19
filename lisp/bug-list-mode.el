@@ -132,7 +132,7 @@ for inclusion in tabulated-list-entries"
     (dolist (header-item list-columns)
       (let* ((field (bug--get-field-by-key bug header-item))
              (field-name (if (listp header-item) (car header-item) header-item))
-             (value (or (cdr field) ""))
+             (_value (or (cdr field) ""))
              (map (make-sparse-keymap))
              (bug-uuid (cdr (assoc (bug--field-name :bug-uuid bug---instance) (cdr bug))))
              (bug-id (cdr (assoc (bug--field-name :bug-friendly-id bug---instance) (cdr bug))))

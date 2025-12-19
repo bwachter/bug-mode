@@ -26,6 +26,7 @@
 ;;
 ;;; Code:
 
+(require 'cl-lib)
 (require 'bug-rpc)
 (require 'bug-common-functions)
 (require 'bug-format)
@@ -283,7 +284,7 @@ value, or the old field value if nothing has changed."
   (unless (bug--backend-feature bug---instance :write)
     (error "Backend does not support editing"))
   (cond ((equal field-type 0)
-         (let ((my-history (list field-value)))
+         (let ((_my-history (list field-value)))
            (read-string (concat (prin1-to-string field-name) ": ")
                         "" 'my-history)))
         (t (message (format "Editing a field of type %s is not implemented"
@@ -380,7 +381,7 @@ This is mostly useful for debugging text properties"
          (list-entries (if lists-for-instance
                            (gethash list-name lists-for-instance)))
          (bug-id (if (boundp 'bug---id) bug---id id)))
-    (add-to-list 'list-entries bug-id)
+    (setq list-entries (cl-pushnew bug-id list-entries))
     (delete-dups list-entries)
     (if lists-for-instance
         (puthash list-name list-entries lists-for-instance)

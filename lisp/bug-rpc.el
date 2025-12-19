@@ -39,8 +39,8 @@
     nil))
 
 (defun bug-rpc (args instance)
-  "Send an RPC response to the given (or default) bugtracker instance and return the
-parsed response as alist.
+  "Send an RPC response to the given (or default) bugtracker instance and return
+the parsed response as alist.
 
 The `args' alist usually has at least two elements:
 - resource: a string representing the resource to use

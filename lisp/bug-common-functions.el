@@ -81,11 +81,11 @@ Example usage:
       type)))
 
 (defun bug--position-in-array (data field field-value)
-  "Search for a bug with a value 'field-value' in field 'field' in a query
+  "Search for a bug with a value `field-value' in field `field' in a query
 response. For example, to check if a rally user story 815 exists in the results
 the call would look like this:
 
- (bug--position-in-array results 'FormattedID \"US815\")"
+ (bug--position-in-array results \='FormattedID \"US815\")"
   (let ((pos))
     (let ((count (- (length data) 1 )))
       (while (>= count 0)
@@ -113,12 +113,12 @@ Instance name only needs to be entered enough to get a match."
 with names of lists across all bug tracker instances"
   (let ((instance-keys) (category-keys))
     ;; first read the instance keys from highlevel hash
-    (maphash #'(lambda (key value)
+    (maphash #'(lambda (key _value)
                  (push key instance-keys)) bug-remember-list)
     (dolist (instance instance-keys)
       (let ((lists-for-instance (gethash instance bug-remember-list)))
         ;; now read all keys from the lists for each instance
-        (maphash #'(lambda (key value)
+        (maphash #'(lambda (key _value)
                      (push key category-keys)) lists-for-instance)))
     (delete-dups category-keys)
     (completing-read "List name: " category-keys nil nil)))
@@ -194,12 +194,12 @@ setting those values in the instance configuration.
 
 ;; TODO: - pass in object, and first check for property in object, and if not
 ;;       found, check generic one
-(defun bug--get-field-property (field-name property instance &optional object)
+(defun bug--get-field-property (field-name property instance &optional _object)
   "Return a property for a bug field from the field definition.
 
-For example, to find the display name for the field 'foo' you could do
+For example, to find the display name for the field `foo' you could do
 the following:
- (bug--get-field-property 'foo 'display_name instance)"
+ (bug--get-field-property \='foo \='display_name instance)"
   (cdr
    (assoc property
           (gethash (symbol-name field-name) (bug--get-fields instance)))))

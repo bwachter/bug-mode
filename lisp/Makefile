@@ -1,4 +1,6 @@
-ALL: bug-autoloads.el
+EMACS=emacs
+AUTOLOADS_FILE=bug-autoloads.el
+ALL: $(AUTOLOADS_FILE)
 
 .PHONY: clean
 
@@ -18,14 +20,12 @@ ELC = $(SOURCES:.el=.elc)
 %.elc: %.el
 	emacs -batch -Q -L . -eval "(load-file \"$<\")" -f batch-byte-compile $<
 
-compile: bug-autoloads.el $(ELC)
+compile: $(AUTOLOADS_FILE) $(ELC)
 
 clean:
 	@$(RM) *.elc
 	@$(RM) bug-autoloads.el
 
 bug-autoloads.el: $(SOURCES)
-	emacs -batch -Q -L . -eval "(progn\
-	(let ((generated-autoload-file \"$(CURDIR)/bug-autoloads.el\")\
-	      (make-backup-files nil))\
-	  (update-directory-autoloads \".\")))"
+	@$(EMACS) -Q --batch --eval "\
+	 (loaddefs-generate '(\".\") \"$(AUTOLOADS_FILE)\"))"

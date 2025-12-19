@@ -26,6 +26,7 @@
 ;;
 ;;; Code:
 
+(require 'auth-source)
 (require 'netrc)
 (require 'url-parse)
 (require 'bug-rpc)
@@ -45,7 +46,7 @@ The return value is a two element list (login password)
          (authinfo-file (expand-file-name
                      (if (bug--instance-property :authinfo instance)
                          (bug--instance-property :authinfo instance) "~/.authinfo")))
-         (authinfo (netrc-parse authinfo-file))
+         (authinfo (auth-source-netrc-parse-all authinfo-file))
          (authrecord (netrc-machine authinfo host port))
          (login (if (bug--instance-property :login instance)
                     (bug--instance-property :login instance)
