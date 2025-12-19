@@ -1,6 +1,7 @@
 ALL: lisp
+MAKEFLAGS += --print-directory
 
-.PHONY: clean lisp tests
+.PHONY: clean lisp tests compile
 
 clean:
 	@$(MAKE) -C lisp clean
