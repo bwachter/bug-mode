@@ -1,39 +1,38 @@
 * bug-mode manual                                                     :TOC_4:
- - [[#known-issues-and-limitations][Known issues and limitations]]
- - [[#installation][Installation]]
-   - [[#requirements][Requirements]]
- - [[#supported-backends][Supported backends]]
-   - [[#bugzilla-json-rpc][Bugzilla JSON-RPC]]
-   - [[#rally-rest-api][Rally REST API]]
- - [[#modes][Modes]]
-   - [[#generic-modes][Generic modes]]
-     - [[#bug-mode][bug-mode]]
-       - [[#key-bindings][Key bindings]]
-     - [[#bug-list-mode][bug-list-mode]]
-       - [[#key-bindings-1][Key bindings]]
-   - [[#rally-specific-modes][Rally specific modes]]
-     - [[#bug-rally-subscription-mode][bug-rally-subscription-mode]]
- - [[#interactive-functions][Interactive functions]]
-   - [[#bug-cache-clear][bug-cache-clear]]
-   - [[#bug-login-bugzilla][bug-login (/Bugzilla/)]]
-   - [[#bug-logout-bugzilla][bug-logout (/Bugzilla/)]]
-   - [[#bug-open][bug-open]]
-   - [[#bug-rally-subscription-rally][bug-rally-subscription (/Rally/)]]
-   - [[#bug-search][bug-search]]
-   - [[#bug-search-multiple-bugzilla][bug-search-multiple (/Bugzilla/)]]
-   - [[#bug-stored-bugs][bug-stored-bugs]]
- - [[#customization][Customization]]
- - [[#org-mode-integration][org-mode integration]]
- - [[#proxy-use][Proxy use]]
-   - [[#patch-url][Patch url]]
-   - [[#use-port-forwarding][Use port forwarding]]
-   - [[#use-a-proxy-aware-tls-program][Use a proxy aware TLS program]]
- - [[#rich-text-formatting][Rich text formatting]]
- - [[#related-modes-and-modules][Related modes and modules]]
-   - [[#rally-mode][rally-mode]]
-   - [[#bugz-mode][bugz-mode]]
-   - [[#ghel][gh.el]]
-   - [[#jira-rest][jira-rest]]
+- [[#known-issues-and-limitations][Known issues and limitations]]
+- [[#installation][Installation]]
+  - [[#requirements][Requirements]]
+- [[#supported-backends][Supported backends]]
+  - [[#bugzilla-json-rpc][Bugzilla JSON-RPC]]
+  - [[#rally-rest-api][Rally REST API]]
+- [[#modes][Modes]]
+  - [[#generic-modes][Generic modes]]
+    - [[#bug-mode][bug-mode]]
+      - [[#key-bindings][Key bindings]]
+    - [[#bug-list-mode][bug-list-mode]]
+      - [[#key-bindings-1][Key bindings]]
+  - [[#rally-specific-modes][Rally specific modes]]
+    - [[#bug-rally-subscription-mode][bug-rally-subscription-mode]]
+- [[#interactive-functions][Interactive functions]]
+  - [[#bug-cache-clear][bug-cache-clear]]
+  - [[#bug-login-bugzilla][bug-login (/Bugzilla/)]]
+  - [[#bug-logout-bugzilla][bug-logout (/Bugzilla/)]]
+  - [[#bug-open][bug-open]]
+  - [[#bug-rally-subscription-rally][bug-rally-subscription (/Rally/)]]
+  - [[#bug-search][bug-search]]
+  - [[#bug-search-multiple-bugzilla][bug-search-multiple (/Bugzilla/)]]
+  - [[#bug-stored-bugs][bug-stored-bugs]]
+- [[#customization][Customization]]
+- [[#org-mode-integration][org-mode integration]]
+- [[#proxy-use][Proxy use]]
+  - [[#use-port-forwarding][Use port forwarding]]
+  - [[#use-a-proxy-aware-tls-program][Use a proxy aware TLS program]]
+- [[#rich-text-formatting][Rich text formatting]]
+- [[#related-modes-and-modules][Related modes and modules]]
+  - [[#rally-mode][rally-mode]]
+  - [[#bugz-mode][bugz-mode]]
+  - [[#ghel][gh.el]]
+  - [[#jira-rest][jira-rest]]
 
 * Known issues and limitations
 To get an overview of open issues, report bugs, or suggest improvements please visit the [[https://github.com/bwachter/bug-mode/issues][GitHub issue tracker]].
@@ -51,7 +50,7 @@ For historical reasons the API used for Bugzilla is the [[https://www.bugzilla.o
 
 A Bugzilla instance >= 3.6 with JSON-RPC enabled is required.
 ** Rally REST API
-For Rally REST/JSON based [[https://rally1.rallydev.com/slm/doc/webservice/][Web Services API]] in version 2 is implemented (the latest version at the moment of writing this manual).
+For Rally REST/JSON based [[https://techdocs.broadcom.com/us/en/ca-enterprise-software/valueops/rally/rally-help/reference/rally-web-services-api.html][Web Services API]] in version 2 is implemented (the latest version at the moment of writing this manual).
 * Modes
 ** Generic modes
 *** bug-mode
@@ -157,10 +156,9 @@ The =bug-search= link type provides a link to a bug search. For Rally this can b
 The org-mode integration supports [[http://orgmode.org/manual/Capture.html][org-capture]] from bug-mode and bug-list-mode (=search result) buffers. Calling =org-capture= anywhere in a bug-mode buffer will capture a link to the bug. Calling =org-capture= in a bug-list-mode buffer will capture a link to the bug at point.
 
 * Proxy use
-HTTPS proxy support in emacs has been broken for quite a while, for details read
-[[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=11788][bug 11788]]. As a result, doing something like the following will at best lead to
-interesting results if your bug tracker is only reachable via https for
-authenticated operations (which it should be):
+We used to ship a workaround for broken https proxy support in URL (see [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=11788][bug 11788]]).
+This should have been fixed since emacs 26 - which was a while ago, so the following
+snippet should not just work for accessing https enabled bug trackers through a proxy:
 
 #+BEGIN_SRC emacs-lisp
 (setq url-proy-services
@@ -169,19 +167,8 @@ authenticated operations (which it should be):
         ("https" . "a.proxy.example")))
 #+END_SRC
 
-There are multiple possible workarounds, some of them are documented here in
-order of desirability.
-
-** Patch url
-A patched version of url is included for emacs 24.5. You can start using
-it by setting =bug-patched-url= to =t=. The changes should not interfere
-with other packages (apart from fixing https proxy use for them as well),
-and if no patched version was found matching your emacs it just falls back
-to the default url package -- setting this option should have no negative
-impact.
-
-If you're using emacs 25 you can just grab the patch from git
-(=2d1a6054b161bd1055d4feb11c8c5ac95543f5db=) and apply it.
+If your environment doesn't work still you can try one of the workarounds in the following
+sections.
 
 ** Use port forwarding
 If your proxy allows using =CONNECT=, and you have a suitable shell host

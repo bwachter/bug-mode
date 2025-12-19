@@ -32,11 +32,6 @@
 (require 'bug-debug)
 (require 'json)
 
-(defvar bug--url-patch-file (format "%s/patched-url/url-http-%d.%d.el"
-                                    (file-name-directory (or load-file-name (buffer-file-name)))
-                                    emacs-major-version
-                                    emacs-minor-version))
-
 (defun bug--rpc-cookie-header (instance)
   "Insert cookies stored for this particular instance, if any"
   (if (bug--cache-get 'cookies instance)
@@ -57,8 +52,7 @@ to be added.
 Backends may define additional keys, check the documentation of their RPC
 functions for details.
 "
-  (bug--with-patched-url
-   (bug--backend-function "bug--rpc-%s" args instance)))
+   (bug--backend-function "bug--rpc-%s" args instance))
 
 (defun bug--rpc-response-store-cookies (instance)
   "Try to extract cookies from an RPC response, and store them in the cache"
@@ -84,18 +78,6 @@ functions for details.
       (let ((response (json-read-from-string (decode-coding-string (buffer-substring (point) (point-max)) 'utf-8))))
         (bug--backend-function "bug--rpc-%s-handle-error" response instance))
     (error "Failed to parse http response")))
-
-(defmacro bug--with-patched-url (&rest body)
-  "Try to load url-http patched for https proxy if `bug-patched-url' is
-non-nil and the file patched-url/url-http-major-minor.el exists."
-  `(progn
-     (if (and (not (equal nil bug-patched-url))
-              (file-exists-p bug--url-patch-file))
-         (progn
-           (message (concat "Using url from " bug--url-patch-file))
-           (load-file bug--url-patch-file))
-       (message "Not using patched URL, which may break proxy support"))
-    ,@body))
 
 (provide 'bug-rpc)
 ;;; bug-rpc.el ends here
