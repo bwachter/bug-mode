@@ -76,6 +76,19 @@ and `rally'
   :type 'sexp
   :group 'bug)
 
+(defcustom bug-update-mode 'on-commit
+  "Mode for updating bug fields.
+
+\='immediate - Changes are written to the backend immediately after
+               editing a field.  The field is updated in the buffer on
+               success.
+
+\='on-commit - Changes are tracked locally and written to the backend
+               when bug-commit (C-c C-c) is called."
+  :type '(choice (const :tag "Immediate update" immediate)
+                 (const :tag "Update on commit" on-commit))
+  :group 'bug)
+
 (defcustom bug-rally-projects-from-workspace nil
   "Controls how rally projects are retrieved. When the default `nil'
 use queries to obtain all projects. When set to `t' use workspace

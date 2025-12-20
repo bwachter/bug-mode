@@ -34,6 +34,7 @@
 (require 'bug-format)
 (require 'bug-debug)
 (require 'bug-persistent-data)
+(require 'bug-custom)
 
 (defvar bug---id)
 (defvar bug---uuid)
@@ -174,13 +175,25 @@ and keep the buffers modified marker accurate."
            (concat prefix ": " summary)
            'face face))))
 
+(defun bug--get-update-id (instance)
+  "Get the appropriate ID for update operations based on backend type.
+
+For Rally, returns bug---uuid (_refObjectUUID).
+For other backends, returns bug---id."
+  (if (equal 'rally (bug--backend-type instance))
+      bug---uuid
+    bug---id))
+
 (defun bug-update (id fields instance)
-  "Update fields in the bug on Bugzilla"
-  (let ((fields (append fields `((ids . ,id)))))
-    (message (format "fields: %s" fields))
-    (bug-rpc `((resource . "Bug")
-               (operation . "update")
-               (data . ,fields)) instance)))
+  "Update fields in a bug using the backend-specific update function.
+
+ID is the bug identifier (UUID for Rally, numeric ID for Bugzilla).
+FIELDS is an alist of field names and values to update.
+INSTANCE is the bug tracker instance.
+
+Returns the updated bug data from the backend."
+  (message "Updating bug %s with fields: %s" id fields)
+  (bug--backend-function "bug--update-%s-bug" (list id fields) instance))
 
 (defun bug-get-comments (id instance)
   "Request comments for a bug and add it to an existing(!) bug buffer
@@ -253,7 +266,12 @@ function can handle it for browser display."
       (message "No changes available.")
     (progn
       (message "Sending changes...")
-      (bug-update bug---id bug---changed-data bug---instance))))
+      (let ((update-id (bug--get-update-id bug---instance)))
+        (bug-update update-id bug---changed-data bug---instance)
+        ;; Clear changed data after successful update
+        (setq bug---changed-data nil)
+        (bug--bug-mode-update-header)
+        (message "Changes committed successfully.")))))
 
 (defun bug--bug-mode-locate-field (field-name)
   "Try to locate a field `field-name' at point or at the current line. If found
@@ -324,19 +342,49 @@ value, or the old field value if nothing has changed."
               (setq buffer-read-only nil)
               (goto-char field-pos)
               (delete-field field-pos)
-              ;; add or replace the new field in `bug---changed-data'
-              (if (assoc field-name bug---changed-data)
-                  (setf (cdr (assoc field-name bug---changed-data)) new-value)
-                (push (cons field-name new-value) bug---changed-data))
-              ;; replace old data with new ones, nicely formatted
-              (insert
-               (propertize
-                (bug--format-field-value (cons field-name new-value)
-                                         bug---instance t)
-                'field field-name))
+
+              (cond
+               ;; Immediate update mode: write to backend immediately
+               ((eq bug-update-mode 'immediate)
+                (condition-case err
+                    (let ((update-id (bug--get-update-id bug---instance)))
+                      (message "Updating field %s..." field-name)
+                      (bug-update update-id `((,field-name . ,new-value)) bug---instance)
+                      ;; Update succeeded - update buffer and local data
+                      (if (assoc field-name bug---data)
+                          (setf (cdr (assoc field-name bug---data)) new-value)
+                        (push (cons field-name new-value) bug---data))
+                      (insert
+                       (propertize
+                        (bug--format-field-value (cons field-name new-value)
+                                                 bug---instance t)
+                        'field field-name))
+                      (message "Field %s updated successfully." field-name))
+                  (error
+                   ;; Update failed - restore old value and show error
+                   (insert
+                    (propertize
+                     (bug--format-field-value (cons field-name field-value)
+                                              bug---instance t)
+                     'field field-name))
+                   (message "Failed to update field: %s" (error-message-string err)))))
+
+               ;; On-commit mode: track changes locally
+               ((eq bug-update-mode 'on-commit)
+                ;; add or replace the new field in `bug---changed-data'
+                (if (assoc field-name bug---changed-data)
+                    (setf (cdr (assoc field-name bug---changed-data)) new-value)
+                  (push (cons field-name new-value) bug---changed-data))
+                ;; replace old data with new ones, nicely formatted
+                (insert
+                 (propertize
+                  (bug--format-field-value (cons field-name new-value)
+                                           bug---instance t)
+                  'field field-name))
+                (message "Field %s changed (use C-c C-c to commit)" field-name)))
+
               (bug--bug-mode-update-header)
-                                        ;(setq buffer-read-only t)
-              )))))))
+              (setq buffer-read-only t))))))))
 
 ;;;###autoload
 (defun bug--bug-mode-info ()
@@ -406,8 +454,9 @@ This is mostly useful for debugging text properties"
            (mapcar
             (lambda (x)
               (cdr (assoc 'name x)))
-            (cdr (assoc 'values (gethash "resolution" (bug--get-fields bug---instance)))))))))
-    (bug-update bug---id `((status . "RESOLVED") (resolution . ,resolution)) bug---instance))
+            (cdr (assoc 'values (gethash "resolution" (bug--get-fields bug---instance))))))))
+        (update-id (bug--get-update-id bug---instance)))
+    (bug-update update-id `((status . "RESOLVED") (resolution . ,resolution)) bug---instance))
   (bug-open bug---id bug---instance))
 
 ;;;###autoload

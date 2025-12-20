@@ -159,6 +159,24 @@ This function takes a pre-parsed Bugzilla search query as argument.
            (t (message "You should never see this message")))))))
 
 ;;;###autoload
+(defun bug--update-bz-rpc-bug (args instance)
+  "Update fields in a Bugzilla bug.
+
+ARGS is a list containing (ID FIELDS) where:
+  ID is the numeric bug ID
+  FIELDS is an alist of field names and values to update
+INSTANCE is the Bugzilla instance.
+
+Returns the response from Bugzilla's Bug.update call."
+  (let* ((id (car args))
+         (fields (cadr args))
+         (fields-with-id (append fields `((ids . ,id)))))
+    (bug-rpc `((resource . "Bug")
+               (operation . "update")
+               (data . ,fields-with-id))
+             instance)))
+
+;;;###autoload
 (defun bug--browse-bz-rpc-bug (id instance)
   "Open the current bugzilla bug in browser"
   (let ((url (concat (bug--instance-property :url instance) "/show_bug.cgi?id=" id)))

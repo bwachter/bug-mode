@@ -702,6 +702,34 @@ Prompts for required fields (Name, Project) and optional fields
       (bug-open (cdr (assoc '_refObjectUUID created-story)) instance)
       created-story)))
 
+(defun bug--update-rally-bug (args instance)
+  "Update a Rally object via POST /<type>/<id>.
+
+ARGS is a list containing (OBJECT-ID DATA) where:
+  OBJECT-ID is the Rally ObjectID (UUID) or _ref string
+  DATA is an alist of field names and values to update
+INSTANCE is the Rally instance.
+
+Returns the updated object from Rally's OperationResult."
+  (let* ((object-id (car args))
+         (data (cadr args))
+         (response (bug--rpc-rally
+                    `((resource . "artifact")
+                      (operation . "update")
+                      (object-id . ,object-id)
+                      (data . ((Artifact . ,data))))
+                    instance))
+         (operation-result (cdr (car response)))
+         (errors (cdr (assoc 'Errors operation-result)))
+         (warnings (cdr (assoc 'Warnings operation-result)))
+         (object (cdr (assoc 'Object operation-result))))
+    ;; Display warnings if any
+    (when (and warnings (> (length warnings) 0))
+      (message "Rally warnings: %s" (mapconcat 'identity warnings ", ")))
+    ;; Error handling is done by bug--rpc-rally-handle-error
+    ;; Return the updated object
+    object))
+
 (defun bug--delete-rally-bug (object-id instance)
   "Delete a Rally object via DELETE /<type>/<id>.
 
