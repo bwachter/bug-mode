@@ -27,7 +27,9 @@
 ;;; Code:
 
 (require 'bug-persistent-data)
+(require 'project)
 (require 'cl-lib)
+(require 'vtable)
 
 (defun filter (condp lst)
   (delq nil
@@ -119,6 +121,182 @@ Instance name only needs to be entered enough to get a match."
     (if (= (length completions) 1)
         (car completions)
       (completing-read "Instance: " completions nil t))))
+
+;;;;;;
+;; Instance management functions (bug-instances-list support)
+
+(defun bug--get-project-instance ()
+  "Get the bug tracker instance for the current project.
+
+Checks `bug-project-instances-alist' against the current project root.
+Supports both exact string matches and regexp patterns.
+Returns the instance symbol if found, nil otherwise."
+  (when-let ((project (or (and (fboundp 'project-current) (project-current))
+                          default-directory)))
+    (let ((root (if (consp project)
+                    (project-root project)
+                  (if (stringp project)
+                      project
+                    default-directory))))
+      (or
+       ;; Exact match
+       (cdr (assoc root bug-project-instances-alist))
+       ;; Regexp match
+       (cl-loop for (pattern . instance) in bug-project-instances-alist
+                when (string-match-p pattern root)
+                return instance)))))
+
+(defun bug--get-active-instance ()
+  "Get the currently active instance following resolution hierarchy.
+
+Resolution order:
+1. Buffer-local bug---instance (if set and buffer exists)
+2. Project-specific instance (via `bug-project-instances-alist')
+3. bug-active-instance (if set)
+4. bug-default-instance (backward compatibility)
+
+Returns instance symbol or nil if no instance is explicitly configured.
+When nil is returned, callers should prompt the user to select an instance."
+  (or
+   ;; 1. Buffer-local instance (only in bug-related buffers)
+   (and (boundp 'bug---instance) bug---instance)
+   ;; 2. Project-specific instance
+   (bug--get-project-instance)
+   ;; 3. Active instance (when set)
+   bug-active-instance
+   ;; 4. Default instance (backward compatibility)
+   bug-default-instance))
+
+(defun bug--check-instance-access (instance)
+  "Check if INSTANCE can be accessed based on active instance restrictions.
+
+Returns t if access is allowed, nil otherwise.
+Shows a warning if the buffer-local instance differs from active instance."
+  (cond
+   ;; No active instance restriction - allow all
+   ((null bug-active-instance) t)
+   ;; Same as active instance - allow
+   ((eq instance bug-active-instance) t)
+   ;; Buffer-local instance different from active - allow with warning
+   ((and (boundp 'bug---instance)
+         bug---instance
+         (not (eq bug---instance bug-active-instance)))
+    (message "Warning: This buffer uses instance '%s', but active instance is '%s'"
+             bug---instance bug-active-instance)
+    t)
+   ;; Trying to use non-active instance for new operation - block
+   (t
+    (error "Instance '%s' is not active. Current active instance: '%s'. Use `bug-switch-instance' to change."
+           instance bug-active-instance))))
+
+;;;###autoload
+(defun bug-switch-instance (instance-name)
+  "Switch to INSTANCE-NAME as the active bug tracker instance.
+
+Only this instance will be accessible for new operations until switched again.
+Existing buffers with different instances continue to work but show warnings.
+
+INSTANCE-NAME can come from either `bug-instances-list' or `bug-instance-plist'."
+  (interactive (list (bug--select-instance-from-all)))
+  (setq bug-active-instance (bug--instance-to-symbolp instance-name))
+  (message "Switched to instance: %s" bug-active-instance))
+
+;;;###autoload
+(defun bug-activate-instance (instance-name)
+  "Activate INSTANCE-NAME without interactive prompt.
+See `bug-switch-instance' for details."
+  (setq bug-active-instance (bug--instance-to-symbolp instance-name))
+  (message "Activated instance: %s" bug-active-instance))
+
+;;;###autoload
+(defun bug-deactivate-instance ()
+  "Deactivate the current active instance, allowing all instances to be used."
+  (interactive)
+  (let ((was-active bug-active-instance))
+    (setq bug-active-instance nil)
+    (if was-active
+        (message "Deactivated instance: %s (all instances now accessible)" was-active)
+      (message "No active instance was set"))))
+
+;;;###autoload
+(defun bug-list-instances ()
+  "Display all configured bug tracker instances with their status."
+  (interactive)
+  (let ((buffer (get-buffer-create "*Bug Instances*"))
+        (all-instances (bug--get-all-instances)))
+    (with-current-buffer buffer
+      (let ((inhibit-read-only t))
+        (erase-buffer)
+        (insert (propertize "Bug Tracker Instances\n" 'face 'bold)
+                (make-string 60 ?=) "\n\n")
+        (if bug-active-instance
+            (insert (propertize (format "Active Instance: %s\n"
+                                       bug-active-instance)
+                               'face 'warning))
+          (insert "Active Instance: (none - all instances accessible)\n"))
+        (if (null all-instances)
+            (progn
+              (insert "\nNo instances configured.\n\n"
+                      "Configure instances via:\n"
+                      "  M-x customize-variable RET bug-instances-list\n"
+                      "  M-x customize-variable RET bug-instance-plist\n"))
+          (insert "\n")
+          (insert "Use 's' on a row to switch to that instance.\n")
+          (insert "Use 'd' to deactivate instance restrictions.\n\n")
+          (make-vtable
+           :columns '((:name "Name" :width 20)
+                      (:name "Type" :width 15)
+                      (:name "Status" :width 12)
+                      (:name "URL/Details" :width 40))
+           :objects all-instances
+           :getter (lambda (inst-info column vtable)
+                     (let* ((name (car inst-info))
+                            (plist (cdr inst-info))
+                            (type (plist-get plist :type))
+                            (url (or (plist-get plist :url) "(Rally API)"))
+                            (status (cond
+                                    ((eq name bug-active-instance) "[ACTIVE]")
+                                    ((eq name bug-default-instance) "[DEFAULT]")
+                                    (t ""))))
+                       (pcase (vtable-column vtable column)
+                         ("Name" (symbol-name name))
+                         ("Type" (symbol-name type))
+                         ("Status" status)
+                         ("URL/Details" url))))
+           :actions `("s" ,(lambda (inst-info)
+                             (bug-activate-instance (car inst-info))
+                             (bug-list-instances))
+                      "d" ,(lambda (_inst-info)
+                             (bug-deactivate-instance)
+                             (bug-list-instances))))))
+      (special-mode)
+      (goto-char (point-min)))
+    (pop-to-buffer buffer)))
+
+(defun bug--select-instance-from-all ()
+  "Select an instance from both bug-instances-list and bug-instance-plist.
+
+Returns the instance symbol in its original format (keyword for plist,
+regular symbol for instances-list), or nil if canceled."
+  (let* ((all-instances (bug--get-all-instances))
+         (names (mapcar (lambda (x) (symbol-name (car x))) all-instances))
+         (selected (completing-read "Instance: " names nil t)))
+    ;; Intern the selected string, preserving keyword/symbol format
+    (when (and selected (not (string-empty-p selected)))
+      (intern selected))))
+
+(defun bug--get-all-instances ()
+  "Get all configured instances from both bug-instances-list and
+bug-instance-plist.
+
+Returns an alist of (NAME . PLIST) pairs."
+  (append
+   ;; From bug-instances-list (already in correct format)
+   bug-instances-list
+   ;; From bug-instance-plist (extract cons cells)
+   (cl-loop for record in bug-instance-plist
+            when (and (not (listp record)) (keywordp record))
+            collect (cons record (plist-get bug-instance-plist record)))))
 
 (defun bug--query-remembered-lists ()
   "Query for the name of a locally remembered bug list. Completion is seeded
@@ -218,9 +396,13 @@ the following:
 
 (defun bug--instance-property (property instance)
   "Return the value for a PROPERTY of the instance INSTANCE, or the default
-instance if INSTANCE is empty"
-  (let* ((instance(bug--instance-to-symbolp instance))
-         (property-list (plist-get bug-instance-plist instance)))
+instance if INSTANCE is empty.
+
+Checks both `bug-instances-list' and `bug-instance-plist'."
+  (let* ((instance (bug--instance-to-symbolp instance))
+         ;; Try bug-instances-list first, then bug-instance-plist
+         (property-list (or (cdr (assoc instance bug-instances-list))
+                           (plist-get bug-instance-plist instance))))
     (if (and (equal property :url)
              (equal 'rally (bug--backend-type instance)))
         (let ((rally-url (plist-get property-list property)))
@@ -229,15 +411,27 @@ instance if INSTANCE is empty"
 
 (defun bug--instance-to-symbolp (instance)
   "Make sure that the instance handle is symbolp; returns default instance
-if instance is nil"
-  (let* ( ; check if instance already is correct type, if not, check if it starts with :
-          ; if it does, just convert, otherwise prepend : and assume all is fine now
-          ; bug-default-instance is always assumed to be correct
+if instance is nil.
+
+When instance is nil, uses the instance resolution hierarchy via
+`bug--get-active-instance' which checks:
+1. Buffer-local bug---instance
+2. Project-specific instance
+3. bug-active-instance
+4. bug-default-instance
+
+If no instance is explicitly configured, prompts the user to select one
+from the available instances in bug-instances-list or bug-instance-plist."
+  (let* ( ; check if instance already is correct type, if not, convert string to symbol
          (instance (if instance
                        (cond ((symbolp instance) instance)
-                             ((string-match "^:" instance) (intern instance))
-                             (t (intern (concat ":" instance))))
-                     bug-default-instance)))
+                             ((stringp instance) (intern instance))
+                             (t instance))
+                     ;; Use the full resolution hierarchy when instance is nil
+                     (or (bug--get-active-instance)
+                         ;; If no explicit instance, prompt user to select one
+                         (when (or bug-instances-list bug-instance-plist)
+                           (bug--select-instance-from-all))))))
     instance))
 
 (defun bug--list-columns (instance &optional object)

@@ -89,6 +89,37 @@ and `rally'
                  (const :tag "Update on commit" on-commit))
   :group 'bug)
 
+(defcustom bug-instances-list nil
+  "List of available bug tracker instances.
+Each element is a cons cell (INSTANCE-NAME . INSTANCE-PLIST).
+
+This provides an alternative to `bug-instance-plist' with better
+support for instance isolation and project-based configuration.
+
+Example:
+  \='((work-rally . (:type rally :url \"https://work.atlassian.net\"))
+    (personal-bz . (:type bz-rpc :url \"https://bugs.example.com\"))
+    (client-rally . (:type rally :api-key \"...\" :project-id \"123\")))"
+  :type '(alist :key-type symbol :value-type plist)
+  :group 'bug)
+
+(defcustom bug-project-instances-alist nil
+  "Alist mapping project directories to bug tracker instances.
+Each element is (PROJECT-ROOT . INSTANCE-NAME).
+
+PROJECT-ROOT can be a string (exact match) or a regexp pattern.
+INSTANCE-NAME should exist in `bug-instances-list' or `bug-instance-plist'.
+
+This allows automatic instance selection based on the current project.
+Can also be set via .dir-locals.el for per-directory configuration.
+
+Example:
+  \='((\"~/work/project-a\" . work-rally)
+    (\"~/personal/my-project\" . personal-bz)
+    (\".*/client-.*\" . client-rally))"
+  :type '(alist :key-type string :value-type symbol)
+  :group 'bug)
+
 (defcustom bug-rally-projects-from-workspace nil
   "Controls how rally projects are retrieved. When the default `nil'
 use queries to obtain all projects. When set to `t' use workspace
@@ -232,6 +263,16 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
 ;;;;;;
 ;; Expert settings
 ;; Those variables are customizable, but not exposed to easy customize
+
+(defvar bug-active-instance nil
+  "Currently active bug tracker instance (symbol).
+
+When non-nil, only this instance is accessible for new operations.
+Existing buffers with different buffer-local instances continue to work
+but show a warning that they use a different instance.
+
+Set via `bug-switch-instance' or `bug-activate-instance'.
+Set to nil via `bug-deactivate-instance' to allow all instances.")
 
 (defvar bug-data-file (concat bug-data-directory "data")
   "The file containing saved searches and similar user data. Change
