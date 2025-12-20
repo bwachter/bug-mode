@@ -579,5 +579,32 @@ as source for potential errors."
      ;; Default: capitalize first letter
      (t (capitalize object-type)))))
 
+(defun bug--create-rally-bug (object-type data instance)
+  "Create a new Rally object via POST /slm/webservice/v2.0/<type>/create.
+
+Despite its name this is the entry point for all create operations for
+Rally objects.
+
+OBJECT-TYPE is the Rally type (e.g., `defect', `hierarchicalrequirement').
+DATA is an alist of field names and values.
+Returns the created object from Rally's CreateResult."
+  (let* ((resource (downcase object-type))
+         (rally-type-name (bug--rally-type-name object-type))
+         (response (bug--rpc-rally
+                    `((resource . ,resource)
+                      (operation . "create")
+                      (data . ((,(intern rally-type-name) . ,data))))
+                    instance))
+         (create-result (cdr (assoc 'CreateResult response)))
+         (errors (cdr (assoc 'Errors create-result)))
+         (warnings (cdr (assoc 'Warnings create-result)))
+         (object (cdr (assoc 'Object create-result))))
+    ;; Display warnings if any
+    (when (and warnings (> (length warnings) 0))
+      (message "Rally warnings: %s" (mapconcat 'identity warnings ", ")))
+    ;; Error handling is done by bug--rpc-rally-handle-error
+    ;; Return the created object
+    object))
+
 (provide 'bug-backend-rally)
 ;;; bug-backend-rally.el ends here
