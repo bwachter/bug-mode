@@ -119,8 +119,8 @@ returned as string."
 
 key: value
 
-with the key formatted as 'bug-field-description and the value as
-'bug-field-type-0"
+with the key formatted as \='bug-field-description and the value as
+\='bug-field-type-0"
   (concat
    (propertize (concat key ": ")
                'face 'bug-field-description)
@@ -129,7 +129,7 @@ with the key formatted as 'bug-field-description and the value as
 
 (defun bug--format-time-date (date-string &optional long)
   "Return a formatted time/date string, using customizable format strings. If
-'long' is nil a short string will be returned, otherwise a long one.
+`long' is nil a short string will be returned, otherwise a long one.
 
 No adjustments for the local timezone are made. If nil is passed as date
 a single dash (-) is returned."
