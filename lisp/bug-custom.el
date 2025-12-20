@@ -96,10 +96,13 @@ Each element is a cons cell (INSTANCE-NAME . INSTANCE-PLIST).
 This provides an alternative to `bug-instance-plist' with better
 support for instance isolation and project-based configuration.
 
+Security: Use :api-key-file instead of :api-key to load credentials from
+an encrypted file (supports transparent GPG decryption for .gpg files).
+
 Example:
   \='((work-rally . (:type rally :url \"https://work.atlassian.net\"))
     (personal-bz . (:type bz-rpc :url \"https://bugs.example.com\"))
-    (client-rally . (:type rally :api-key \"...\" :project-id \"123\")))"
+    (client-rally . (:type rally :api-key-file \"~/.rally-api-key.gpg\" :project-id \"123\")))"
   :type '(alist :key-type symbol :value-type plist)
   :group 'bug)
 

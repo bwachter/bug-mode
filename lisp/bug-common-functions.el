@@ -394,20 +394,51 @@ the following:
    (assoc property
           (gethash (symbol-name field-name) (bug--get-fields instance)))))
 
+(defvar bug--api-key-cache (make-hash-table :test 'equal)
+  "Cache for API keys loaded from files.
+Keys are (instance . file-path) cons cells, values are the trimmed file contents.")
+
+(defun bug--read-api-key-file (file-path instance)
+  "Read API key from FILE-PATH, trimming whitespace.
+Supports transparent GPG decryption for .gpg files.
+Results are cached per instance."
+  (let ((cache-key (cons instance file-path)))
+    (or (gethash cache-key bug--api-key-cache)
+        (let* ((expanded-path (expand-file-name file-path))
+               (key (when (file-exists-p expanded-path)
+                      (with-temp-buffer
+                        (insert-file-contents expanded-path)
+                        (string-trim (buffer-string))))))
+          (when key
+            (puthash cache-key key bug--api-key-cache))
+          key))))
+
 (defun bug--instance-property (property instance)
   "Return the value for a PROPERTY of the instance INSTANCE, or the default
 instance if INSTANCE is empty.
 
-Checks both `bug-instances-list' and `bug-instance-plist'."
+Checks both `bug-instances-list' and `bug-instance-plist'.
+
+Special handling:
+- :api-key - If not present, checks for :api-key-file and reads the key from that file
+- :url - For Rally instances, falls back to bug-rally-url if not specified"
   (let* ((instance (bug--instance-to-symbolp instance))
          ;; Try bug-instances-list first, then bug-instance-plist
          (property-list (or (cdr (assoc instance bug-instances-list))
                            (plist-get bug-instance-plist instance))))
-    (if (and (equal property :url)
-             (equal 'rally (bug--backend-type instance)))
-        (let ((rally-url (plist-get property-list property)))
-          (or rally-url bug-rally-url))
-    (plist-get property-list property))))
+    (cond
+     ;; Special handling for API key - check for file-based key
+     ((equal property :api-key)
+      (or (plist-get property-list :api-key)
+          (when-let ((key-file (plist-get property-list :api-key-file)))
+            (bug--read-api-key-file key-file instance))))
+     ;; Special handling for Rally URL fallback
+     ((and (equal property :url)
+           (equal 'rally (bug--backend-type instance)))
+      (let ((rally-url (plist-get property-list property)))
+        (or rally-url bug-rally-url)))
+     ;; Default: just get the property
+     (t (plist-get property-list property)))))
 
 (defun bug--instance-to-symbolp (instance)
   "Make sure that the instance handle is symbolp; returns default instance
