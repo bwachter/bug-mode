@@ -653,5 +653,47 @@ Prompts for required fields (Name, Project) and optional fields
       (bug-open (cdr (assoc '_refObjectUUID created-story)) instance)
       created-story)))
 
+(defun bug--delete-rally-bug (object-id instance)
+  "Delete a Rally object via DELETE /<type>/<id>.
+
+OBJECT-ID is the Rally ObjectID (UUID) or _ref string.
+The object is moved to Rally's Recycle Bin, not permanently deleted.
+Returns t on success."
+  (let* ((response (bug--rpc-rally
+                    `((resource . "artifact")
+                      (operation . "delete")
+                      (object-id . ,object-id))
+                    instance))
+         (operation-result (cdr (car response)))
+         (errors (cdr (assoc 'Errors operation-result)))
+         (warnings (cdr (assoc 'Warnings operation-result))))
+    ;; Display warnings if any
+    (when (and warnings (> (length warnings) 0))
+      (message "Rally warnings: %s" (mapconcat 'identity warnings ", ")))
+    ;; Error handling is done by bug--rpc-rally-handle-error
+    t))
+
+;;;###autoload
+(defun bug-rally-delete-bug (&optional id instance)
+  "Interactively delete a Rally bug (moves to Recycle Bin).
+
+If ID is not provided, uses the bug from the current buffer.
+Prompts for confirmation before deleting."
+  (interactive
+   (list nil (bug--query-instance)))
+  (unless id
+    (when (boundp 'bug---uuid) (setq id bug---uuid)))
+  (unless id
+    (error "No bug ID found. Open a bug first or provide an ID"))
+  (let ((bug-name (cdr (assoc 'Name bug---data))))
+    (when (yes-or-no-p (format "Delete Rally bug '%s'? (moves to Recycle Bin) "
+                               (or bug-name id)))
+      (bug--delete-rally-bug id instance)
+      (message "Deleted bug: %s" (or bug-name id))
+      ;; Close the buffer if we're in a bug buffer
+      (when (eq major-mode 'bug-mode)
+        (kill-buffer))
+      t)))
+
 (provide 'bug-backend-rally)
 ;;; bug-backend-rally.el ends here
