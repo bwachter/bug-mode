@@ -128,25 +128,36 @@ Returns the security token string, or nil if using API key authentication."
         ((string= operation "authorize") "GET")
         (t "POST")))
 
-(defun bug--rpc-rally-url-map-operation (args)
-  "Create the operation specific part of the URL"
-  (let ((object-id (cdr (assoc 'object-id args)))
-        (object-type (cdr (assoc 'object-type args)))
-        (resource (cdr (assoc 'resource args)))
-        (operation (cdr (assoc 'operation args)))
-        (query-string (url-build-query-string (cdr (assoc 'data args)))))
-    (cond
-     ((string= operation "authorize") (concat resource "/authorize"))
-     ;; TODO: operations like create need to use a security key
-     ;;       https://rally1.rallydev.com/slm/doc/webservice/authentication.jsp
-     ((string= operation "create") (concat resource "/create"))
-     ((string= operation "copy")
-      (concat resource "/" object-id "/copy"))
-     ((string= operation "query")
-      (concat resource "?" query-string))
-     (t (if object-type
-            (concat resource "/" object-id "/" object-type)
-          (concat resource "/" object-id))))))
+(defun bug--rpc-rally-url-map-operation (args instance)
+  "Create the operation specific part of the URL.
+
+For write operations (create, update, delete, copy), appends security token
+if using basic authentication."
+  (let* ((object-id (cdr (assoc 'object-id args)))
+         (object-type (cdr (assoc 'object-type args)))
+         (resource (cdr (assoc 'resource args)))
+         (operation (cdr (assoc 'operation args)))
+         (query-string (url-build-query-string (cdr (assoc 'data args))))
+         ;; Check if this is a write operation that needs security token
+         (needs-token (member operation '("create" "update" "delete" "copy")))
+         (base-url
+          (cond
+           ((string= operation "authorize") (concat resource "/authorize"))
+           ((string= operation "create") (concat resource "/create"))
+           ((string= operation "copy")
+            (concat resource "/" object-id "/copy"))
+           ((string= operation "query")
+            (concat resource "?" query-string))
+           (t (if object-type
+                  (concat resource "/" object-id "/" object-type)
+                (concat resource "/" object-id))))))
+    ;; Append security token for write operations if using basic auth
+    (if (and needs-token (not (bug--instance-property :api-key instance)))
+        (let ((token (bug--rally-ensure-security-token instance)))
+          (if token
+              (concat base-url "?key=" token)
+            base-url))
+      base-url)))
 
 ;;;###autoload
 (defun bug--rpc-rally (args instance)
