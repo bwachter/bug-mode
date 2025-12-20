@@ -103,10 +103,12 @@ configured in bug-instance-plist. Returns the entered bug tracker instance.
 Instance name only needs to be entered enough to get a match."
   (let ((completions
          (cl-remove-if nil
-                    (cl-loop for record in bug-instance-plist collect
-                             (unless (listp record)
-                               (replace-regexp-in-string "^:" "" (prin1-to-string record)))))))
-    (completing-read "Instance: " completions nil t)))
+                       (cl-loop for record in bug-instance-plist collect
+                                (unless (listp record)
+                                  (replace-regexp-in-string "^:" "" (prin1-to-string record)))))))
+    (if (= (length completions) 1)
+        (car completions)
+      (completing-read "Instance: " completions nil t))))
 
 (defun bug--query-remembered-lists ()
   "Query for the name of a locally remembered bug list. Completion is seeded
