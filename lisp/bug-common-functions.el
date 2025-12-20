@@ -75,14 +75,10 @@ Example usage:
 
  (bug--backend-function \"some-%s-function\" nil instance)
 "
-  (let ((function-name (format format-string
-                               (prin1-to-string (bug--backend-type instance) t)))
-        (func))
-    (if (fboundp (intern function-name))
-        (progn
-          (fset 'func
-                (intern function-name))
-          (func args instance))
+  (let ((function-name (intern (format format-string
+                               (prin1-to-string (bug--backend-type instance) t)))))
+    (if (fboundp function-name)
+        (funcall function-name args instance)
       (error (format "Backend function '%s' not defined"
                      function-name)))))
 
