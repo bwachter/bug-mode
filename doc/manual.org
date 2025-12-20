@@ -19,6 +19,8 @@
   - [[#bug-logout-bugzilla][bug-logout (/Bugzilla/)]]
   - [[#bug-open][bug-open]]
   - [[#bug-rally-subscription-rally][bug-rally-subscription (/Rally/)]]
+  - [[#bug-rally-list-projects-rally][bug-rally-list-projects (/Rally/)]]
+  - [[#bug-rally-create-project-rally][bug-rally-create-project (/Rally/)]]
   - [[#bug-search][bug-search]]
   - [[#bug-search-multiple-bugzilla][bug-search-multiple (/Bugzilla/)]]
   - [[#bug-stored-bugs][bug-stored-bugs]]
@@ -117,6 +119,12 @@ Open a single bug, taking the /internal/ bug ID as argument. For Bugzilla the in
 For bug trackers like Rally you can use =bug-search= with a bug reference as argument, which will resolve the internal ID, and open it via =bug-open=, at the cost of one additional API call.
 ** bug-rally-subscription (/Rally/)
 Entry point to [[#bug-rally-subscription-mode][bug-rally-subscription-mode]]
+** bug-rally-list-projects (/Rally/)
+Create a new project in a Rally workspace.
+** bug-rally-create-project (/Rally/)
+List all projects for the current Rally instance. =bug-rally-projects-from-workspace= controls how to pull project information. When it is =nil= (default) it'll use a direct project query, which will list all open projects. When set to =t= a workspace query will be used instead, which applies Rally side filtering.
+
+Project IDs for setting a default project can be copied from the project list.
 ** bug-search
 Search for bugs, and display them in [[#bug-list-mode][bug-list-mode]]. The exact behavior depends on the bug tracker used.
 

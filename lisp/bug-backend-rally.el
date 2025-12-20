@@ -38,13 +38,15 @@
 (require 'bug-common-functions)
 (require 'bug-custom)
 (require 'bug-debug)
+
+(require 'vtable)
 (require 'json)
 (require 'url-cookie)
 
 ;;;###autoload
 (defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
-  '(:read))
+  '(:read :write))
 
 (defun bug--rpc-rally-auth-header (instance)
   "Generate an auth header for rally, either by using an API key, or -- if
@@ -175,6 +177,14 @@ args is an alist, whith the following keys:
 - object-type: a string describing a referenced object to retrieve
 - data: an alist containing data for the POST body or query
 
+For GET queries `data' is a flat alist encoded into the query string:
+  ((query \"(State = \='Open\=')\") (fetch \"Name,ID\") (pagesize 100))
+
+For POST queries `data' is a nested alist, with the rally object type
+name used as key:
+((Defect . ((Name . \"Bug\") (Project . \"/project/123\"))))
+((Artifact . ((State . \"Fixed\") (Priority . \"High\"))))
+
 The call to search for US1234 and return additional fields Name, Description,
 Type and FormattedID would look like this:
 
@@ -197,7 +207,7 @@ object-id for read (or any other call requiring an object-id):
          ;; don't accept any cookie, see issue 6 for details
          (url-cookie-untrusted-urls '(".*"))
          (url-request-data (if (string= "POST" url-request-method)
-                               (json-encode (list (cdr (assoc 'data args))))))
+                               (json-encode (cdr (assoc 'data args)))))
          (url-request-extra-headers `(("Content-Type" . "application/json")
                                       ,(bug--rpc-cookie-header instance)
                                       ,(bug--rpc-rally-auth-header instance))))
@@ -383,6 +393,171 @@ Default options are added to the list, if not present:
   ;; one of those please send me an email.
   (let ((url (format "https://rally1.rallydev.com/#/search?keywords=%s" id)))
     (browse-url url)))
+
+;;;;;;
+;; project and workspace management
+;;
+;; if we encounter other backends with a similar concept of projects we might
+;; want to move some of that logic here into shared structures, but for now
+;; this is good enough.
+
+(defun bug--rally-get-workspace-oid (instance)
+  "Get the workspace ObjectID for this instance.
+
+Returns the ObjectID from instance config, or queries Rally for the
+first available workspace from the subscription."
+  (let ((workspace-id (bug--instance-property :workspace-id instance)))
+    (if workspace-id
+        workspace-id
+      ;; Query subscription for workspaces
+      (let ((workspaces (bug--rally-list-workspaces instance)))
+        (if (null workspaces)
+            (error "No workspaces found in subscription")
+          ;; Return first workspace OID
+          (cdr (car workspaces)))))))
+
+(defun bug--rally-list-workspaces (instance)
+  "List all workspaces accessible to the user.
+
+Returns an alist of (name . oid) pairs."
+  (let* ((response (bug--rpc-rally
+                    '((resource . "workspace")
+                      (operation . "query")
+                      (data . ((fetch "Name,ObjectID,State")
+                               (query "(State = \"Open\")")
+                               (pagesize 200))))
+                    instance))
+         (query-result (cdr (assoc 'QueryResult response)))
+         (results (cdr (assoc 'Results query-result)))
+         (workspaces nil))
+    (dotimes (i (length results))
+      (let* ((workspace (aref results i))
+             (name (cdr (assoc 'Name workspace)))
+             (oid (cdr (assoc 'ObjectID workspace)))
+             (state (cdr (assoc 'State workspace))))
+        (when (string= state "Open")
+          (push (cons name (if (numberp oid) (number-to-string oid) oid)) workspaces))))
+    (nreverse workspaces)))
+
+(defun bug--rally-list-projects (workspace-oid instance)
+  "List all projects in the given workspace.
+
+WORKSPACE-OID is the workspace ObjectID (string or number).
+Returns an alist of (name . oid) pairs."
+  (let* ((workspace-oid-str (if (numberp workspace-oid)
+                                (number-to-string workspace-oid)
+                              workspace-oid))
+         (response
+          (if bug-rally-projects-from-workspace
+              ;; pull from workspace, with rally side filtering
+              (bug--rpc-rally
+               `((resource . "workspace")
+                 (operation . "read")
+                 (object-id . ,workspace-oid-str)
+                 (object-type . "Projects")
+                 (data . ((fetch "Name,ObjectID,State")
+                          (query "(State = \"Open\")")
+                          (pagesize 200))))
+               instance)
+            ;; pull projects directly, which will find all projects
+            (bug--rpc-rally
+             `((resource . "project")
+               (operation . "query")
+               (data . ((fetch "Name,ObjectID,State")
+                        (query "(State = \"Open\")")
+                        (pagesize 200))))
+             instance)))
+         (query-result (cdr (assoc 'QueryResult response)))
+         (results (cdr (assoc 'Results query-result)))
+         (projects nil))
+    (dotimes (i (length results))
+      (let* ((project (aref results i))
+             (name (cdr (assoc 'Name project)))
+             (oid (cdr (assoc 'ObjectID project)))
+             (state (cdr (assoc 'State project))))
+        (when (string= state "Open")
+          (push (cons name (if (numberp oid) (number-to-string oid) oid)) projects))))
+    (nreverse projects)))
+
+;;;###autoload
+(defun bug-rally-select-project (&optional instance)
+  "Interactively select a Rally project from available projects.
+
+Returns the project reference string (/project/12345) or nil if cancelled."
+  (interactive (list (bug--query-instance)))
+  (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
+         (projects (bug--rally-list-projects workspace-oid instance)))
+    (if (null projects)
+        (progn
+          (message "No open projects found in workspace")
+          nil)
+      (let* ((project-names (mapcar #'car projects))
+             (selected-name (completing-read "Select project: " project-names nil t))
+             (selected-oid (cdr (assoc selected-name projects))))
+        (when selected-oid
+          (let ((project-ref (format "/project/%s" selected-oid)))
+            (message "Selected project: %s (ID: %s)" selected-name selected-oid)
+            project-ref))))))
+
+;;;###autoload
+(defun bug-rally-list-projects (&optional instance)
+  "Display all available Rally projects in a table.
+
+  Useful for finding project IDs to configure in instance settings."
+  (interactive (list (bug--query-instance)))
+  (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
+         (projects (bug--rally-list-projects workspace-oid instance))
+         (buffer (get-buffer-create "*Rally Projects*")))
+    (if (null projects)
+        (message "No open projects found")
+      (with-current-buffer buffer
+        (let ((inhibit-read-only t))
+          (erase-buffer)
+          (insert (format "Rally Projects (Workspace OID: %s)\n" workspace-oid))
+          (insert (format "Total: %d open projects\n\n" (length projects)))
+          (insert "To use a project, add :project-id \"<ObjectID>\" to your instance config.\n")
+          (insert "Use 'c' on a row to copy its ObjectID.\n\n")
+
+          (make-vtable
+           :columns '((:name "Project Name" :width 40)
+                      (:name "ObjectID" :width 15)
+                      (:name "State" :width 10))
+           :objects projects
+           :getter (lambda (project column vtable)
+                     (pcase (vtable-column vtable column)
+                       ("Project Name" (car project))
+                       ("ObjectID" (cdr project))
+                       ("State" "Open")))
+           :actions `("c" ,(lambda (project)
+                             (kill-new (cdr project))
+                             (message "Copied ObjectID: %s" (cdr project))))))
+        (special-mode)
+        (goto-char (point-min)))
+      (switch-to-buffer buffer))))
+
+;;;###autoload
+(defun bug-rally-create-project (name &optional instance)
+  "Create a new Rally project.
+
+NAME is the project name.
+Requires Workspace Administrator or Subscription Administrator permissions."
+  (interactive
+   (list (read-string "Project Name: ")
+         (bug--query-instance)))
+  (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
+         (workspace-ref (format "/workspace/%s" workspace-oid))
+         (created-project
+          (bug--create-rally-bug
+           "project"
+           `((Name . ,name)
+             (Workspace . ,workspace-ref)
+             (State . "Open"))
+           instance)))
+    (when created-project
+      (let ((project-name (cdr (assoc 'Name created-project)))
+            (project-oid (cdr (assoc 'ObjectID created-project))))
+        (message "Created project: %s (ID: %s)" project-name project-oid)
+        project-oid))))
 
 (provide 'bug-backend-rally)
 ;;; bug-backend-rally.el ends here

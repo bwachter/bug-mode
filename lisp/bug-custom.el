@@ -54,7 +54,7 @@
   "A list of bug tracker instances to use.
 
 Example:
-'(:work   (:url \"https://bz.work.example\" :type bz-rpc)
+\='(:work   (:url \"https://bz.work.example\" :type bz-rpc)
   :secure (:url \"https://bz.secure.example\" :authinfo \"~/.netrc\" :type bz-rpc)
   :fun    (:url \"https://bz.fun.example\"
            :type bz-rpc
@@ -73,6 +73,14 @@ requires a call to (bug-login \"fun\") before you can modify bugs.
 :type is a mandatory option defining the backend type, valid values include `bz'
 and `rally'
 "
+  :type 'sexp
+  :group 'bug)
+
+(defcustom bug-rally-projects-from-workspace nil
+  "Controls how rally projects are retrieved. When the default `nil'
+use queries to obtain all projects. When set to `t' use workspace
+queries to obtain projects - which will lead to results filtered on
+rally side by filters we can't control."
   :type 'sexp
   :group 'bug)
 
@@ -194,7 +202,7 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
 
 (defface bug-field-type-7
   '((t :inherit bug-field-type-0))
-  "Face used for bug url / 'see also' field values"
+  "Face used for bug url / `see also' field values"
   :group 'bug-faces)
 
 (defface bug-field-type-98
@@ -213,7 +221,8 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
 ;; Those variables are customizable, but not exposed to easy customize
 
 (defvar bug-data-file (concat bug-data-directory "data")
-  "The file containing saved searches and similar user data. Change bug-data-directory if you don't like the storage location")
+  "The file containing saved searches and similar user data. Change
+bug-data-directory if you don't like the storage location")
 
 (defvar bug-rally-url "https://rally1.rallydev.com/slm/webservice/v2.0/"
   "The URL to use for rally. This should only be changed if a different port is
