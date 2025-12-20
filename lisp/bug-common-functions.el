@@ -39,8 +39,22 @@ checks with `memq' if `feature' is present"
   (let* ((features (bug--backend-function "bug--backend-%s-features"
                                           nil instance)))
     (if feature
-        (memq feature features)
-      features)))
+        (if (and (keywordp feature)
+                 (string-prefix-p "experimental-" (substring (symbol-name feature) 1)))
+            ;; Strip ":experimental-" prefix and check base feature if experimental enabled
+            (and bug-experimental
+                 (memq (intern (substring (symbol-name feature) (length "experimental-"))) features))
+          ;; Normal (non-experimental) feature check
+          (memq feature features))
+      ;; Return all features, possibly filtering experimental if bug-experimental is false
+      (if bug-experimental
+          features
+        ;; filter out experimental features when disabled
+        (cl-remove-if (lambda (f)
+                        (and (keywordp f)
+                             (string-prefix-p "experimental-"
+                                              (substring (symbol-name f) 1))))
+                      features)))))
 
 (defun bug--backend-function (format-string &optional args instance)
   "Call a backend specific function, selected based on the backend specified by
