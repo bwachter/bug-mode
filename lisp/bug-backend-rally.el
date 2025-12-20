@@ -627,6 +627,39 @@ Returns the created object from Rally's CreateResult."
     object))
 
 ;;;###autoload
+(defun bug-rally-create-defect (&optional instance)
+  "Interactively create a new Rally Defect.
+
+Prompts for required fields (Name, Project) and optional fields
+(State, Description, Priority). Returns the created defect."
+  (interactive
+   (list (bug--query-instance)))
+  (let* ((name (read-string "Defect Name: "))
+         (project (bug--rally-get-project-ref instance))
+         (state (completing-read "State (optional): "
+                                 '("Submitted" "Open" "Fixed" "Closed")
+                                 nil nil "Submitted"))
+         (description (read-string "Description (optional): "))
+         (priority (completing-read "Priority (optional): "
+                                    '("Resolve Immediately" "High Attention"
+                                      "Normal" "Low")
+                                    nil nil))
+         (data `((Name . ,name)
+                 (Project . ,project))))
+    ;; Add optional fields if provided
+    (when (and state (not (string-empty-p state)))
+      (push `(State . ,state) data))
+    (when (and description (not (string-empty-p description)))
+      (push `(Description . ,description) data))
+    (when (and priority (not (string-empty-p priority)))
+      (push `(Priority . ,priority) data))
+    (let ((created-defect (bug--create-rally-bug "defect" data instance)))
+      (message "Created defect: %s" (cdr (assoc '_refObjectName created-defect)))
+      ;; Open the newly created defect
+      (bug-open (cdr (assoc '_refObjectUUID created-defect)) instance)
+      created-defect)))
+
+;;;###autoload
 (defun bug-rally-create-story (&optional instance)
   "Interactively create a new Rally User Story.
 
