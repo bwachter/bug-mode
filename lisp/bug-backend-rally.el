@@ -39,9 +39,10 @@
 (require 'bug-custom)
 (require 'bug-debug)
 (require 'json)
+(require 'url-cookie)
 
 ;;;###autoload
-(defun bug--backend-rally-features (arg instance)
+(defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
   '(:read))
 
@@ -99,8 +100,8 @@ Returns the security token string, or nil if using API key authentication."
         ;; Token expired or doesn't exist, get new one
         (let ((new-token (bug--rally-get-security-token instance)))
           (bug--cache-put 'security-token
-                         (cons new-token current-time)
-                         instance)
+                          (cons new-token current-time)
+                          instance)
           new-token)))))
 
 ;; The following table contains supported operations, and mappins
@@ -167,7 +168,7 @@ The call to search for US1234 and return additional fields Name, Description,
 Type and FormattedID would look like this:
 
  (bug--rpc-rally \"hierarchicalrequirement.query\"
-               '((data .
+               \='((data .
                              ((query \"( FormattedID = \"US1234\" )\")
                               (fetch \"Name,Description,Type,FormattedID\")))))
 
@@ -175,9 +176,9 @@ To get the full details, extract _refObjectUUID from a query, and use it as
 object-id for read (or any other call requiring an object-id):
 
  (bug--rpc-rally \"hierarchicalrequirement.read\"
-               '((object-id . \"1a23bc45-abcd-6e78-f901-g2345hij678k\")))
+               \='((object-id . \"1a23bc45-abcd-6e78-f901-g2345hij678k\")))
 "
-  (let* ((resource (cdr (assoc 'resource args)))
+  (let* ((_resource (cdr (assoc 'resource args)))
          (operation (cdr (assoc 'operation args)))
          (url-request-method (bug--rpc-rally-request-method operation))
          (url-str (bug--rpc-rally-url-map-operation args instance))
@@ -198,10 +199,11 @@ object-id for read (or any other call requiring an object-id):
       (bug--parse-rpc-response instance))))
 
 ;;;###autoload
-(defun bug--rpc-rally-handle-error (response instance)
+(defun bug--rpc-rally-handle-error (response _instance)
   "Check data returned from Rally for errors"
-  (let* (; the errors are inside the returned object, for error handling
-         ; it's easiest to just throw away the outer layer
+  (let* (
+         ;; the errors are inside the returned object, for error handling
+         ;; it's easiest to just throw away the outer layer
          (return-document (cdr (car response)))
          (error-messages (assoc 'Errors return-document)))
     (if (>= (length (cdr error-messages)) 1)
@@ -209,8 +211,8 @@ object-id for read (or any other call requiring an object-id):
     response))
 
 ;;;###autoload
-(defun bug--rpc-rally-get-fields (object instance)
-    "Return a static list of valid field names for rally
+(defun bug--rpc-rally-get-fields (_object _instance)
+  "Return a static list of valid field names for rally
 
 Unlike Bugzilla Rally does not have an API call to retrieve a list of
 supported fields, so this function parses a json file containing field
@@ -224,23 +226,23 @@ The following additions are supported for Rally:
 
 - type 98 for rally objects
 - type 99 for HTML objects
-- is_readonly to mark read-only fields (defaults to 'false')
+- is_readonly to mark read-only fields (defaults to `false')
 "
-    (let ((rally-fields-file (concat
-                              bug-json-data-dir
-                              "/rally-fields.json")))
-      (if (file-exists-p rally-fields-file)
-          (json-read-file rally-fields-file)
-        (error "Field definition file for Rally not found"))))
+  (let ((rally-fields-file (concat
+                            bug-json-data-dir
+                            "/rally-fields.json")))
+    (if (file-exists-p rally-fields-file)
+        (json-read-file rally-fields-file)
+      (error "Field definition file for Rally not found"))))
 
 ;;;###autoload
-(defun bug--rally-list-columns (object instance)
+(defun bug--rally-list-columns (_object _instance)
   "Return list columns for Rally. If `object' is set object-specific columns
 may be returned."
   '("FormattedID" ("State" "ScheduleState") "Name" "LastUpdateDate"))
 
 ;;;###autoload
-(defun bug--rally-field-name (field-name instance)
+(defun bug--rally-field-name (field-name _instance)
   "Resolve field names for rally"
   (cond ((equal :bug-uuid field-name)
          '_refObjectUUID)
@@ -277,9 +279,9 @@ Default options are added to the list, if not present:
          "FormattedID,LastUpdateDate,TaskStatus,Name,State,ScheduleState")
        (cdr data)))
     (unless (assoc 'resource params)
-      (add-to-list 'params '(resource . "artifact")))
+      (setq params (cl-pushnew '(resource . "artifact") params :test #'equal)))
     (unless (assoc 'operation params)
-      (add-to-list 'params '(operation . "query")))
+      (setq params (cl-pushnew '(operation . "query") params :test #'equal)))
     (bug--handle-rally-search-response
      params (bug-rpc params instance) instance)))
 
@@ -330,7 +332,7 @@ Default options are added to the list, if not present:
     response))
 
 ;;;###autoload
-(defun bug--parse-rally-search-query (query instance)
+(defun bug--parse-rally-search-query (query _instance)
   "Parse search query from minibuffer for rally"
   (cond ;; for userfriendly rally IDs, open bug directly
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)
@@ -342,8 +344,8 @@ Default options are added to the list, if not present:
    ;; TODO: searching discussion seems to be problematic
    (t
     `((data . ((query
-                  ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
-                           query query query))))))))
+                ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
+                         query query query))))))))
 
 
 ;;;;;;
@@ -364,7 +366,7 @@ Default options are added to the list, if not present:
     return-document))
 
 ;;;###autoload
-(defun bug--browse-rally-bug (id instance)
+(defun bug--browse-rally-bug (id _instance)
   "Open the current Rally bug in browser"
   ;; this probably breaks with custom hosted rally instances. If you come across
   ;; one of those please send me an email.
