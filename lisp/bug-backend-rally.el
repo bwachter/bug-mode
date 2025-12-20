@@ -559,6 +559,26 @@ Requires Workspace Administrator or Subscription Administrator permissions."
         (message "Created project: %s (ID: %s)" project-name project-oid)
         project-oid))))
 
+;;;;;;
+;; Write operations (create, update, delete)
+
+(defun bug--rally-get-project-ref (instance)
+  "Get or prompt for a Rally project reference.
+
+Returns a project reference string in the format /project/12345.
+Tries these methods in order:
+1. Use :project-id from instance config
+2. Interactive project selection from available projects
+3. Manual input if selection fails"
+  (let ((project-id (bug--instance-property :project-id instance)))
+    (if project-id
+        (format "/project/%s" project-id)
+      ;; Try interactive project selection
+      (or (bug-rally-select-project instance)
+          ;; Fallback to manual input
+          (let ((input-project-id (read-string "Rally Project ID: ")))
+            (format "/project/%s" input-project-id))))))
+
 (defun bug--rally-type-name (object-type)
   "Convert object-type to proper Rally API type name.
 
@@ -605,6 +625,33 @@ Returns the created object from Rally's CreateResult."
     ;; Error handling is done by bug--rpc-rally-handle-error
     ;; Return the created object
     object))
+
+;;;###autoload
+(defun bug-rally-create-story (&optional instance)
+  "Interactively create a new Rally User Story.
+
+Prompts for required fields (Name, Project) and optional fields
+(ScheduleState, Description). Returns the created story."
+  (interactive
+   (list (bug--query-instance)))
+  (let* ((name (read-string "Story Name: "))
+         (project (bug--rally-get-project-ref instance))
+         (schedule-state (completing-read "Schedule State (optional): "
+                                          '("Defined" "In-Progress" "Completed" "Accepted")
+                                          nil nil "Defined"))
+         (description (read-string "Description (optional): "))
+         (data `((Name . ,name)
+                 (Project . ,project))))
+    ;; Add optional fields if provided
+    (when (and schedule-state (not (string-empty-p schedule-state)))
+      (push `(ScheduleState . ,schedule-state) data))
+    (when (and description (not (string-empty-p description)))
+      (push `(Description . ,description) data))
+    (let ((created-story (bug--create-rally-bug "hierarchicalrequirement" data instance)))
+      (message "Created user story: %s" (cdr (assoc '_refObjectName created-story)))
+      ;; Open the newly created story
+      (bug-open (cdr (assoc '_refObjectUUID created-story)) instance)
+      created-story)))
 
 (provide 'bug-backend-rally)
 ;;; bug-backend-rally.el ends here
