@@ -55,6 +55,54 @@ no API key is configured -- by using basic auth with username and password"
                                    (concat (car (bug-credentials instance))
                                            ":" (cadr (bug-credentials instance))))))))
 
+(defun bug--rally-get-security-token (instance)
+  "Obtain a security token from Rally for write operations.
+
+Security tokens are required for POST/PUT/DELETE operations when using
+basic authentication. When using API keys (zsessionid header), tokens
+are managed automatically.
+
+Returns the security token string or nil if using API key authentication.
+
+This is experimental and not properly tested - it is always recommended
+to use an API key, whenever possible."
+  (if (bug--instance-property :api-key instance)
+      ;; API key authentication doesn't need explicit security tokens
+      nil
+    ;; Basic auth requires security token
+    (let* ((response (bug--rpc-rally '((resource . "security")
+                                       (operation . "authorize"))
+                                     instance))
+           (operation-result (cdr (car response)))
+           (token (cdr (assoc 'SecurityToken operation-result))))
+      (unless token
+        (error "Failed to obtain security token from Rally"))
+      token)))
+
+(defun bug--rally-ensure-security-token (instance)
+  "Get or refresh cached security token with 24-hour TTL.
+
+Returns the security token string, or nil if using API key authentication."
+  (if (bug--instance-property :api-key instance)
+      ;; API key authentication doesn't need explicit security tokens
+      nil
+    ;; Check cache for valid token
+    (let* ((cached-token (bug--cache-get 'security-token instance))
+           (token (car cached-token))
+           (timestamp (cdr cached-token))
+           (current-time (float-time))
+           (token-ttl (* 24 60 60))) ; 24 hours in seconds
+      (if (and token timestamp
+               (< (- current-time timestamp) token-ttl))
+          ;; Token is still valid
+          token
+        ;; Token expired or doesn't exist, get new one
+        (let ((new-token (bug--rally-get-security-token instance)))
+          (bug--cache-put 'security-token
+                         (cons new-token current-time)
+                         instance)
+          new-token)))))
+
 ;; The following table contains supported operations, and mappins
 ;; to HTTP methods used as well as URL transformations.
 ;; +--------+--------+--------------------------+
