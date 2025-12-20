@@ -327,10 +327,13 @@ Default options are added to the list, if not present:
             ;; ... and this should display a list
             (let* ((results
                     (cdr (assoc 'Results query-result)))
+                   (query-string (cadr (assoc 'query (cdr (assoc 'data query)))))
                    (stripped-query
-                    (replace-regexp-in-string
-                     "[ ()\"]" ""
-                     (cadr (assoc 'query (cdr (assoc 'data query)))))))
+                    (if query-string
+                        (replace-regexp-in-string
+                         "[ ()\"]" ""
+                         query-string)
+                      "")))  ; Empty string if no query
               ;; check if the query was for a single bug
               (if (string-match
                    "^FormattedID=\\(\\(F\\|DE\\|TA\\|US\\)\\{1\\}[0-9]+\\)$"
@@ -353,14 +356,27 @@ Default options are added to the list, if not present:
     response))
 
 ;;;###autoload
-(defun bug--parse-rally-search-query (query _instance)
+(defun bug--parse-rally-search-query (query instance)
   "Parse search query from minibuffer for rally"
-  (cond ;; for userfriendly rally IDs, open bug directly
+  (cond
+   ;; Handle empty search (when user just presses Enter)
+   ;; Lists all items in the default/selected project
+   ((or (eq query t) (and (stringp query) (string-empty-p query)))
+    (let ((project-ref (bug--rally-get-project-ref instance)))
+      (if project-ref
+          `((data . ((project ,project-ref)
+                     (order "FormattedID DESC")
+                     (fetch "FormattedID,Name,State,ScheduleState,Owner"))))
+        (error "No project specified"))))
+
+   ;; for userfriendly rally IDs, open bug directly
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)
     `((data . ((query ,(format "( FormattedID = \"%s\" )" query))))))
+
    ;; string contains parentheses -> assume it's a complex rally expression
    ((string-match "\\((\\|)\\)" query)
     `((data . ((query ,query)))))
+
    ;; search Name, Notes, Description
    ;; TODO: searching discussion seems to be problematic
    (t
