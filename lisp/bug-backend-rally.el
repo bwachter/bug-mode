@@ -549,7 +549,7 @@ Returns the project reference string (/project/12345) or nil if cancelled."
                              (message "Copied ObjectID: %s" (cdr project))))))
         (special-mode)
         (goto-char (point-min)))
-      (switch-to-buffer buffer))))
+      (pop-to-buffer buffer))))
 
 ;;;###autoload
 (defun bug-rally-create-project (name &optional instance)

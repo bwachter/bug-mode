@@ -64,9 +64,9 @@
 (defun bug-list-show (query parsed instance)
   "Display the result of a bug search returning a list of bugs"
   (bug--debug-log-time "bug-list-show")
-  (switch-to-buffer (format "*%s results: %s*"
-                            (prin1-to-string (bug--backend-type instance) t)
-                            (pretty-kvs query)))
+  (pop-to-buffer (format "*%s results: %s*"
+                         (prin1-to-string (bug--backend-type instance) t)
+                         (pretty-kvs query)))
   (bug-list-mode)
   (make-local-variable 'bug---query)
   (setq bug---query query)
@@ -166,8 +166,8 @@ an alist with (type . length) cells containing the longest length"
              (cl-reduce (lambda (l1 l2)
                           (cl-mapcar 'max l1 l2))
                         (cl-mapcar (lambda (bug)
-                                   (mapcar (lambda (prop) (+ (length (format "%s" prop)) 5)) bug))
-                                 bugs))))
+                                     (mapcar (lambda (prop) (+ (length (format "%s" prop)) 5)) bug))
+                                   bugs))))
 
 (defun pretty-kvs (kvs)
   (if (hash-table-p kvs)
@@ -195,9 +195,9 @@ at or near point. If no valid bug was found bug-id and bug-uuid are `nil'"
                         (forward-line 0)
                         (get-text-property (point) 'bug-uuid))))
         (bug-id (or (get-text-property (point) 'bug-id)
-                      (save-excursion
-                        (forward-line 0)
-                        (get-text-property (point) 'bug-id))))
+                    (save-excursion
+                      (forward-line 0)
+                      (get-text-property (point) 'bug-id))))
         (bug-instance (or (and (boundp 'bug---instance) bug---instance) bug-default-instance)))
     `((bug-id . ,bug-id)(bug-uuid . ,bug-uuid)(instance . ,bug-instance))))
 

@@ -52,7 +52,7 @@
                                       (operation . "query")
                                       (data ((query ""))))
                                     instance))))
-    (switch-to-buffer
+    (pop-to-buffer
      (format "rally subscription: %s"
              (cdr (assoc 'Name subscription))))
     (bug-rally-subscription-mode)

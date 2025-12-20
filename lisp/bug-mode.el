@@ -26,6 +26,8 @@
 ;;
 ;;; Code:
 
+;;(bug-rpc "HierarchicalRequirement.create" '((data . (HierarchicalRequirement . ((Name . "Test name"))))))
+
 (require 'cl-lib)
 (require 'bug-rpc)
 (require 'bug-common-functions)
@@ -84,7 +86,7 @@
   "Display an existing bug buffer in bug-mode"
   (bug--debug-log-time "bug-show")
   (let ((tmp-bug-id (cdr (assoc (bug--field-name :bug-friendly-id instance) bug))))
-    (switch-to-buffer (bug--buffer-string tmp-bug-id instance))
+    (pop-to-buffer (bug--buffer-string tmp-bug-id instance))
 
     (bug-mode)
     ;; the tmp-bug-id bit is needed as setting the mode clears buffer-local variables
@@ -147,8 +149,8 @@
 and keep the buffers modified marker accurate."
   ;; TODO: should be handled in backend stuff
   (let* ((summary (or (cdr (assoc 'summary bug---data))
-                     (cdr (assoc 'Name bug---data))
-                     "<Missing summary!>"))
+                      (cdr (assoc 'Name bug---data))
+                      "<Missing summary!>"))
          (face)(prefix))
     (setq summary
           (concat
@@ -195,23 +197,23 @@ via bug-handle-comments-response"
        (assoc 'bugs (assoc 'result response)))
       (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
              (comments (cdr (cadr (car bugs)))))
-        (save-excursion
-          (switch-to-buffer (bug--buffer-string id bug---instance))
+        (with-current-buffer (bug--buffer-string id bug---instance)
           (setq buffer-read-only nil)
-          (goto-char 0)
-          (if (re-search-forward "^COMMENTS:$" nil t)
-              (progn
-                (delete-region (point) (point-max))
-                (insert "\n")
-                (insert (mapconcat (lambda (comment)
-                                     (format "[Comment #%s] %s %s:\n%s"
-                                             (cdr (assoc 'count comment))
-                                             (cdr (assoc 'time comment))
-                                             (cdr (assoc 'creator comment))
-                                             (cdr (assoc 'text comment))))
-                                   comments "\n\n"))
-                (setq buffer-read-only t))
-            (error "Could not find area for comments in buffer"))))))
+          (save-excursion
+            (goto-char 0)
+            (if (re-search-forward "^COMMENTS:$" nil t)
+                (progn
+                  (delete-region (point) (point-max))
+                  (insert "\n")
+                  (insert (mapconcat (lambda (comment)
+                                       (format "[Comment #%s] %s %s:\n%s"
+                                               (cdr (assoc 'count comment))
+                                               (cdr (assoc 'time comment))
+                                               (cdr (assoc 'creator comment))
+                                               (cdr (assoc 'text comment))))
+                                     comments "\n\n")))
+              (error "Could not find area for comments in buffer")))
+          (setq buffer-read-only t)))))
 
 ;; functions usually called through keybindings in bug-mode
 ;;;###autoload
@@ -333,7 +335,7 @@ value, or the old field value if nothing has changed."
                                          bug---instance t)
                 'field field-name))
               (bug--bug-mode-update-header)
-              ;(setq buffer-read-only t)
+                                        ;(setq buffer-read-only t)
               )))))))
 
 ;;;###autoload
@@ -423,7 +425,7 @@ This is mostly useful for debugging text properties"
 
 ;; attachment handling functions
 (defun bug-get-attachments (id instance)
-    "Request attachment details for a bug and add it to an existing(!) bug buffer
+  "Request attachment details for a bug and add it to an existing(!) bug buffer
 via bug-handle-attachments-response"
   (bug-handle-attachments-response id (bug-rpc `((resource . "Bug")
                                                  (operation . "attachments")
@@ -436,22 +438,22 @@ via bug-handle-attachments-response"
        (assoc 'bugs (assoc 'result response)))
       (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
              (attachments (cdr (car bugs))))
-        (save-excursion
-          (switch-to-buffer (bug--buffer-string id bug---instance))
+        (with-current-buffer (bug--buffer-string id bug---instance)
           (setq buffer-read-only nil)
-          (goto-char 0)
-          (if (re-search-forward "^ATTACHMENTS:$" nil t)
-              (progn
-                (insert "\n")
-                (insert (mapconcat (lambda (attachment)
-                                     (format "attachment %s: %s; %s; %s"
-                                             (cdr (assoc 'id attachment))
-                                             (cdr (assoc 'description attachment))
-                                             (cdr (assoc 'file_name attachment))
-                                             (cdr (assoc 'content_type attachment))))
-                                   attachments "\n"))
-                (setq buffer-read-only t))
-            (error "Could not find area for attachments in buffer"))))))
+          (save-excursion
+            (goto-char 0)
+            (if (re-search-forward "^ATTACHMENTS:$" nil t)
+                (progn
+                  (insert "\n")
+                  (insert (mapconcat (lambda (attachment)
+                                       (format "attachment %s: %s; %s; %s"
+                                               (cdr (assoc 'id attachment))
+                                               (cdr (assoc 'description attachment))
+                                               (cdr (assoc 'file_name attachment))
+                                               (cdr (assoc 'content_type attachment))))
+                                     attachments "\n")))
+              (error "Could not find area for attachments in buffer")))
+          (setq buffer-read-only t)))))
 
 (defun bug-find-attachment-url (instance)
   "Construct the URL required to download an attachment"

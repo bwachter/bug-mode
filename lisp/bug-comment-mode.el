@@ -69,7 +69,7 @@
 ;; TODO: send to the right instance
 (defun bug-comment (id &optional instance)
   (interactive "nid:")
-  (switch-to-buffer (format "*bugzilla add comment: %s*" id))
+  (pop-to-buffer (format "*bugzilla add comment: %s*" id))
   (bug-comment-mode)
   (make-local-variable 'bug---id)
   (setq bug---id id)
