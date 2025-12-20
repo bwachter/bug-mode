@@ -559,5 +559,25 @@ Requires Workspace Administrator or Subscription Administrator permissions."
         (message "Created project: %s (ID: %s)" project-name project-oid)
         project-oid))))
 
+(defun bug--rally-type-name (object-type)
+  "Convert object-type to proper Rally API type name.
+
+This transforms keywords to the capitalisation matching the Rally API
+documentation. While it should not be needed it's better to rule that out
+as source for potential errors."
+  (let ((type-lower (downcase object-type)))
+    (cond
+     ((string= type-lower "hierarchicalrequirement") "HierarchicalRequirement")
+     ((string= type-lower "defect") "Defect")
+     ((string= type-lower "task") "Task")
+     ((string= type-lower "project") "Project")
+     ((string= type-lower "testcase") "TestCase")
+     ((string= type-lower "testset") "TestSet")
+     ((string= type-lower "defectsuite") "DefectSuite")
+     ((string= type-lower "portfolioitem") "PortfolioItem")
+     ((string= type-lower "artifact") "Artifact")
+     ;; Default: capitalize first letter
+     (t (capitalize object-type)))))
+
 (provide 'bug-backend-rally)
 ;;; bug-backend-rally.el ends here
