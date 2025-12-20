@@ -30,8 +30,8 @@
 (require 'bug-list-mode)
 (require 'bug-search)
 
-(org-link-set-parameters "bug" :activate-func 'org-bug-open)
-(org-link-set-parameters "bug-search" :activate-func 'org-bug-open-search)
+(org-link-set-parameters "bug" :follow 'org-bug-open)
+(org-link-set-parameters "bug-search" :follow 'org-bug-open-search)
 (add-hook 'org-store-link-functions 'org-bug-store-link)
 
 (defun org-bug-open (bug)
