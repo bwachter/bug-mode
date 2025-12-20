@@ -1,7 +1,7 @@
 ALL: lisp
 MAKEFLAGS += --print-directory
 
-.PHONY: clean lisp tests compile
+.PHONY: clean lisp tests compile autoloads
 
 clean:
 	@$(MAKE) -C lisp clean
@@ -11,6 +11,11 @@ clean:
 
 compile:
 	@$(MAKE) -C lisp compile
+
+autoloads: lisp/bug-autoloads.el
+
+lisp/bug-autoloads.el:
+	@$(MAKE) -C lisp bug-autoloads.el
 
 lisp:
 	@$(MAKE) -C lisp
