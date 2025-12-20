@@ -30,8 +30,8 @@
 (require 'bug-list-mode)
 (require 'bug-search)
 
-(org-add-link-type "bug" 'org-bug-open)
-(org-add-link-type "bug-search" 'org-bug-open-search)
+(org-link-set-parameters "bug" :activate-func 'org-bug-open)
+(org-link-set-parameters "bug-search" :activate-func 'org-bug-open-search)
 (add-hook 'org-store-link-functions 'org-bug-store-link)
 
 (defun org-bug-open (bug)
@@ -60,7 +60,7 @@
                          ":" (prin1-to-string bug-instance t) "/"
                          (prin1-to-string (or bug-uuid bug-id) t)))
            (description (format "Bug %s" (prin1-to-string bug-id t))))
-      (org-store-link-props
+      (org-link-store-props
        :type link-type
        :link link
        :description description))))

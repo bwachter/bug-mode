@@ -632,7 +632,7 @@ Returns the created object from Rally's CreateResult."
                       (data . ((,(intern rally-type-name) . ,data))))
                     instance))
          (create-result (cdr (assoc 'CreateResult response)))
-         (errors (cdr (assoc 'Errors create-result)))
+         (_errors (cdr (assoc 'Errors create-result)))
          (warnings (cdr (assoc 'Warnings create-result)))
          (object (cdr (assoc 'Object create-result))))
     ;; Display warnings if any
@@ -720,7 +720,7 @@ Returns the updated object from Rally's OperationResult."
                       (data . ((Artifact . ,data))))
                     instance))
          (operation-result (cdr (car response)))
-         (errors (cdr (assoc 'Errors operation-result)))
+         (_errors (cdr (assoc 'Errors operation-result)))
          (warnings (cdr (assoc 'Warnings operation-result)))
          (object (cdr (assoc 'Object operation-result))))
     ;; Display warnings if any
@@ -742,7 +742,7 @@ Returns t on success."
                       (object-id . ,object-id))
                     instance))
          (operation-result (cdr (car response)))
-         (errors (cdr (assoc 'Errors operation-result)))
+         (_errors (cdr (assoc 'Errors operation-result)))
          (warnings (cdr (assoc 'Warnings operation-result))))
     ;; Display warnings if any
     (when (and warnings (> (length warnings) 0))

@@ -33,6 +33,7 @@
 (require 'bug-common-functions)
 (require 'bug-rpc)
 (require 'bug-debug)
+(require 'url-vars)
 (require 'json)
 
 ;;;###autoload
