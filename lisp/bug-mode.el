@@ -36,6 +36,10 @@
 (require 'bug-persistent-data)
 (require 'bug-custom)
 
+;; Rally backend functions (loaded dynamically)
+(declare-function bug--fetch-rally-discussion "bug-backend-rally" (bug-data instance))
+(declare-function bug--display-rally-discussion "bug-backend-rally" (posts))
+
 (defvar bug---id)
 (defvar bug---uuid)
 (defvar bug---is-new)
@@ -125,20 +129,27 @@
                            (equal 0 (cdr (assoc 'Count (cdr prop))))))
                      (not (equal (cdr prop) nil))
                      (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr prop) t)))
+                     ;; Don't display Discussion field inline - handle separately
+                     (not (string= (car prop) "Discussion"))
                      (not (string= (car prop) "internals")))) bug) "\n"))
 
-    (unless (equal 'rally (bug--backend-type instance))
-      ;; TODO: Rally has multiple objects which need to be loaded separately,
-      ;;       the bugzilla style loading of attachements and comments won't
-      ;;       scale for that.
-      ;;       Additionally it'd be better to select the insertion points by
-      ;;       using text properties.
+    ;; Load backend-specific additional data (comments, discussions, etc.)
+    ;; TODO, this is a quick and dirty hack to get things working - we shouldn't
+    ;; be calling backend specific specific functions directly here
+    (cond
+     ;; Rally: Load discussion posts
+     ((equal 'rally (bug--backend-type instance))
+      (let ((posts (bug--fetch-rally-discussion bug instance)))
+        (when posts
+          (bug--display-rally-discussion posts))))
+     ;; Bugzilla: Load attachments and comments
+     (t
       (insert "\nATTACHMENTS:\n")
       (insert "\nCOMMENTS:\n")
-      (if (and bug---id bug-autoload-attachments)
-          (bug-get-attachments bug---id instance))
-      (if (and bug---id bug-autoload-comments)
-          (bug-get-comments bug---id instance)))
+      (when (and bug---id bug-autoload-attachments)
+        (bug-get-attachments bug---id instance))
+      (when (and bug---id bug-autoload-comments)
+        (bug-get-comments bug---id instance))))
     (goto-char 0)
     (setq buffer-read-only t)
     (bug--bug-mode-update-header)

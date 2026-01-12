@@ -38,6 +38,7 @@
 (require 'bug-common-functions)
 (require 'bug-custom)
 (require 'bug-debug)
+(require 'bug-format)
 
 (require 'vtable)
 (require 'json)
@@ -261,6 +262,80 @@ The following additions are supported for Rally:
   "Return list columns for Rally. If `object' is set object-specific columns
 may be returned."
   '("FormattedID" ("State" "ScheduleState") "Name" "LastUpdateDate"))
+
+;;;###autoload
+(defun bug--fetch-rally-discussion (bug-data instance)
+  "Fetch discussion posts for a Rally artifact.
+
+BUG-DATA is the artifact data alist containing the Discussion field.
+INSTANCE is the Rally instance.
+
+Returns a list of discussion post alists, or nil if no discussion exists."
+  (let* ((discussion-ref (cdr (assoc 'Discussion bug-data)))
+         (post-count (cdr (assoc 'Count discussion-ref))))
+    (message "Discussion ref: %S, Count: %S" discussion-ref post-count)
+    (when (and discussion-ref (> (or post-count 0) 0))
+      (let* ((ref-url (cdr (assoc '_ref discussion-ref)))
+             ;; Extract artifact ObjectID from URL
+             ;; URL format: .../HierarchicalRequirement/839749943551/Discussion
+             (artifact-oid (when (string-match "/\\([0-9]+\\)/Discussion$" ref-url)
+                            (match-string 1 ref-url))))
+        (message "Artifact OID: %s" artifact-oid)
+        (when artifact-oid
+          (let* ((response (bug--rpc-rally
+                           `((resource . "conversationpost")
+                             (operation . "query")
+                             (data . ((query ,(format "(Artifact.ObjectID = %s)" artifact-oid))
+                                     (fetch "Text,User,CreationDate,PostNumber")
+                                     (order "PostNumber")
+                                     (pagesize 200))))
+                           instance))
+                 (query-result (cdr (car response)))
+                 (posts (cdr (assoc 'Results query-result))))
+            (message "Discussion query result: %S" query-result)
+            (message "Found %d posts" (if posts (length posts) 0))
+            ;; Convert vector to list for easier handling
+            (when posts (append posts nil))))))))
+
+;;;###autoload
+(defun bug--display-rally-discussion (posts)
+  "Display Rally discussion POSTS in the current buffer.
+
+POSTS is a list of post alists with Text, User, CreationDate, and PostNumber fields."
+  (when posts
+    (insert "\n\nDISCUSSION:\n")
+    (insert (make-string 70 ?-) "\n")
+    (dolist (post posts)
+      (let* ((post-num (cdr (assoc 'PostNumber post)))
+             (user (cdr (assoc '_refObjectName (cdr (assoc 'User post)))))
+             (date (cdr (assoc 'CreationDate post)))
+             (text (cdr (assoc 'Text post))))
+        (insert (propertize (format "Post #%d by %s on %s:\n"
+                                   post-num
+                                   (or user "Unknown")
+                                   (bug--format-time-date date t))
+                           'face 'bold))
+        (insert (or text "") "\n")
+        (insert (make-string 70 ?-) "\n")))))
+
+;;;###autoload
+(defun bug--create-rally-discussion-post (artifact-uuid text instance)
+  "Create a new discussion post on a Rally artifact.
+
+ARTIFACT-UUID is the artifact's ObjectUUID.
+TEXT is the discussion post content.
+INSTANCE is the Rally instance.
+
+Returns the created post data."
+  (let* ((response (bug--rpc-rally
+                   `((resource . "conversationpost")
+                     (operation . "create")
+                     (data . ((ConversationPost .
+                              ((Artifact . ,(concat "/artifact/" artifact-uuid))
+                               (Text . ,text))))))
+                   instance))
+         (result (cdr (car response))))
+    result))
 
 ;;;###autoload
 (defun bug--rally-field-name (field-name _instance)
@@ -771,6 +846,42 @@ Prompts for confirmation before deleting."
       (when (eq major-mode 'bug-mode)
         (kill-buffer))
       t)))
+
+(defun bug-rally-discussion (&optional instance)
+  "Add a discussion post to the current Rally artifact.
+
+Opens a buffer for composing a discussion post. Use C-c C-c to submit."
+  (interactive (list (bug--query-instance)))
+  (unless (boundp 'bug---uuid)
+    (error "Not in a bug buffer or no bug UUID found"))
+  (unless bug---uuid
+    (error "No bug UUID found"))
+  (let ((uuid bug---uuid)
+        (bug-id bug---id)
+        (inst instance))
+    (pop-to-buffer (format "*rally discussion: %s*" bug-id))
+    (erase-buffer)
+    (text-mode)
+    (insert "# Enter discussion post below. Use C-c C-c to submit.\n")
+    (insert "# Lines starting with # are ignored.\n\n")
+    (local-set-key (kbd "C-c C-c")
+                   (lambda ()
+                     (interactive)
+                     (let ((text (buffer-string))
+                           (post-text ""))
+                       ;; Filter out comment lines
+                       (dolist (line (split-string text "\n"))
+                         (unless (string-match-p "^#" line)
+                           (setq post-text (concat post-text line "\n"))))
+                       (setq post-text (string-trim post-text))
+                       (when (string-empty-p post-text)
+                         (error "Discussion post cannot be empty"))
+                       (message "Posting discussion...")
+                       (bug--create-rally-discussion-post uuid post-text inst)
+                       (message "Discussion post created")
+                       (kill-buffer)
+                       ;; Refresh the bug view
+                       (bug-open bug-id inst))))))
 
 (provide 'bug-backend-rally)
 ;;; bug-backend-rally.el ends here
