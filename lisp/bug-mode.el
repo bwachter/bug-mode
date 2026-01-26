@@ -46,6 +46,7 @@
 (defvar bug---data)
 (defvar bug---instance)
 (defvar bug---changed-data)
+(defvar bug---field-filter-index nil)
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -60,6 +61,7 @@
     ;; TODO: this should change to 'status change' instead of 'resolve'
     (define-key keymap "s"         'bug--bug-mode-resolve-bug)
     (define-key keymap "u"         'bug--bug-mode-update-bug)
+    (define-key keymap "v"         'bug--bug-mode-toggle-field-filter)
     (define-key keymap "q"         'bug--bug-mode-quit-window)
     (define-key keymap "\C-c\C-c"  'bug--bug-mode-commit)
     keymap)
@@ -87,10 +89,49 @@
           (prin1-to-string (bug--backend-type instance) t)
           bug-id))
 
+(defun bug--field-filtered-p (instance field)
+  "Return t for non-filtered fields, nil for filtered ones"
+  ;; Get field filters from backend
+  (let* ((field-filters (bug--backend-function-optional "bug--%s-field-filters" instance))
+         (current-filter (when field-filters
+                           (nth bug---field-filter-index field-filters))))
+
+    (if (or (null current-filter)
+            (not (listp current-filter)))  ;; no filter or empty = allow all
+        t
+      (cl-some (lambda (f)
+                 (string= f field))
+               current-filter))))
+
+(defun bug--visible-field-p (prop instance)
+  "Return non-nil if PROP should be included for INSTANCE."
+
+  (let ((name (car prop))
+        (value (cdr prop)))
+    (and (not (equal :json-false (bug--get-field-property name 'is_visible instance)))
+         ;; referenced objects are included as a list. If there's
+         ;; a `Count' property with value `0' it's safe to assume
+         ;; we don't need to retrieve it (might be rally only)
+         (not (and (listp value)
+                   (equal 0 (cdr (assoc 'Count value)))))
+         (not (equal value nil))
+         (not (string-match "^[[:space:]]*$" (prin1-to-string value t)))
+         (bug--field-filtered-p instance name)
+         ;; Apply field filter if defined and not empty
+         ;;(or (null current-filter)
+         ;;    (null field-filters)
+         ;;    (member (car prop) current-filter))
+         ;; Don't display Discussion/Description fields inline - handle separately
+         (not (string= name "Discussion"))
+         (not (string= name "Description"))
+         (not (string= name "internals")))))
+
 (defun bug-show (bug instance)
   "Display an existing bug buffer in bug-mode"
   (bug--debug-log-time "bug-show")
-  (let ((tmp-bug-id (cdr (assoc (bug--field-name :bug-friendly-id instance) bug))))
+  ;; we need to save variables we want to keep over redisplay here in the let
+  (let ((tmp-bug-id (cdr (assoc (bug--field-name :bug-friendly-id instance) bug)))
+        (tmp-filter-index bug---field-filter-index))
     (pop-to-buffer (bug--buffer-string tmp-bug-id instance))
 
     (bug-mode)
@@ -108,9 +149,12 @@
     (setq bug---instance (bug--instance-to-symbolp instance))
     (make-local-variable 'bug---changed-data)
     (setq bug---changed-data nil)
+    (make-local-variable 'bug---field-filter-index)
+    (setq bug---field-filter-index (or tmp-filter-index 0))
     (setq buffer-read-only nil)
     (buffer-disable-undo)
     (erase-buffer)
+
     (insert
      (mapconcat
       (lambda (prop)
@@ -119,20 +163,8 @@
          (propertize
           (bug--format-field-value prop instance t)
           'field (car prop))))
-      (filter (lambda (prop)
-                (and (not (equal :json-false (bug--get-field-property (car prop) 'is_visible instance)))
-                     ;; referenced objects are included as a list. If there's
-                     ;; a `Count' property with value `0' it's safe to assume
-                     ;; we don't need to retrieve it (might be rally only)
-                     (not (and
-                           (listp (cdr prop))
-                           (equal 0 (cdr (assoc 'Count (cdr prop))))))
-                     (not (equal (cdr prop) nil))
-                     (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr prop) t)))
-                     ;; Don't display Discussion/Description fields inline - handle separately
-                     (not (string= (car prop) "Discussion"))
-                     (not (string= (car prop) "Description"))
-                     (not (string= (car prop) "internals")))) bug) "\n"))
+      (filter (lambda (prop) (bug--visible-field-p prop instance)) bug)
+      "\n"))
 
     ;; Display Description separately after other fields
     (let ((description-prop (or (assoc "Description" bug)
@@ -142,7 +174,7 @@
                  (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr description-prop) t))))
         (insert "\n"
                 (bug--format-field-name description-prop instance)
-                "\n\n""
+                "\n\n"
                 (propertize
                  (bug--format-field-value description-prop instance t)
                  'field (car description-prop)))))
@@ -199,6 +231,28 @@ and keep the buffers modified marker accurate."
           (propertize
            (concat prefix ": " summary)
            'face face))))
+
+(defun bug--bug-mode-toggle-field-filter ()
+  "Toggle between different field filter views.
+
+Cycles through the field filters defined by the backend. If the backend
+defines no filters, this does nothing. Empty filter lists show all fields."
+  (interactive)
+  (let* ((instance bug---instance)
+         (field-filters (bug--backend-function-optional "bug--%s-field-filters" instance)))
+    (if (null field-filters)
+        (message "No field filters defined for this backend")
+      (setq bug---field-filter-index
+            (mod (1+ bug---field-filter-index) (length field-filters)))
+      (let ((current-filter (nth bug---field-filter-index field-filters)))
+        (message "Field filter: %s (%d/%d)"
+                 (if (null current-filter)
+                     "All fields"
+                   (format "%d fields" (length current-filter)))
+                 (1+ bug---field-filter-index)
+                 (length field-filters)))
+      ;; Refresh the bug display
+      (bug-show bug---data instance))))
 
 (defun bug--get-update-id (instance)
   "Get the appropriate ID for update operations based on backend type.

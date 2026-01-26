@@ -84,6 +84,17 @@ Example usage:
       (error (format "Backend function '%s' not defined"
                      function-name)))))
 
+(defun bug--backend-function-optional (format-string &optional args instance)
+  "Call a backend specific function, selected based on the backend specified by
+the configuration for `instance'. Returns nil if the function is not defined.
+
+Like `bug--backend-function' but returns nil instead of throwing an error
+when the function doesn't exist."
+  (let ((function-name (intern (format format-string
+                               (prin1-to-string (bug--backend-type instance) t)))))
+    (when (fboundp function-name)
+      (funcall function-name args instance))))
+
 (defun bug--backend-type (instance)
   "Return the backend type for the given bug tracker instance"
   (let ((type (bug--instance-property :type instance)))

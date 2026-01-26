@@ -264,6 +264,19 @@ may be returned."
   '("FormattedID" ("State" "ScheduleState") "Name" "LastUpdateDate"))
 
 ;;;###autoload
+(defun bug--rally-field-filters (_args _instance)
+  "Return a list of field filter lists for Rally bug display.
+
+Each inner list contains field names to display. An empty list means show all fields.
+Users can toggle between these filters to show different levels of detail.
+
+Returns: ((minimal fields) (normal fields) (detailed fields) (all fields))"
+  '(("FormattedID" "Name" "State" "ScheduleState" "Owner" "Priority" "Severity" "Description")
+    ("FormattedID" "Name" "State" "ScheduleState" "Owner" "Priority" "Severity" "Iteration" "Release" "Project" "Description")
+    ("FormattedID" "Name" "ObjectType" "State" "ScheduleState" "Owner" "Priority" "Severity" "Iteration" "Release" "Project" "PlanEstimate" "TaskEstimatedHours" "TaskRemainingHours" "Blocked" "BlockedReason" "Ready" "Tags" "Description")
+    ()))
+
+;;;###autoload
 (defun bug--fetch-rally-discussion (bug-data instance)
   "Fetch discussion posts for a Rally artifact.
 
