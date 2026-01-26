@@ -129,9 +129,23 @@
                            (equal 0 (cdr (assoc 'Count (cdr prop))))))
                      (not (equal (cdr prop) nil))
                      (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr prop) t)))
-                     ;; Don't display Discussion field inline - handle separately
+                     ;; Don't display Discussion/Description fields inline - handle separately
                      (not (string= (car prop) "Discussion"))
+                     (not (string= (car prop) "Description"))
                      (not (string= (car prop) "internals")))) bug) "\n"))
+
+    ;; Display Description separately after other fields
+    (let ((description-prop (or (assoc "Description" bug)
+                                 (assoc 'Description bug))))
+      (when (and description-prop
+                 (cdr description-prop)
+                 (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr description-prop) t))))
+        (insert "\n"
+                (bug--format-field-name description-prop instance)
+                "\n\n""
+                (propertize
+                 (bug--format-field-value description-prop instance t)
+                 'field (car description-prop)))))
 
     ;; Load backend-specific additional data (comments, discussions, etc.)
     ;; TODO, this is a quick and dirty hack to get things working - we shouldn't
