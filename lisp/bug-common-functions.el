@@ -35,6 +35,14 @@
   (delq nil
         (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
 
+(defun bug--add-or-replace (data key value)
+  "Quick and dirty test helper, don't use otherwise."
+  (if (assoc key data)
+      (progn
+        (setf (cdr (assoc key data)) value)
+        data)
+    (push (cons key value) (nthcdr 0 data))))
+
 (defun bug--backend-feature (instance &optional feature)
   "Without optional argument returns all features of a backend. Otherwise
 checks with `memq' if `feature' is present"
