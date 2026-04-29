@@ -244,6 +244,8 @@ See `bug-switch-instance' for details."
   (let ((buffer (get-buffer-create "*Bug Instances*"))
         (all-instances (bug--get-all-instances)))
     (with-current-buffer buffer
+      (special-mode)
+      (display-line-numbers-mode -1)
       (let ((inhibit-read-only t))
         (erase-buffer)
         (insert (propertize "Bug Tracker Instances\n" 'face 'bold)
@@ -259,9 +261,6 @@ See `bug-switch-instance' for details."
                       "Configure instances via:\n"
                       "  M-x customize-variable RET bug-instances-list\n"
                       "  M-x customize-variable RET bug-instance-plist\n"))
-          (insert "\n")
-          (insert "Use 's' on a row to switch to that instance.\n")
-          (insert "Use 'd' to deactivate instance restrictions.\n\n")
           (make-vtable
            :columns '((:name "Name" :width 20)
                       (:name "Type" :width 15)
@@ -287,8 +286,12 @@ See `bug-switch-instance' for details."
                              (bug-list-instances))
                       "d" ,(lambda (_inst-info)
                              (bug-deactivate-instance)
-                             (bug-list-instances))))))
-      (special-mode)
+                             (bug-list-instances))))
+          (goto-char (point-max))
+          (insert "\n")
+          (insert "Use 's' on a row to switch to that instance.\n")
+          (insert "Use 'd' to deactivate instance restrictions.\n\n")
+        ))
       (goto-char (point-min)))
     (pop-to-buffer buffer)))
 

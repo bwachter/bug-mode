@@ -68,16 +68,25 @@ is formatted to take more space"
        "No")
       ((equal :json-true (cdr field))
        "Yes")
-      ;; some rally objects in a bug contain _refObjectName, which is
-      ;; enough information to display -> just display that to save
-      ;; an RPC call
-      ;; TODO: save object attributes to allow querying the object
+      ;; Rally objects with _refObjectName: preferred - display the name directly
+      ;; to avoid an extra RPC call to resolve the reference
       ((and (listp (cdr field))
             (assoc '_refObjectName (cdr field)))
        (propertize
         (concat "-> "
                 (prin1-to-string (cdr (assoc '_refObjectName (cdr field))) t))
         'face 'bug-field-type-98))
+      ;; Rally objects with only _type (reference metadata without a name, e.g.
+      ;; RevisionHistory): show the type rather than the raw alist
+      ;; TODO, we probably should implement pulling of those fields on request
+      ((and (listp (cdr field))
+            (assoc '_type (cdr field)))
+       (let ((type-val (cdr (assoc '_type (cdr field)))))
+         (propertize
+          (concat "-> ["
+                  (if (symbolp type-val) (symbol-name type-val) type-val)
+                  "]")
+          'face 'bug-field-type-98)))
       ((equal content-type 5)
        (propertize (bug--format-time-date (cdr field) long)
                    'face 'bug-field-type-5))
