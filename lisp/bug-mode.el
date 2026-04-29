@@ -435,8 +435,17 @@ Tries backend-provided completion first; falls back to type-specific input."
         (let* ((field-value (field-string field-pos))
                (field-type (get-text-property field-pos 'bug-field-type))
                (new-value
-                (bug--bug-mode-edit-field field-name field-type field-value)))
-          (unless (string= field-value new-value)
+                (bug--bug-mode-edit-field field-name field-type field-value))
+               ;; Object completions return (ref-url . display-name); normalize
+               ;; so new-ref goes to the backend and new-data-value is stored
+               ;; locally in a form that renders as "-> Name".
+               (new-ref
+                (if (consp new-value) (car new-value) new-value))
+               (new-data-value
+                (if (consp new-value)
+                    `((_ref . ,new-ref) (_refObjectName . ,(cdr new-value)))
+                  new-value)))
+          (unless (and (stringp new-value) (string= field-value new-value))
             ;; new value entered? Update buffer and internal variables
             (progn
               (setq buffer-read-only nil)
@@ -449,14 +458,14 @@ Tries backend-provided completion first; falls back to type-specific input."
                 (condition-case err
                     (let ((update-id (bug--get-update-id bug---instance)))
                       (message "Updating field %s..." field-name)
-                      (bug-update update-id `((,field-name . ,new-value)) bug---instance)
+                      (bug-update update-id `((,field-name . ,new-ref)) bug---instance)
                       ;; Update succeeded - update buffer and local data
                       (if (assoc field-name bug---data)
-                          (setf (cdr (assoc field-name bug---data)) new-value)
-                        (push (cons field-name new-value) bug---data))
+                          (setf (cdr (assoc field-name bug---data)) new-data-value)
+                        (push (cons field-name new-data-value) bug---data))
                       (insert
                        (propertize
-                        (bug--format-field-value (cons field-name new-value)
+                        (bug--format-field-value (cons field-name new-data-value)
                                                  bug---instance t)
                         'field field-name))
                       (message "Field %s updated successfully." field-name))
@@ -473,12 +482,12 @@ Tries backend-provided completion first; falls back to type-specific input."
                ((eq bug-update-mode 'on-commit)
                 ;; add or replace the new field in `bug---changed-data'
                 (if (assoc field-name bug---changed-data)
-                    (setf (cdr (assoc field-name bug---changed-data)) new-value)
-                  (push (cons field-name new-value) bug---changed-data))
+                    (setf (cdr (assoc field-name bug---changed-data)) new-ref)
+                  (push (cons field-name new-ref) bug---changed-data))
                 ;; replace old data with new ones, nicely formatted
                 (insert
                  (propertize
-                  (bug--format-field-value (cons field-name new-value)
+                  (bug--format-field-value (cons field-name new-data-value)
                                            bug---instance t)
                   'field field-name))
                 (message "Field %s changed (use C-c C-c to commit)" field-name)))

@@ -42,10 +42,11 @@ Returns a list of strings, or nil if no completion is available."
 Returns a string if completions are available, nil otherwise (allowing
 the caller to fall back to type-specific input methods).
 
-The backend may return either a plain list of strings (for simple types like
-STATE/STRING) or an alist of (display-name . update-value) pairs (for OBJECT
-types). In the alist case, completing-read shows the display names and the
-function returns the update-value (e.g. a Rally object ref URL)."
+For plain string completions (STATE/STRING) returns the selected string.
+For OBJECT completions (alist of (display-name . ref-url)) returns a cons
+\=(ref-url . display-name) so callers can store the URL for the backend while
+rendering the human-readable name.  When the user keeps the existing value
+\(presses RET unchanged) a plain string is returned and no update is needed."
   (let ((completions (bug--field-completion-values field-name instance)))
     (when completions
       (let* ((is-alist (and (consp completions) (consp (car completions))))
@@ -62,7 +63,13 @@ function returns the update-value (e.g. a Rally object ref URL)."
                         nil            ;; history
                         current-value)))
         (if is-alist
-            (or (cdr (assoc selected completions)) selected)
+            (let ((ref (cdr (assoc selected completions))))
+              ;; Return (ref-url . display-name) so callers can render the name
+              ;; while still sending the URL to the backend.  When selected
+              ;; doesn't match any key (e.g. user kept the current-value
+              ;; default by pressing RET), return a plain string so the caller's
+              ;; unchanged-value check still works.
+              (if ref (cons ref selected) selected))
           selected)))))
 
 (provide 'bug-field-completion)
