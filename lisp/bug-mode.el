@@ -340,11 +340,13 @@ function can handle it for browser display."
 
 ;;;###autoload
 (defun bug--bug-mode-download-attachment ()
-  "Download the current attachment to the home directory"
+  "Download the current attachment to the home directory."
   (interactive)
-  (w3m-download
-   (bug-find-attachment-url bug---instance)
-   (expand-file-name (concat "~/" (match-string 3)))))
+  (let ((url (bug-find-attachment-url bug---instance))
+        (dest (expand-file-name (concat "~/" (match-string 3)))))
+    (if url
+        (url-copy-file url dest t)
+      (error "No attachment URL found"))))
 
 ;;;###autoload
 (defun bug--bug-mode-open-thing-near-point ()
