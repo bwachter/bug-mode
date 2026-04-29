@@ -497,26 +497,26 @@ relying on any cached attribute definitions or allowed-value lists."
                           (get-text-property (point) 'bug-field-name)))))
     (if (not field-name)
         (message "No field at point")
-      ;; Invalidate the type-attrs cache so the backend fetches fresh definitions.
-      (when (and (boundp 'bug---data) bug---data)
-        (let* ((object-type (cdr (assoc 'ObjectType bug---data)))
-               (type-name (cond ((symbolp object-type) (symbol-name object-type))
-                                ((stringp object-type) object-type)
-                                (t nil))))
-          (when type-name
-            (bug--cache-put-timed
-             (intern (concat "rally-type-attrs-" type-name))
-             nil 0 bug---instance))))
+      ;; Clear all cached completion data for this backend/instance so we always
+      ;; get a fresh API response.  The prefix is the backend type name so this
+      ;; works for any backend whose cache keys follow the "<backend>-" convention.
+      (let ((backend-prefix (concat (prin1-to-string
+                                     (bug--backend-type bug---instance) t)
+                                    "-")))
+        (bug-cache-clear-matching backend-prefix bug---instance))
       (let ((completions (bug--field-completion-values field-name bug---instance)))
         (if (not completions)
             (message "peek-completions for %s: nil (field has no restricted values or fetch failed)" field-name)
-          (message "peek-completions for %s (%d): %s%s"
-                   field-name
-                   (length completions)
-                   (mapconcat #'identity (seq-take completions 8) ", ")
-                   (if (> (length completions) 8) ", ..." ""))
-          (completing-read (format "%s (peek, RET/C-g to dismiss): " field-name)
-                           completions nil nil nil nil))))))
+          (let* ((is-alist (and (consp completions) (consp (car completions))))
+                 (display-items (if is-alist (mapcar #'car completions) completions)))
+            (message "peek-completions for %s (%d%s): %s%s"
+                     field-name
+                     (length completions)
+                     (if is-alist ", object refs" "")
+                     (mapconcat #'identity (seq-take display-items 8) ", ")
+                     (if (> (length completions) 8) ", ..." ""))
+            (completing-read (format "%s (peek, RET/C-g to dismiss): " field-name)
+                             display-items nil nil nil nil)))))))
 
 ;;;###autoload
 (defun bug--bug-mode-info ()

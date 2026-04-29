@@ -86,7 +86,7 @@ Example usage:
  (bug--backend-function \"some-%s-function\" nil instance)
 "
   (let ((function-name (intern (format format-string
-                               (prin1-to-string (bug--backend-type instance) t)))))
+                                       (prin1-to-string (bug--backend-type instance) t)))))
     (if (fboundp function-name)
         (funcall function-name args instance)
       (error (format "Backend function '%s' not defined"
@@ -99,7 +99,7 @@ the configuration for `instance'. Returns nil if the function is not defined.
 Like `bug--backend-function' but returns nil instead of throwing an error
 when the function doesn't exist."
   (let ((function-name (intern (format format-string
-                               (prin1-to-string (bug--backend-type instance) t)))))
+                                       (prin1-to-string (bug--backend-type instance) t)))))
     (when (fboundp function-name)
       (funcall function-name args instance))))
 
@@ -252,8 +252,8 @@ See `bug-switch-instance' for details."
                 (make-string 60 ?=) "\n\n")
         (if bug-active-instance
             (insert (propertize (format "Active Instance: %s\n"
-                                       bug-active-instance)
-                               'face 'warning))
+                                        bug-active-instance)
+                                'face 'warning))
           (insert "Active Instance: (none - all instances accessible)\n"))
         (if (null all-instances)
             (progn
@@ -273,9 +273,9 @@ See `bug-switch-instance' for details."
                             (type (plist-get plist :type))
                             (url (or (plist-get plist :url) "(Rally API)"))
                             (status (cond
-                                    ((eq name bug-active-instance) "[ACTIVE]")
-                                    ((eq name bug-default-instance) "[DEFAULT]")
-                                    (t ""))))
+                                     ((eq name bug-active-instance) "[ACTIVE]")
+                                     ((eq name bug-default-instance) "[DEFAULT]")
+                                     (t ""))))
                        (pcase (vtable-column vtable column)
                          ("Name" (symbol-name name))
                          ("Type" (symbol-name type))
@@ -291,7 +291,7 @@ See `bug-switch-instance' for details."
           (insert "\n")
           (insert "Use 's' on a row to switch to that instance.\n")
           (insert "Use 'd' to deactivate instance restrictions.\n\n")
-        ))
+          ))
       (goto-char (point-min)))
     (pop-to-buffer buffer)))
 
@@ -378,6 +378,38 @@ Expects values stored by `bug--cache-put-timed'."
       (cl-remf bug--cache instance)
     (setq bug--cache nil)))
 
+(defun bug-cache-clear-matching (key-prefix &optional instance)
+  "Clear cache entries whose key name starts with `key-prefix'
+
+With `instance', only clear within that instance's cache; otherwise
+clear matching entries across all known instances.
+
+When called interactively, prompts for the prefix string.
+With prefix argument, also prompts for the instance."
+  (interactive
+   (list (read-string "Cache key prefix: ")
+         (when current-prefix-arg
+           (bug--instance-to-symbolp (bug--query-instance)))))
+  (let ((remove-matching (lambda (entries)
+                           (cl-remove-if
+                            (lambda (e)
+                              (string-prefix-p key-prefix (symbol-name (car e))))
+                            entries))))
+    (if instance
+        (setq bug--cache
+              (plist-put bug--cache instance
+                         (funcall remove-matching (plist-get bug--cache instance))))
+      (let ((plist bug--cache)
+            (new-cache nil))
+        (while plist
+          (let* ((inst (pop plist))
+                 (entries (pop plist)))
+            (setq new-cache
+                  (plist-put new-cache inst (funcall remove-matching entries)))))
+        (setq bug--cache new-cache))))
+  (message "Cleared cache entries matching '%s'%s" key-prefix
+           (if instance (format " for instance %s" instance) "")))
+
 (defun bug--get-fields (instance &optional object)
   "Download fields used by this bug tracker instance or returns them from cache"
   (let* ((cache-key (if object
@@ -390,15 +422,15 @@ Expects values stored by `bug--cache-put-timed'."
     (if fields
         (progn
           (mapc (lambda (field)
-                    (let* ((key (cdr (assoc 'name field)))
-                           (bz-mapped-field (bug--rpc-bz-rpc-map-field key)))
-                      ;; workaround for missing or oddly named fields in
-                      ;; Bugzillas field list
-                      (if (and bz-mapped-field
-                               (not (gethash bz-mapped-field field-hash)))
-                          (puthash bz-mapped-field field field-hash))
-                      (puthash key field field-hash)))
-                  (cdr (car (cdr (car fields)))))
+                  (let* ((key (cdr (assoc 'name field)))
+                         (bz-mapped-field (bug--rpc-bz-rpc-map-field key)))
+                    ;; workaround for missing or oddly named fields in
+                    ;; Bugzillas field list
+                    (if (and bz-mapped-field
+                             (not (gethash bz-mapped-field field-hash)))
+                        (puthash bz-mapped-field field field-hash))
+                    (puthash key field field-hash)))
+                (cdr (car (cdr (car fields)))))
           (bug--cache-put cache-key field-hash instance)
           ))
     (bug--cache-get cache-key instance)))
@@ -464,7 +496,7 @@ Special handling:
   (let* ((instance (bug--instance-to-symbolp instance))
          ;; Try bug-instances-list first, then bug-instance-plist
          (property-list (or (cdr (assoc instance bug-instances-list))
-                           (plist-get bug-instance-plist instance))))
+                            (plist-get bug-instance-plist instance))))
     (cond
      ;; Special handling for API key - check for file-based key
      ((equal property :api-key)
