@@ -355,6 +355,20 @@ with names of lists across all bug tracker instances"
   (let ((instance (bug--instance-to-symbolp instance)))
     (cdr (assoc key (plist-get bug--cache instance)))))
 
+(defun bug--cache-put-timed (key value ttl instance)
+  "Cache `key' with `value' for `instance', expiring after `ttl' seconds.
+
+Use `bug--cache-get-valid' to retrieve values stored this way."
+  (bug--cache-put key (cons value (+ (float-time) ttl)) instance))
+
+(defun bug--cache-get-valid (key instance)
+  "Return cached value for `key' in `instance' if not yet expired, else nil.
+
+Expects values stored by `bug--cache-put-timed'."
+  (let ((cached (bug--cache-get key instance)))
+    (when (and cached (consp cached) (> (cdr cached) (float-time)))
+      (car cached))))
+
 (defun bug-cache-clear (&optional instance)
   "Clear the cache, either globally, or for a specific instance"
   (interactive
@@ -418,7 +432,9 @@ the following:
 
 (defvar bug--api-key-cache (make-hash-table :test 'equal)
   "Cache for API keys loaded from files.
-Keys are (instance . file-path) cons cells, values are the trimmed file contents.")
+
+Keys are (instance . file-path) cons cells, while values are the trimmed
+file contents.")
 
 (defun bug--read-api-key-file (file-path instance)
   "Read API key from FILE-PATH, trimming whitespace.
@@ -442,7 +458,8 @@ instance if INSTANCE is empty.
 Checks both `bug-instances-list' and `bug-instance-plist'.
 
 Special handling:
-- :api-key - If not present, checks for :api-key-file and reads the key from that file
+- :api-key - If not present, checks for :api-key-file and reads the key from
+             that file
 - :url - For Rally instances, falls back to bug-rally-url if not specified"
   (let* ((instance (bug--instance-to-symbolp instance))
          ;; Try bug-instances-list first, then bug-instance-plist
