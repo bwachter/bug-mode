@@ -39,20 +39,31 @@ Returns a list of strings, or nil if no completion is available."
   "Prompt for a new value of `field-name' using backend-provided completion.
 
 `current-value' is shown as the default and returned if the user enters nothing.
-Returns a string if completions are available, `nil' otherwise, allowing
-the caller to fall back to type-specific input methods."
+Returns a string if completions are available, nil otherwise (allowing
+the caller to fall back to type-specific input methods).
+
+The backend may return either a plain list of strings (for simple types like
+STATE/STRING) or an alist of (display-name . update-value) pairs (for OBJECT
+types). In the alist case, completing-read shows the display names and the
+function returns the update-value (e.g. a Rally object ref URL)."
   (let ((completions (bug--field-completion-values field-name instance)))
     (when completions
-      (completing-read
-       (format "%s (default: %s): "
-               (if (symbolp field-name) (symbol-name field-name) (format "%s" field-name))
-               current-value)
-       completions
-       nil            ;; predicate
-       nil            ;; require-match
-       nil            ;; initial-input: empty so all candidates appear immediately
-       nil            ;; history
-       current-value))))
+      (let* ((is-alist (and (consp completions) (consp (car completions))))
+             (display-list (if is-alist (mapcar #'car completions) completions))
+             (selected (completing-read
+                        (format "%s (default: %s): "
+                                (if (symbolp field-name) (symbol-name field-name)
+                                  (format "%s" field-name))
+                                current-value)
+                        display-list
+                        nil            ;; predicate
+                        nil            ;; require-match
+                        nil            ;; initial-input
+                        nil            ;; history
+                        current-value)))
+        (if is-alist
+            (or (cdr (assoc selected completions)) selected)
+          selected)))))
 
 (provide 'bug-field-completion)
 ;;; bug-field-completion.el ends here

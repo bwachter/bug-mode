@@ -966,13 +966,16 @@ or nil on failure. Results are cached for 24 hours."
   "Get the allowed values for `field-name' in `type-name', with caching.
 
 `field-name' may be a string or symbol.
-Returns a list of value strings, or nil if the field has no restricted values."
+For STRING/STATE/RATING fields returns a list of strings.
+For OBJECT fields returns an alist of (display-name . ref) so the selected
+display name can be mapped back to a Rally object reference for updates."
   (let* ((field-name-str (if (symbolp field-name) (symbol-name field-name) field-name))
          (attrs (bug--rally-get-type-attributes type-name instance))
          (attr (when attrs (gethash field-name-str attrs))))
     (when attr
       (let* ((allowed-ref (cdr (assoc 'AllowedValues attr)))
-             (count (cdr (assoc 'Count allowed-ref))))
+             (count (cdr (assoc 'Count allowed-ref)))
+             (attr-type (cdr (assoc 'AttributeType attr))))
         (when (and count (> count 0))
           (let* ((oid (cdr (assoc 'ObjectID attr)))
                  (attr-oid (if (numberp oid) (number-to-string oid) oid))
@@ -994,12 +997,32 @@ Returns a list of value strings, or nil if the field has no restricted values."
                       (when results
                         (dotimes (i (length results))
                           (let* ((val (aref results i))
-                                 (str-val (or (cdr (assoc 'StringValue val))
-                                              (cdr (assoc 'Name val)))))
-                            (when (and str-val
-                                       (stringp str-val)
-                                       (not (string-empty-p str-val)))
-                              (push str-val values)))))
+                                 (str-value (cdr (assoc 'StringValue val)))
+                                 ;; Strip HTML tags from StringValue for clean display
+                                 (display-name
+                                  (when str-value
+                                    (replace-regexp-in-string "<[^>]+>" "" str-value)))
+                                 (display-name-plain
+                                  (or display-name (cdr (assoc 'Name val))))
+                                 ;; For OBJECT types, _ref on the item IS the object URL
+                                 (item-ref (cdr (assoc '_ref val)))
+                                 (value-ref
+                                  (when (and item-ref (stringp item-ref)
+                                             (not (equal item-ref "null")))
+                                    item-ref))
+                                 (push-val
+                                  (if (equal attr-type "OBJECT")
+                                      ;; alist entry: display-name for UI, ref for update
+                                      (when (and value-ref display-name
+                                                 (not (string-empty-p display-name)))
+                                        (cons display-name value-ref))
+                                    ;; plain string for STRING/STATE/RATING etc.
+                                    (when (and display-name-plain
+                                               (stringp display-name-plain)
+                                               (not (string-empty-p display-name-plain)))
+                                      display-name-plain))))
+                            (when push-val
+                              (push push-val values)))))
                       (let ((sorted-values (nreverse values)))
                         (bug--cache-put-timed cache-key sorted-values (* 24 60 60) instance)
                         sorted-values))
