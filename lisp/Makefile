@@ -13,6 +13,8 @@ SOURCES += bug-format.el bug-custom.el
 SOURCES += bug-debug.el bug-persistent-data.el
 SOURCES += bug-backend-bz-rpc.el
 SOURCES += bug-backend-rally.el
+SOURCES += bug-field-completion.el
+SOURCES += bug-vars.el
 SOURCES += org-bug.el
 ELC = $(SOURCES:.el=.elc)
 
