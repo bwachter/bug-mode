@@ -268,10 +268,10 @@ may be returned."
 (defun bug--rally-field-filters (_args _instance)
   "Return a list of field filter lists for Rally bug display.
 
-Each inner list contains field names to display. An empty list means show all fields.
-Users can toggle between these filters to show different levels of detail.
+Each inner list contains field names to display in that order. An empty list
+means show all fields alphabetically. Index 0 is the default on first open.
 
-Returns: ((minimal fields) (normal fields) (detailed fields) (all fields))"
+Returns: ((all fields) (minimal fields) (normal fields) (detailed fields))"
   '(("FormattedID" "Name" "State" "ScheduleState" "Owner" "Priority" "Severity" "Description")
     ("FormattedID" "Name" "State" "ScheduleState" "Owner" "Priority" "Severity" "Iteration" "Release" "Project" "Description")
     ("FormattedID" "Name" "ObjectType" "State" "ScheduleState" "Owner" "Priority" "Severity" "Iteration" "Release" "Project" "PlanEstimate" "TaskEstimatedHours" "TaskRemainingHours" "Blocked" "BlockedReason" "Ready" "Tags" "Description")
@@ -293,17 +293,17 @@ Returns a list of discussion post alists, or nil if no discussion exists."
              ;; Extract artifact ObjectID from URL
              ;; URL format: .../HierarchicalRequirement/839749943551/Discussion
              (artifact-oid (when (string-match "/\\([0-9]+\\)/Discussion$" ref-url)
-                            (match-string 1 ref-url))))
+                             (match-string 1 ref-url))))
         (message "Artifact OID: %s" artifact-oid)
         (when artifact-oid
           (let* ((response (bug--rpc-rally
-                           `((resource . "conversationpost")
-                             (operation . "query")
-                             (data . ((query ,(format "(Artifact.ObjectID = %s)" artifact-oid))
-                                     (fetch "Text,User,CreationDate,PostNumber")
-                                     (order "PostNumber")
-                                     (pagesize 200))))
-                           instance))
+                            `((resource . "conversationpost")
+                              (operation . "query")
+                              (data . ((query ,(format "(Artifact.ObjectID = %s)" artifact-oid))
+                                       (fetch "Text,User,CreationDate,PostNumber")
+                                       (order "PostNumber")
+                                       (pagesize 200))))
+                            instance))
                  (query-result (cdr (car response)))
                  (posts (cdr (assoc 'Results query-result))))
             (message "Discussion query result: %S" query-result)
@@ -325,10 +325,10 @@ POSTS is a list of post alists with Text, User, CreationDate, and PostNumber fie
              (date (cdr (assoc 'CreationDate post)))
              (text (cdr (assoc 'Text post))))
         (insert (propertize (format "Post #%d by %s on %s:\n"
-                                   post-num
-                                   (or user "Unknown")
-                                   (bug--format-time-date date t))
-                           'face 'bold))
+                                    post-num
+                                    (or user "Unknown")
+                                    (bug--format-time-date date t))
+                            'face 'bold))
         (insert (or text "") "\n")
         (insert (make-string 70 ?-) "\n")))))
 
@@ -342,12 +342,12 @@ INSTANCE is the Rally instance.
 
 Returns the created post data."
   (let* ((response (bug--rpc-rally
-                   `((resource . "conversationpost")
-                     (operation . "create")
-                     (data . ((ConversationPost .
-                              ((Artifact . ,(concat "/artifact/" artifact-uuid))
-                               (Text . ,text))))))
-                   instance))
+                    `((resource . "conversationpost")
+                      (operation . "create")
+                      (data . ((ConversationPost .
+                                                 ((Artifact . ,(concat "/artifact/" artifact-uuid))
+                                                  (Text . ,text))))))
+                    instance))
          (result (cdr (car response))))
     result))
 
@@ -896,6 +896,132 @@ Opens a buffer for composing a discussion post. Use C-c C-c to submit."
                        (kill-buffer)
                        ;; Refresh the bug view
                        (bug-open bug-id inst))))))
+
+;;;;;;
+;; Field completion for Rally
+
+(defun bug--rally-get-type-attributes (type-name instance)
+  "Fetch and cache attribute definitions for `type-name' from Rally.
+
+Queries the workspace-scoped attributedefinition endpoint.
+Returns a hash table mapping field-name (string) to attribute alist,
+or nil on failure. Results are cached for 24 hours."
+  (let* ((cache-key (intern (concat "rally-type-attrs-" type-name)))
+         (cached (bug--cache-get-valid cache-key instance)))
+    (or cached
+        (condition-case err
+            (progn
+              (message "Fetching field definitions for %s..." type-name)
+              (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
+                     (workspace-ref (format "/workspace/%s" workspace-oid))
+                     ;; Step 1: resolve TypeDefinition OID for this type name
+                     (typedef-response
+                      (bug--rpc-rally
+                       `((resource . "typedefinition")
+                         (operation . "query")
+                         (data . ((query ,(format "(ElementName = \"%s\")" type-name))
+                                  (fetch "ObjectID,ElementName")
+                                  (workspace ,workspace-ref)
+                                  (pagesize 1))))
+                       instance))
+                     (typedef-results
+                      (cdr (assoc 'Results (cdr (assoc 'QueryResult typedef-response)))))
+                     (typedef-oid
+                      (when (and typedef-results (> (length typedef-results) 0))
+                        (let ((oid (cdr (assoc 'ObjectID (aref typedef-results 0)))))
+                          (if (numberp oid) (number-to-string oid) oid))))
+                     ;; Step 2: fetch attribute definitions for the resolved type
+                     (response
+                      (when typedef-oid
+                        (bug--rpc-rally
+                         `((resource . ,(format "typedefinition/%s/Attributes" typedef-oid))
+                           (operation . "query")
+                           (data . ((fetch "Name,ElementName,ObjectID,AttributeType,AllowedValues")
+                                    (pagesize 200))))
+                         instance)))
+                     (query-result (cdr (assoc 'QueryResult response)))
+                     (results (cdr (assoc 'Results query-result)))
+                     (attrs (make-hash-table :test 'equal)))
+                (if (not typedef-oid)
+                    (message "bug-mode: TypeDefinition not found for %s" type-name)
+                  (when results
+                    (dotimes (i (length results))
+                      (let* ((attr (aref results i))
+                             (name (cdr (assoc 'Name attr)))
+                             (element-name (cdr (assoc 'ElementName attr))))
+                        (when name
+                          (puthash name attr attrs))
+                        ;; Also index by ElementName (the camelCase API key, e.g.
+                        ;; "ScheduleState") so lookups by buffer field-name succeed.
+                        (when (and element-name (not (equal element-name name)))
+                          (puthash element-name attr attrs))))))
+                (bug--cache-put-timed cache-key attrs (* 24 60 60) instance)
+                attrs))
+          (error
+           (message "bug-mode: error fetching Rally field definitions: %s"
+                    (error-message-string err))
+           nil)))))
+
+(defun bug--rally-field-allowed-values (type-name field-name instance)
+  "Get the allowed values for `field-name' in `type-name', with caching.
+
+`field-name' may be a string or symbol.
+Returns a list of value strings, or nil if the field has no restricted values."
+  (let* ((field-name-str (if (symbolp field-name) (symbol-name field-name) field-name))
+         (attrs (bug--rally-get-type-attributes type-name instance))
+         (attr (when attrs (gethash field-name-str attrs))))
+    (when attr
+      (let* ((allowed-ref (cdr (assoc 'AllowedValues attr)))
+             (count (cdr (assoc 'Count allowed-ref))))
+        (when (and count (> count 0))
+          (let* ((oid (cdr (assoc 'ObjectID attr)))
+                 (attr-oid (if (numberp oid) (number-to-string oid) oid))
+                 (cache-key (intern (concat "rally-allowed-vals-" attr-oid)))
+                 (cached (bug--cache-get-valid cache-key instance)))
+            (or cached
+                (condition-case err
+                    (let* ((response (bug--rpc-rally
+                                      `((resource . ,(concat "attributedefinition/"
+                                                             attr-oid
+                                                             "/AllowedValues"))
+                                        (operation . "query")
+                                        (data . ((fetch "StringValue,Name")
+                                                 (pagesize 200))))
+                                      instance))
+                           (query-result (cdr (assoc 'QueryResult response)))
+                           (results (cdr (assoc 'Results query-result)))
+                           (values nil))
+                      (when results
+                        (dotimes (i (length results))
+                          (let* ((val (aref results i))
+                                 (str-val (or (cdr (assoc 'StringValue val))
+                                              (cdr (assoc 'Name val)))))
+                            (when (and str-val
+                                       (stringp str-val)
+                                       (not (string-empty-p str-val)))
+                              (push str-val values)))))
+                      (let ((sorted-values (nreverse values)))
+                        (bug--cache-put-timed cache-key sorted-values (* 24 60 60) instance)
+                        sorted-values))
+                  (error
+                   (message "bug-mode: error fetching Rally allowed values for %s: %s"
+                            field-name-str (error-message-string err))
+                   nil)))))))))
+
+;;;###autoload
+(defun bug--field-completion-rally (field-name instance)
+  "Return completion candidates for `field-name' in the current Rally artifact.
+
+Queries Rally for attribute definitions and allowed values for the artifact
+type currently open in the buffer. Results are cached per type for 24 hours.
+Returns a list of value strings, or nil if no completion is available."
+  (when (and (boundp 'bug---data) bug---data)
+    (let* ((object-type (cdr (assoc 'ObjectType bug---data)))
+           (type-name (cond ((symbolp object-type) (symbol-name object-type))
+                            ((stringp object-type) object-type)
+                            (t nil))))
+      (when type-name
+        (bug--rally-field-allowed-values type-name field-name instance)))))
 
 (provide 'bug-backend-rally)
 ;;; bug-backend-rally.el ends here

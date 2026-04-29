@@ -33,6 +33,7 @@
 (require 'bug-vars)
 (require 'bug-rpc)
 (require 'bug-common-functions)
+(require 'bug-field-completion)
 (require 'bug-format)
 (require 'bug-debug)
 (require 'bug-persistent-data)
@@ -46,6 +47,7 @@
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
     (define-key keymap (kbd "RET") 'bug--bug-mode-open-thing-near-point)
+    (define-key keymap (kbd "TAB") 'bug--bug-mode-peek-completions)
     (define-key keymap "b"         'bug--bug-mode-browse-bug)
     ;; TODO: change this to a 'change bug' popup
     (define-key keymap "c"         'bug--bug-mode-create-comment)
@@ -137,7 +139,25 @@
     (setq bug---uuid (cdr (assoc (bug--field-name :bug-uuid instance) bug)))
     (make-local-variable 'bug---is-new)
     (setq bug---is-new (if bug---id nil t))
-    (setq bug (sort bug (lambda (a b)(string< (car a)(car b)))))
+    ;; Sort: use filter-list order when a named filter is active, else alphabetical
+    (let* ((instance-sym (bug--instance-to-symbolp instance))
+           (all-filters (bug--backend-function-optional "bug--%s-field-filters" nil instance-sym))
+           (current-filter (when all-filters
+                             (nth (or tmp-filter-index 0) all-filters))))
+      (setq bug
+            (sort bug
+                  (if (and current-filter (listp current-filter))
+                      (lambda (a b)
+                        (let* ((an (let ((k (car a)))
+                                     (if (symbolp k) (symbol-name k) (format "%s" k))))
+                               (bn (let ((k (car b)))
+                                     (if (symbolp k) (symbol-name k) (format "%s" k))))
+                               (ai (or (cl-position an current-filter :test #'string=)
+                                       most-positive-fixnum))
+                               (bi (or (cl-position bn current-filter :test #'string=)
+                                       most-positive-fixnum)))
+                          (if (= ai bi) (string< an bn) (< ai bi))))
+                    (lambda (a b) (string< (car a) (car b)))))))
     (make-local-variable 'bug---data)
     (setq bug---data bug)
     (make-local-variable 'bug---instance)
@@ -163,7 +183,7 @@
 
     ;; Display Description separately after other fields
     (let ((description-prop (or (assoc "Description" bug)
-                                 (assoc 'Description bug))))
+                                (assoc 'Description bug))))
       (when (and description-prop
                  (cdr description-prop)
                  (not (string-match "^[[:space:]]*$" (prin1-to-string (cdr description-prop) t))))
@@ -371,19 +391,23 @@ If no (valid) field was found `nil' is returned."
               (setq field-pos pos)))))
     field-pos))
 
-(defun bug--bug-mode-edit-field(field-name field-type field-value)
-  "Query new value for a field, with different input methods based
-on field type (minibuffer or a separate popup buffer). Returns the new field
-value, or the old field value if nothing has changed."
+(defun bug--bug-mode-edit-field (field-name field-type field-value)
+  "Query new value for a field. Returns the new value, or the old
+value if nothing has changed or editing is unsupported for the field type.
+
+Tries backend-provided completion first; falls back to type-specific input."
   (unless (bug--backend-feature bug---instance :write)
     (error "Backend does not support editing"))
-  (cond ((equal field-type 0)
-         (let ((_my-history (list field-value)))
-           (read-string (concat (prin1-to-string field-name) ": ")
-                        "" 'my-history)))
-        (t (message (format "Editing a field of type %s is not implemented"
-                            (prin1-to-string field-type t)))
-           field-value)))
+  (or (bug--completing-read-field field-name field-value bug---instance)
+      (cond
+       ((or (null field-type) (equal field-type 0))
+        (let ((_my-history (list field-value)))
+          (read-string (concat (prin1-to-string field-name) ": ")
+                       "" 'my-history)))
+       (t
+        (message "Editing a field of type %s is not implemented"
+                 (prin1-to-string field-type t))
+        field-value))))
 
 ;;;###autoload
 (defun bug--bug-mode-edit-thing-near-point ()
@@ -459,6 +483,40 @@ value, or the old field value if nothing has changed."
 
               (bug--bug-mode-update-header)
               (setq buffer-read-only t))))))))
+
+;;;###autoload
+(defun bug--bug-mode-peek-completions ()
+  "Fetch and display completion candidates for the field at point, bypassing cache.
+
+Useful for debugging: shows what the backend returns for this field without
+relying on any cached attribute definitions or allowed-value lists."
+  (interactive)
+  (let ((field-name (or (get-text-property (point) 'bug-field-name)
+                        (save-excursion
+                          (forward-line 0)
+                          (get-text-property (point) 'bug-field-name)))))
+    (if (not field-name)
+        (message "No field at point")
+      ;; Invalidate the type-attrs cache so the backend fetches fresh definitions.
+      (when (and (boundp 'bug---data) bug---data)
+        (let* ((object-type (cdr (assoc 'ObjectType bug---data)))
+               (type-name (cond ((symbolp object-type) (symbol-name object-type))
+                                ((stringp object-type) object-type)
+                                (t nil))))
+          (when type-name
+            (bug--cache-put-timed
+             (intern (concat "rally-type-attrs-" type-name))
+             nil 0 bug---instance))))
+      (let ((completions (bug--field-completion-values field-name bug---instance)))
+        (if (not completions)
+            (message "peek-completions for %s: nil (field has no restricted values or fetch failed)" field-name)
+          (message "peek-completions for %s (%d): %s%s"
+                   field-name
+                   (length completions)
+                   (mapconcat #'identity (seq-take completions 8) ", ")
+                   (if (> (length completions) 8) ", ..." ""))
+          (completing-read (format "%s (peek, RET/C-g to dismiss): " field-name)
+                           completions nil nil nil nil))))))
 
 ;;;###autoload
 (defun bug--bug-mode-info ()
