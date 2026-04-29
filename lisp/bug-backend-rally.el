@@ -30,6 +30,7 @@
 ;;   https://rally1.rallydev.com/slm/doc/webservice/
 ;; For some reason accessing the documentation requires a subscription.
 
+(require 'bug-vars)
 (require 'bug-mode)
 (require 'bug-list-mode)
 (require 'bug-rpc)

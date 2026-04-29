@@ -26,6 +26,7 @@
 ;;
 ;;; Code:
 
+(require 'bug-vars)
 (require 'bug-search-common)
 (require 'bug-mode)
 (require 'bug-list-mode)

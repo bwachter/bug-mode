@@ -29,6 +29,8 @@
 ;;(bug-rpc "HierarchicalRequirement.create" '((data . (HierarchicalRequirement . ((Name . "Test name"))))))
 
 (require 'cl-lib)
+
+(require 'bug-vars)
 (require 'bug-rpc)
 (require 'bug-common-functions)
 (require 'bug-format)
@@ -39,14 +41,7 @@
 ;; Rally backend functions (loaded dynamically)
 (declare-function bug--fetch-rally-discussion "bug-backend-rally" (bug-data instance))
 (declare-function bug--display-rally-discussion "bug-backend-rally" (posts))
-
-(defvar bug---id)
-(defvar bug---uuid)
-(defvar bug---is-new)
-(defvar bug---data)
-(defvar bug---instance)
-(defvar bug---changed-data)
-(defvar bug---field-filter-index nil)
+(declare-function bug-comment "bug-comment" (id &optional instance))
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
