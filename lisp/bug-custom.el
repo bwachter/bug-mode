@@ -102,7 +102,8 @@ an encrypted file (supports transparent GPG decryption for .gpg files).
 Example:
   \='((work-rally . (:type rally :url \"https://work.atlassian.net\"))
     (personal-bz . (:type bz-rpc :url \"https://bugs.example.com\"))
-    (client-rally . (:type rally :api-key-file \"~/.rally-api-key.gpg\" :project-id \"123\")))"
+    (client-rally . (:type rally :api-key-file \"~/.rally-api-key.gpg\"
+     :project-id \"123\")))"
   :type '(alist :key-type symbol :value-type plist)
   :group 'bug)
 
