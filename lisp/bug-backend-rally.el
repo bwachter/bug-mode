@@ -315,7 +315,8 @@ Returns a list of discussion post alists, or nil if no discussion exists."
 (defun bug--display-rally-discussion (posts)
   "Display Rally discussion POSTS in the current buffer.
 
-POSTS is a list of post alists with Text, User, CreationDate, and PostNumber fields."
+POSTS is a list of post alists with Text, User, CreationDate, and PostNumber
+fields."
   (when posts
     (insert "\n\nDISCUSSION:\n")
     (insert (make-string 70 ?-) "\n")

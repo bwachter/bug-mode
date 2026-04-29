@@ -38,7 +38,7 @@
 (require 'json)
 
 ;;;###autoload
-(defun bug--backend-bz-rpc-features (arg instance)
+(defun bug--backend-bz-rpc-features (_arg _instance)
   "Features supported by Bugzilla JSON-RPC backend"
   '(:read))
 
@@ -46,6 +46,8 @@
 (defun bug--rpc-bz-rpc (args instance)
   "Send an RPC response to the given (or default) Bugzilla instance and return the
 parsed response as alist"
+  ;; used by url, make the byte compiler happy
+  (defvar tls-program)
   (let* ((method (concat (cdr (assoc 'resource args)) "."
                          (cdr (assoc 'operation args))))
          (data (cdr (assoc 'data args)))
@@ -61,14 +63,14 @@ parsed response as alist"
       (bug--parse-rpc-response instance))))
 
 ;;;###autoload
-(defun bug--rpc-bz-rpc-handle-error (response instance)
+(defun bug--rpc-bz-rpc-handle-error (response _instance)
   "Check data returned from Bugzilla for errors"
   (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
       (error (cdr (assoc 'message (assoc 'error response)))))
   response)
 
 ;;;###autoload
-(defun bug--rpc-bz-rpc-get-fields (object instance)
+(defun bug--rpc-bz-rpc-get-fields (_object instance)
   "Download the field list for Bugzilla"
   (bug-rpc '((resource . "Bug")
                           (operation . "fields")) instance))
@@ -86,12 +88,12 @@ don't match the fields found in a bug."
            "short-desc"))))
 
 ;;;###autoload
-(defun bug--bz-rpc-list-columns (object instance)
+(defun bug--bz-rpc-list-columns (_object _instance)
   "Return list columns for Bugzilla"
   '("id" "status" "summary" "last_change_time"))
 
 ;;;###autoload
-(defun bug--bz-rpc-field-name (field-name instance)
+(defun bug--bz-rpc-field-name (field-name _instance)
   "Resolve field names for Bugzilla"
   (cond ((equal :bug-uuid field-name)
          'id)
@@ -131,7 +133,7 @@ This function takes a pre-parsed Bugzilla search query as argument.
     response))
 
 ;;;###autoload
-(defun bug--parse-bz-rpc-search-query (query instance)
+(defun bug--parse-bz-rpc-search-query (query _instance)
   "Parse search query from minibuffer for Bugzilla"
   (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
       `((,(match-string 1 query) . ,(match-string 2 query)))
