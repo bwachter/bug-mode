@@ -53,6 +53,7 @@
     ;; TODO: change this to a 'change bug' popup
     (define-key keymap "c"         'bug--bug-mode-create-comment)
     (define-key keymap "d"         'bug--bug-mode-download-attachment)
+    (define-key keymap "D"         'bug--bug-mode-delete-bug)
     (define-key keymap "e"         'bug--bug-mode-edit-thing-near-point)
     (define-key keymap "i"         'bug--bug-mode-info)
     (define-key keymap "n"         'bug--bug-mode-create-related)
@@ -770,6 +771,20 @@ This is mostly useful for debugging text properties"
   "Update the bug by reloading it from the bug tracker"
   (interactive)
   (bug-open bug---uuid bug---instance))
+
+;;;###autoload
+(defun bug--bug-mode-delete-bug ()
+  "Delete the current bug, prompting for confirmation first.
+
+The buffer is closed on success. Backends that use a soft-delete (e.g.
+Rally's Recycle Bin) note this in their confirmation prompt."
+  (interactive)
+  (unless (bug--backend-feature bug---instance :delete)
+    (error "Backend does not support deleting bugs"))
+  (when (yes-or-no-p (format "Delete bug '%s'? " (or bug---id "this bug")))
+    (bug--backend-function "bug--delete-%s-bug" bug---uuid bug---instance)
+    (message "Deleted bug: %s" (or bug---id "unknown"))
+    (kill-buffer)))
 
 ;;;###autoload
 (defun bug--bug-mode-quit-window ()

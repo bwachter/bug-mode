@@ -73,7 +73,7 @@ API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
 ;;;###autoload
 (defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
-  '(:read :write :create))
+  '(:read :write :create :delete))
 
 (defun bug--rpc-rally-auth-header (instance)
   "Generate an auth header for rally, either by using an API key, or -- if
