@@ -20,7 +20,7 @@ ELC = $(SOURCES:.el=.elc)
 
 # the load-file is required to compile macros properly
 %.elc: %.el
-	emacs -batch -Q -L . -eval "(load-file \"$<\")" -f batch-byte-compile $<
+	@$(EMACS) -batch -Q -L . -eval "(load-file \"$<\")" -f batch-byte-compile $<
 
 compile: $(AUTOLOADS_FILE) $(ELC)
 
