@@ -271,7 +271,7 @@ See `bug-switch-instance' for details."
                      (let* ((name (car inst-info))
                             (plist (cdr inst-info))
                             (type (plist-get plist :type))
-                            (url (or (plist-get plist :url) "(Rally API)"))
+                            (url (or (bug--instance-property :url name) ""))
                             (status (cond
                                      ((eq name bug-active-instance) "[ACTIVE]")
                                      ((eq name bug-default-instance) "[DEFAULT]")
@@ -503,11 +503,10 @@ Special handling:
       (or (plist-get property-list :api-key)
           (when-let ((key-file (plist-get property-list :api-key-file)))
             (bug--read-api-key-file key-file instance))))
-     ;; Special handling for Rally URL fallback
-     ((and (equal property :url)
-           (equal 'rally (bug--backend-type instance)))
-      (let ((rally-url (plist-get property-list property)))
-        (or rally-url bug-rally-url)))
+     ;; For :url, fall back to a backend-provided default if not explicitly configured
+     ((equal property :url)
+      (or (plist-get property-list property)
+          (bug--backend-function-optional "bug--backend-%s-default-url" nil instance)))
      ;; Default: just get the property
      (t (plist-get property-list property)))))
 

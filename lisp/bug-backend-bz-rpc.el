@@ -33,6 +33,7 @@
 
 (require 'bug-common-functions)
 (require 'bug-rpc)
+(require 'bug-comment-mode)
 (require 'bug-debug)
 (require 'url-vars)
 (require 'json)
@@ -185,6 +186,113 @@ Returns the response from Bugzilla's Bug.update call."
   "Open the current bugzilla bug in browser"
   (let ((url (concat (bug--instance-property :url instance) "/show_bug.cgi?id=" id)))
     (browse-url url)))
+
+(defun bug--backend-bz-rpc-get-update-id (_args _instance)
+  "Return the Bugzilla bug ID for use as the update identifier."
+  bug---id)
+
+;;;###autoload
+(defun bug--backend-bz-rpc-create-comment (args _instance)
+  "Open a Bugzilla comment composition buffer for the current bug."
+  (bug-comment args))
+
+;;;;;;
+;; Comments and attachments
+
+(defun bug-get-comments (id instance)
+  "Request comments for a bug and add them to an existing bug buffer."
+  (bug-handle-comments-response
+   id (bug-rpc `((resource . "Bug")
+                 (operation . "comments")
+                 (data . (("ids" . ,id)))) instance)))
+
+(defun bug-handle-comments-response (id response)
+  "Add received comments into an existing bug buffer."
+  (if (and
+       (assoc 'result response)
+       (assoc 'bugs (assoc 'result response)))
+      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
+             (comments (cdr (cadr (car bugs)))))
+        (with-current-buffer (bug--buffer-string id bug---instance)
+          (setq buffer-read-only nil)
+          (save-excursion
+            (goto-char 0)
+            (if (re-search-forward "^COMMENTS:$" nil t)
+                (progn
+                  (delete-region (point) (point-max))
+                  (insert "\n")
+                  (insert (mapconcat (lambda (comment)
+                                       (format "[Comment #%s] %s %s:\n%s"
+                                               (cdr (assoc 'count comment))
+                                               (cdr (assoc 'time comment))
+                                               (cdr (assoc 'creator comment))
+                                               (cdr (assoc 'text comment))))
+                                     comments "\n\n")))
+              (error "Could not find area for comments in buffer")))
+          (setq buffer-read-only t)))))
+
+(defun bug-get-attachments (id instance)
+  "Request attachment details for a bug and add them to an existing bug buffer."
+  (bug-handle-attachments-response
+   id (bug-rpc `((resource . "Bug")
+                 (operation . "attachments")
+                 (data . (("ids" . ,id)))) instance)))
+
+(defun bug-handle-attachments-response (id response)
+  "Add received attachment info into an existing bug buffer."
+  (if (and
+       (assoc 'result response)
+       (assoc 'bugs (assoc 'result response)))
+      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
+             (attachments (cdr (car bugs))))
+        (with-current-buffer (bug--buffer-string id bug---instance)
+          (setq buffer-read-only nil)
+          (save-excursion
+            (goto-char 0)
+            (if (re-search-forward "^ATTACHMENTS:$" nil t)
+                (progn
+                  (insert "\n")
+                  (insert (mapconcat (lambda (attachment)
+                                       (format "attachment %s: %s; %s; %s"
+                                               (cdr (assoc 'id attachment))
+                                               (cdr (assoc 'description attachment))
+                                               (cdr (assoc 'file_name attachment))
+                                               (cdr (assoc 'content_type attachment))))
+                                     attachments "\n")))
+              (error "Could not find area for attachments in buffer")))
+          (setq buffer-read-only t)))))
+
+;;;###autoload
+(defun bug--backend-bz-rpc-show-additional-data (_bug instance)
+  "Insert comment and attachment sections and load their content."
+  (insert "\nATTACHMENTS:\n")
+  (insert "\nCOMMENTS:\n")
+  (when (and bug---id bug-autoload-attachments)
+    (bug-get-attachments bug---id instance))
+  (when (and bug---id bug-autoload-comments)
+    (bug-get-comments bug---id instance)))
+
+(defun bug--backend-bz-rpc-find-attachment-url (_args instance)
+  "Construct the URL for the Bugzilla attachment near point."
+  (save-excursion
+    (let ((end (re-search-forward "$" nil t)))
+      (move-beginning-of-line nil)
+      ;; FIXME: breaks if ; appears in filenames/descriptions
+      (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
+          (format "%s/attachment.cgi?id=%s" (bug--instance-property :url instance) (match-string 1))
+        (error "No attachment near point")))))
+
+;;;###autoload
+(defun bug--backend-bz-rpc-download-attachment (_args instance)
+  "Download the Bugzilla attachment near point to the home directory."
+  (let ((url (bug--backend-bz-rpc-find-attachment-url nil instance))
+        (dest (expand-file-name (concat "~/" (match-string 3)))))
+    (url-copy-file url dest t)))
+
+;;;###autoload
+(defun bug--backend-bz-rpc-open-thing (_args instance)
+  "Open the Bugzilla attachment near point in the browser."
+  (browse-url (bug--backend-bz-rpc-find-attachment-url nil instance)))
 
 (provide 'bug-backend-bz-rpc)
 ;;; bug-backend-bz-rpc.el ends here

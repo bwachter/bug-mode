@@ -39,10 +39,6 @@
 (require 'bug-persistent-data)
 (require 'bug-custom)
 
-;; Rally backend functions (loaded dynamically)
-(declare-function bug--fetch-rally-discussion "bug-backend-rally" (bug-data instance))
-(declare-function bug--display-rally-discussion "bug-backend-rally" (posts))
-(declare-function bug-comment "bug-comment" (id &optional instance))
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -209,23 +205,7 @@
                   (propertize (if (string-empty-p fv) " " fv)
                               'field (car description-prop))))))
 
-    ;; Load backend-specific additional data (comments, discussions, etc.)
-    ;; TODO, this is a quick and dirty hack to get things working - we shouldn't
-    ;; be calling backend specific specific functions directly here
-    (cond
-     ;; Rally: Load discussion posts
-     ((equal 'rally (bug--backend-type instance))
-      (let ((posts (bug--fetch-rally-discussion bug instance)))
-        (when posts
-          (bug--display-rally-discussion posts))))
-     ;; Bugzilla: Load attachments and comments
-     (t
-      (insert "\nATTACHMENTS:\n")
-      (insert "\nCOMMENTS:\n")
-      (when (and bug---id bug-autoload-attachments)
-        (bug-get-attachments bug---id instance))
-      (when (and bug---id bug-autoload-comments)
-        (bug-get-comments bug---id instance))))
+    (bug--backend-function-optional "bug--backend-%s-show-additional-data" bug instance)
     (goto-char 0)
     (setq buffer-read-only t)
     (bug--bug-mode-update-header)
@@ -235,9 +215,7 @@
 (defun bug--bug-mode-update-header ()
   "Update the buffers headerline with bug modified status and name,
 and keep the buffers modified marker accurate."
-  ;; TODO: should be handled in backend stuff
-  (let* ((summary (or (cdr (assoc 'summary bug---data))
-                      (cdr (assoc 'Name bug---data))
+  (let* ((summary (or (cdr (assoc (bug--field-name :bug-summary bug---instance) bug---data))
                       "<Missing summary!>"))
          (face)(prefix))
     (setq summary
@@ -285,18 +263,13 @@ defines no filters, this does nothing. Empty filter lists show all fields."
       (bug-show bug---data instance))))
 
 (defun bug--get-update-id (instance)
-  "Get the appropriate ID for update operations based on backend type.
-
-For Rally, returns bug---uuid (_refObjectUUID).
-For other backends, returns bug---id."
-  (if (equal 'rally (bug--backend-type instance))
-      bug---uuid
-    bug---id))
+  "Get the appropriate ID for update operations."
+  (bug--backend-function "bug--backend-%s-get-update-id" nil instance))
 
 (defun bug-update (id fields instance)
   "Update fields in a bug using the backend-specific update function.
 
-ID is the bug identifier (UUID for Rally, numeric ID for Bugzilla).
+ID is the backend-specific bug identifier, as returned by `bug--get-update-id'.
 FIELDS is an alist of field names and values to update.
 INSTANCE is the bug tracker instance.
 
@@ -354,39 +327,6 @@ the backend and the current artifact type."
     (error "Backend does not support issue creation"))
   (bug--backend-function "bug--create-%s-bug-interactive" bug---data bug---instance))
 
-(defun bug-get-comments (id instance)
-  "Request comments for a bug and add it to an existing(!) bug buffer
-via bug-handle-comments-response"
-  (bug-handle-comments-response id
-                                (bug-rpc `((resource . "Bug")
-                                           (operation . "comments")
-                                           (data . (("ids" . ,id)))) instance)))
-
-(defun bug-handle-comments-response (id response)
-  "Add received comments into an existing bug buffer"
-  (if (and
-       (assoc 'result response)
-       (assoc 'bugs (assoc 'result response)))
-      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
-             (comments (cdr (cadr (car bugs)))))
-        (with-current-buffer (bug--buffer-string id bug---instance)
-          (setq buffer-read-only nil)
-          (save-excursion
-            (goto-char 0)
-            (if (re-search-forward "^COMMENTS:$" nil t)
-                (progn
-                  (delete-region (point) (point-max))
-                  (insert "\n")
-                  (insert (mapconcat (lambda (comment)
-                                       (format "[Comment #%s] %s %s:\n%s"
-                                               (cdr (assoc 'count comment))
-                                               (cdr (assoc 'time comment))
-                                               (cdr (assoc 'creator comment))
-                                               (cdr (assoc 'text comment))))
-                                     comments "\n\n")))
-              (error "Could not find area for comments in buffer")))
-          (setq buffer-read-only t)))))
-
 ;; functions usually called through keybindings in bug-mode
 ;;;###autoload
 (defun bug--bug-mode-browse-bug ()
@@ -401,23 +341,23 @@ function can handle it for browser display."
 (defun bug--bug-mode-create-comment ()
   "Create a comment on the current bug"
   (interactive)
-  (bug-comment bug---id bug---instance))
+  (bug--backend-function "bug--backend-%s-create-comment" bug---id bug---instance))
+
+(defun bug-find-attachment-url (instance)
+  "Return the URL for the attachment near point, dispatched per backend."
+  (bug--backend-function-optional "bug--backend-%s-find-attachment-url" nil instance))
 
 ;;;###autoload
 (defun bug--bug-mode-download-attachment ()
-  "Download the current attachment to the home directory."
+  "Download the attachment near point to the home directory."
   (interactive)
-  (let ((url (bug-find-attachment-url bug---instance))
-        (dest (expand-file-name (concat "~/" (match-string 3)))))
-    (if url
-        (url-copy-file url dest t)
-      (error "No attachment URL found"))))
+  (bug--backend-function-optional "bug--backend-%s-download-attachment" nil bug---instance))
 
 ;;;###autoload
 (defun bug--bug-mode-open-thing-near-point ()
-  "Open the current attachment in the web browser"
+  "Open the thing near point — attachment, link, or referenced object."
   (interactive)
-  (browse-url (bug-find-attachment-url bug---instance)))
+  (bug--backend-function-optional "bug--backend-%s-open-thing" nil bug---instance))
 
 ;;;###autoload
 (defun bug--bug-mode-add-field ()
@@ -792,48 +732,6 @@ Rally's Recycle Bin) note this in their confirmation prompt."
   (interactive)
   ;; TODO: check if bug---changed-data is non-nil, and prompt about losing changes
   (quit-window t))
-
-;; attachment handling functions
-(defun bug-get-attachments (id instance)
-  "Request attachment details for a bug and add it to an existing(!) bug buffer
-via bug-handle-attachments-response"
-  (bug-handle-attachments-response id (bug-rpc `((resource . "Bug")
-                                                 (operation . "attachments")
-                                                 (data . (("ids" . ,id)))) instance)))
-
-(defun bug-handle-attachments-response (id response)
-  "Add received attachment info into an existing bug buffer"
-  (if (and
-       (assoc 'result response)
-       (assoc 'bugs (assoc 'result response)))
-      (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
-             (attachments (cdr (car bugs))))
-        (with-current-buffer (bug--buffer-string id bug---instance)
-          (setq buffer-read-only nil)
-          (save-excursion
-            (goto-char 0)
-            (if (re-search-forward "^ATTACHMENTS:$" nil t)
-                (progn
-                  (insert "\n")
-                  (insert (mapconcat (lambda (attachment)
-                                       (format "attachment %s: %s; %s; %s"
-                                               (cdr (assoc 'id attachment))
-                                               (cdr (assoc 'description attachment))
-                                               (cdr (assoc 'file_name attachment))
-                                               (cdr (assoc 'content_type attachment))))
-                                     attachments "\n")))
-              (error "Could not find area for attachments in buffer")))
-          (setq buffer-read-only t)))))
-
-(defun bug-find-attachment-url (instance)
-  "Construct the URL required to download an attachment"
-  (save-excursion
-    (let ((end (re-search-forward "$" nil t)))
-      (move-beginning-of-line nil)
-      ;; FIXME: breaks if ; in filenames/descriptions.. heh
-      (if (re-search-forward "^attachment \\([0-9]+\\): \\([^;]+\\); \\([^;]+\\);" end t)
-          (format "%s/attachment.cgi?id=%s" (bug--instance-property :url instance) (match-string 1))
-        (error "No attachment near point")))))
 
 (provide 'bug-mode)
 ;;; bug-mode.el ends here

@@ -75,6 +75,10 @@ API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
   "Features supported by Rally backend"
   '(:read :write :create :delete))
 
+(defun bug--backend-rally-default-url (_args _instance)
+  "Return the default Rally API URL"
+  bug-rally-url)
+
 (defun bug--rpc-rally-auth-header (instance)
   "Generate an auth header for rally, either by using an API key, or -- if
 no API key is configured -- by using basic auth with username and password"
@@ -312,14 +316,14 @@ INSTANCE is the Rally instance.
 Returns a list of discussion post alists, or nil if no discussion exists."
   (let* ((discussion-ref (cdr (assoc 'Discussion bug-data)))
          (post-count (cdr (assoc 'Count discussion-ref))))
-    (message "Discussion ref: %S, Count: %S" discussion-ref post-count)
+    (bug--debug (format "Discussion ref: %S, Count: %S" discussion-ref post-count))
     (when (and discussion-ref (> (or post-count 0) 0))
       (let* ((ref-url (cdr (assoc '_ref discussion-ref)))
              ;; Extract artifact ObjectID from URL
              ;; URL format: .../HierarchicalRequirement/839749943551/Discussion
              (artifact-oid (when (string-match "/\\([0-9]+\\)/Discussion$" ref-url)
                              (match-string 1 ref-url))))
-        (message "Artifact OID: %s" artifact-oid)
+        (bug--debug (format "Discussion artifact OID: %s" artifact-oid))
         (when artifact-oid
           (let* ((response (bug--rpc-rally
                             `((resource . "conversationpost")
@@ -331,8 +335,7 @@ Returns a list of discussion post alists, or nil if no discussion exists."
                             instance))
                  (query-result (cdr (car response)))
                  (posts (cdr (assoc 'Results query-result))))
-            (message "Discussion query result: %S" query-result)
-            (message "Found %d posts" (if posts (length posts) 0))
+            (bug--debug (format "Discussion posts found: %d" (if posts (length posts) 0)))
             ;; Convert vector to list for easier handling
             (when posts (append posts nil))))))))
 
@@ -378,6 +381,22 @@ Returns the created post data."
     result))
 
 ;;;###autoload
+(defun bug--backend-rally-show-additional-data (bug instance)
+  "Load and display Rally discussion posts in the current bug buffer."
+  (let ((posts (bug--fetch-rally-discussion bug instance)))
+    (when posts
+      (bug--display-rally-discussion posts))))
+
+;;;###autoload
+(defun bug--backend-rally-create-comment (_args instance)
+  "Open a Rally discussion post composition buffer for the current artifact."
+  (bug-rally-discussion instance))
+
+(defun bug--backend-rally-get-update-id (_args _instance)
+  "Return the Rally object UUID for use as the update identifier."
+  bug---uuid)
+
+;;;###autoload
 (defun bug--rally-field-name (field-name _instance)
   "Resolve field names for rally"
   (cond ((equal :bug-uuid field-name)
@@ -385,7 +404,7 @@ Returns the created post data."
         ((equal :bug-friendly-id field-name)
          'FormattedID)
         ((equal :bug-summary field-name)
-         'Description)))
+         'Name)))
 
 ;;;;;;
 ;; search functions
