@@ -423,12 +423,12 @@ With prefix argument, also prompts for the instance."
         (progn
           (mapc (lambda (field)
                   (let* ((key (cdr (assoc 'name field)))
-                         (bz-mapped-field (bug--rpc-bz-rpc-map-field key)))
+                         (mapped-field (bug--backend-function-optional "bug--rpc-%s-map-field" key instance)))
                     ;; workaround for missing or oddly named fields in
                     ;; Bugzillas field list
-                    (if (and bz-mapped-field
-                             (not (gethash bz-mapped-field field-hash)))
-                        (puthash bz-mapped-field field field-hash))
+                    (if (and mapped-field
+                             (not (gethash mapped-field field-hash)))
+                        (puthash mapped-field field field-hash))
                     (puthash key field field-hash)))
                 (cdr (car (cdr (car fields)))))
           (bug--cache-put cache-key field-hash instance)
