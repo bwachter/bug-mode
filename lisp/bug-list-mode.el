@@ -36,27 +36,43 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'transient)
 (require 'bug-rpc)
 (require 'bug-search-common)
 (require 'bug-common-functions)
 (require 'bug-format)
 (require 'bug-debug)
 (require 'bug-mode)
+(require 'bug-vars)
+(require 'bug-rally-subscription-mode)
 
-(defvar bug---instance)
-(defvar bug---query)
-(defvar bug---field-length)
+(defun bug--list-mode-rally-subscription ()
+  "Show Rally subscription info for the current list's instance."
+  (interactive)
+  (bug-rally-subscription bug---instance))
+
+(transient-define-prefix bug-list-mode-menu ()
+  "Transient for bug-mode"
+
+  [["Bug"
+    ("B" "Open in browser" bug--bug-mode-browse-bug)
+    ("r" "Remember bug"   bug--bug-mode-remember-bug)]
+   ["Interact"
+    ("i"  "Info"  bug--bug-mode-info)
+    ("c"  "Create related bug" bug--bug-mode-create-related)
+    ("D"  "Delete this bug" bug--bug-mode-delete-bug)]
+   ["Rally"
+    :if (lambda () (equal 'rally (bug--backend-type bug---instance)))
+    ("s" "Subscription" bug--list-mode-rally-subscription)]])
 
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
-    (define-key keymap (kbd "RET") 'bug--list-mode-select-bug)
-    (define-key keymap "b"         'bug--list-mode-browse-bug)
-    (define-key keymap "i"         'bug--list-mode-info)
-    (define-key keymap "g"         'bug--list-mode-update-list)
-    (define-key keymap "u"         'bug--list-mode-update-list)
-    (define-key keymap "q"         'bug--mode-default-quit-window)
+    (define-key keymap (kbd "RET") #'bug--list-mode-select-bug)
+    (define-key keymap bug-menu-key #'bug-list-mode-menu)
+    (define-key keymap "g"         #'bug--list-mode-update-list)
+    (define-key keymap "q"         #'bug--mode-default-quit-window)
     keymap)
-  "Keymap for BZ list mode")
+  "Keymap for bug list mode")
 
 (define-derived-mode bug-list-mode tabulated-list-mode "Bug list"
   "Operate on a list of bugs"
@@ -69,11 +85,8 @@
                          (prin1-to-string (bug--backend-type instance) t)
                          (pretty-kvs query)))
   (bug-list-mode)
-  (make-local-variable 'bug---query)
   (setq bug---query query)
-  (make-local-variable 'bug---instance)
   (setq bug---instance instance)
-  (make-local-variable 'bug---field-length)
   (setq bug---field-length nil)
   (setq buffer-read-only nil)
 

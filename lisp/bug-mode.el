@@ -29,6 +29,7 @@
 ;;(bug-rpc "HierarchicalRequirement.create" '((data . (HierarchicalRequirement . ((Name . "Test name"))))))
 
 (require 'cl-lib)
+(require 'transient)
 
 (require 'bug-vars)
 (require 'bug-rpc)
@@ -39,25 +40,32 @@
 (require 'bug-persistent-data)
 (require 'bug-custom)
 
+(transient-define-prefix bug-mode-menu ()
+  "Transient for bug-mode"
+
+  [["Bug"
+    ("B" "Open in browser" bug--bug-mode-browse-bug)
+    ("r" "Remember bug"   bug--bug-mode-remember-bug)]
+   ["Edit"
+    ("a" "Add new field" bug--bug-mode-add-field)
+    ("c" "Add new comment" bug--bug-mode-create-comment)
+    ("e" "Edit field" bug--bug-mode-edit-thing-near-point)]
+   ["View"
+    ("v"  "Toggle field filter" bug--bug-mode-toggle-field-filter)]
+   ["Interact"
+    ("i"  "Info"  bug--bug-mode-info)
+    ("d"  "Download attachment" bug--bug-mode-download-attachment)
+    ("c"  "Create related bug" bug--bug-mode-create-related)
+    ("D"  "Delete this bug" bug--bug-mode-delete-bug)]])
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
     (define-key keymap (kbd "RET") 'bug--bug-mode-open-thing-near-point)
     (define-key keymap (kbd "TAB") 'bug--bug-mode-peek-completions)
-    (define-key keymap "a"         'bug--bug-mode-add-field)
-    (define-key keymap "b"         'bug--bug-mode-browse-bug)
-    ;; TODO: change this to a 'change bug' popup
-    (define-key keymap "c"         'bug--bug-mode-create-comment)
-    (define-key keymap "d"         'bug--bug-mode-download-attachment)
-    (define-key keymap "D"         'bug--bug-mode-delete-bug)
-    (define-key keymap "e"         'bug--bug-mode-edit-thing-near-point)
-    (define-key keymap "i"         'bug--bug-mode-info)
-    (define-key keymap "n"         'bug--bug-mode-create-related)
-    (define-key keymap "r"         'bug--bug-mode-remember-bug)
+    (define-key keymap bug-menu-key #'bug-mode-menu)
     ;; TODO: this should change to 'status change' instead of 'resolve'
     (define-key keymap "s"         'bug--bug-mode-resolve-bug)
     (define-key keymap "u"         'bug--bug-mode-update-bug)
-    (define-key keymap "v"         'bug--bug-mode-toggle-field-filter)
     (define-key keymap "q"         'bug--bug-mode-quit-window)
     (define-key keymap "\C-c\C-c"  'bug--bug-mode-commit)
     keymap)

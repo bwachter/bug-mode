@@ -167,6 +167,21 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
   :type 'string
   :group 'bug)
 
+(defcustom bug-menu-key "b"
+  "Key used to open the mode-specific transient menu in bug-mode and bug-list-mode."
+  :type 'key-sequence
+  :group 'bug
+  :set (lambda (symbol value)
+         (let ((old (and (boundp symbol) (symbol-value symbol))))
+           (set-default symbol value)
+           (when old
+             (dolist (entry '((bug-mode-map . bug-mode-menu)
+                              (bug-list-mode-map . bug-list-mode-menu)))
+               (when (boundp (car entry))
+                 (define-key (symbol-value (car entry)) (kbd old) nil)
+                 (define-key (symbol-value (car entry)) (kbd value)
+                   (cdr entry))))))))
+
 ;;;;;;
 ;; Customizable faces for bug-mode
 ;; Use M-x customize-group <ret> bug-faces <ret> to customize
