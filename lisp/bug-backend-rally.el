@@ -230,7 +230,7 @@ object-id for read (or any other call requiring an object-id):
          (operation (cdr (assoc 'operation args)))
          (url-request-method (bug--rpc-rally-request-method operation))
          (url-str (bug--rpc-rally-url-map-operation args instance))
-         (url (concat bug-rally-url url-str))
+         (url (concat (bug--instance-property :url instance) url-str))
          ;; don't accept any cookie, see issue 6 for details
          (url-cookie-untrusted-urls '(".*"))
          (url-request-data (if (string= "POST" url-request-method)
@@ -488,9 +488,20 @@ Default options are added to the list, if not present:
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)
     `((data . ((query ,(format "( FormattedID = \"%s\" )" query))))))
 
-   ;; string contains parentheses -> assume it's a complex rally expression
+   ;; string contains parentheses -> assume it's a complex rally expression.
+   ;; Cross-object queries (e.g. Iteration.StartDate) require both project scope and
+   ;; a concrete resource type -- the 'artifact' virtual resource cannot handle them.
    ((string-match "\\((\\|)\\)" query)
-    `((data . ((query ,query)))))
+    (let* ((project-id (bug--instance-property :project-id instance))
+           ;; Detect cross-object references like "Iteration.StartDate"
+           (cross-obj (string-match "[A-Za-z][A-Za-z0-9]*\\.[A-Za-z]" query))
+           (data-params `((query ,query)
+                          ,@(when project-id
+                              `((project ,(format "/project/%s" project-id))
+                                (scopeDown "true"))))))
+      `((data . ,data-params)
+        ,@(when cross-obj
+            '((resource . "hierarchicalrequirement"))))))
 
    ;; search Name, Notes, Description
    ;; TODO: searching discussion seems to be problematic
@@ -518,11 +529,11 @@ Default options are added to the list, if not present:
     return-document))
 
 ;;;###autoload
-(defun bug--browse-rally-bug (id _instance)
+(defun bug--browse-rally-bug (id instance)
   "Open the current Rally bug in browser"
-  ;; this probably breaks with custom hosted rally instances. If you come across
-  ;; one of those please send me an email.
-  (let ((url (format "https://rally1.rallydev.com/#/search?keywords=%s" id)))
+  (let* ((api-url (bug--instance-property :url instance))
+         (base-url (replace-regexp-in-string "/slm/.*$" "" api-url))
+         (url (format "%s/#/search?keywords=%s" base-url id)))
     (browse-url url)))
 
 ;;;;;;
