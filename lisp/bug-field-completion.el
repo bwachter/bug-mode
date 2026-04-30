@@ -63,13 +63,13 @@ rendering the human-readable name.  When the user keeps the existing value
                         nil            ;; history
                         current-value)))
         (if is-alist
-            (let ((ref (cdr (assoc selected completions))))
+            (let ((entry (assoc selected completions)))
               ;; Return (ref-url . display-name) so callers can render the name
-              ;; while still sending the URL to the backend.  When selected
-              ;; doesn't match any key (e.g. user kept the current-value
-              ;; default by pressing RET), return a plain string so the caller's
-              ;; unchanged-value check still works.
-              (if ref (cons ref selected) selected))
+              ;; while still sending the URL to the backend.  Use assoc-existence
+              ;; (not ref truthiness) to distinguish a nil-ref "no selection" entry
+              ;; (e.g. "Unscheduled") from the user keeping the current value by
+              ;; pressing RET without changing it.
+              (if entry (cons (cdr entry) selected) selected))
           selected)))))
 
 (provide 'bug-field-completion)

@@ -68,6 +68,13 @@ is formatted to take more space"
        "No")
       ((equal :json-true (cdr field))
        "Yes")
+      ;; Null-ref object: explicitly unset OBJECT field (e.g. Iteration = Unscheduled).
+      ;; Must be checked before _refObjectName to avoid showing "-> nil".
+      ((and (listp (cdr field))
+            (let ((ref (cdr (assoc '_ref (cdr field)))))
+              (and ref (stringp ref)
+                   (or (string= ref "null") (string-suffix-p "/null" ref)))))
+       (propertize "—" 'face 'bug-field-type-98))
       ;; Rally objects with _refObjectName: preferred - display the name directly
       ;; to avoid an extra RPC call to resolve the reference
       ((and (listp (cdr field))
@@ -104,7 +111,8 @@ is formatted to take more space"
                                      'bug-field-type-99 t html-string))
          html-string))
       (t
-       (prin1-to-string (cdr field) t)))
+       (let ((s (prin1-to-string (cdr field) t)))
+         (if (string= s "nil") "" s))))
      'bug-field-type content-type
      'bug-field-id field-id
      'bug-field-name (car field))))
@@ -113,6 +121,7 @@ is formatted to take more space"
   "Parse an HTML string and return it formatted suitable for inserting
 into the buffer. If HTML parsing is not possible the unparsed HTML is
 returned as string."
+  (unless html (setq html ""))
   (if (fboundp 'libxml-parse-html-region)
       (with-temp-buffer
         (insert html)

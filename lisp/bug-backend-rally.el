@@ -45,10 +45,35 @@
 (require 'json)
 (require 'url-cookie)
 
+(defcustom bug-rally-link-flowstate t
+  "When non-nil, link FlowState changes to ScheduleState automatically.
+
+FlowState is a Rally object that mirrors ScheduleState at a finer
+granularity.  When this option is t:
+- FlowState cannot be edited directly in bug buffers.
+- Changing ScheduleState automatically derives and sends the matching
+  FlowState reference to Rally.
+
+Set to nil to allow independent FlowState editing."
+  :group 'bug
+  :type 'boolean)
+
+(defconst bug--rally-draft-fields
+  '(("Defect"                   "Name" "State" "Priority" "Severity" "Owner" "Description")
+    ("HierarchicalRequirement"  "Name" "ScheduleState" "Owner" "Description")
+    ("Task"                     "Name" "State" "Owner" "Description")
+    ("TestCase"                 "Name" "Owner" "Description")
+    ("PortfolioItem"            "Name" "State" "Owner" "Description"))
+  "Fallback fields for new-artifact draft buffers when the TypeDefinition
+API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
+
+(defconst bug--rally-cache-ttl 86400
+  "Default TTL, in seconds")
+
 ;;;###autoload
 (defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
-  '(:read :write))
+  '(:read :write :create))
 
 (defun bug--rpc-rally-auth-header (instance)
   "Generate an auth header for rally, either by using an API key, or -- if
@@ -96,7 +121,7 @@ Returns the security token string, or nil if using API key authentication."
            (token (car cached-token))
            (timestamp (cdr cached-token))
            (current-time (float-time))
-           (token-ttl (* 24 60 60))) ; 24 hours in seconds
+           (token-ttl bug--rally-cache-ttl))
       (if (and token timestamp
                (< (- current-time timestamp) token-ttl))
           ;; Token is still valid
@@ -668,6 +693,33 @@ Requires Workspace Administrator or Subscription Administrator permissions."
 ;;;;;;
 ;; Write operations (create, update, delete)
 
+(defun bug--rally-project-display (project-ref instance)
+  "Return a display alist for `project-ref' with _refobjectname populated.
+
+Fetches the project name from rally the first time and caches it. Falls back to
+ (_type . \"project\") when the fetch fails."
+  (let* ((oid (and (string-match "/project/\\(.*\\)" project-ref)
+                   (match-string 1 project-ref)))
+         (cache-key (intern (concat "rally-project-name-" (or oid project-ref))))
+         (cached (bug--cache-get-valid cache-key instance)))
+    (or cached
+        (condition-case nil
+            (let* ((response (bug--rpc-rally
+                              `((resource . "project")
+                                (operation . "query")
+                                (data . ((query ,(format "(objectid = %s)" oid))
+                                         (fetch "name,objectid")
+                                         (pagesize 1))))
+                              instance))
+                   (results (cdr (assoc 'results (cdr (assoc 'queryresult response)))))
+                   (name (when (and results (> (length results) 0))
+                           (cdr (assoc 'name (aref results 0)))))
+                   (display `((_ref . ,project-ref)
+                              (_refObjectName . ,(or name project-ref)))))
+              (bug--cache-put-timed cache-key display bug--rally-cache-ttl instance)
+              display)
+          (error `((_ref . ,project-ref) (_type . "Project")))))))
+
 (defun bug--rally-get-project-ref (instance)
   "Get or prompt for a Rally project reference.
 
@@ -701,6 +753,9 @@ as source for potential errors."
      ((string= type-lower "testset") "TestSet")
      ((string= type-lower "defectsuite") "DefectSuite")
      ((string= type-lower "portfolioitem") "PortfolioItem")
+     ;; PortfolioItem sub-types (TypePath like "PortfolioItem/Feature"):
+     ;; the JSON body key is always the base type "PortfolioItem"
+     ((string-prefix-p "portfolioitem/" type-lower) "PortfolioItem")
      ((string= type-lower "artifact") "Artifact")
      ;; Default: capitalize first letter
      (t (capitalize object-type)))))
@@ -791,6 +846,273 @@ Prompts for required fields (Name, Project) and optional fields
       ;; Open the newly created story
       (bug-open (cdr (assoc '_refObjectUUID created-story)) instance)
       created-story)))
+
+;; TODO, we handle parent relationships when creating a new issue from an
+;;       existing issue, but curently don't allow reparenting
+(defun bug--rally-create-parent-field (new-type context-type context-ref)
+  "Return (field-name . ref) for the parent link when creating `new-type' from
+`context-type'.
+
+`context-ref` is the _ref URL of the current artifact.  Returns nil when no
+standard parent relationship applies between the two types."
+  (when (and context-type context-ref)
+    (let ((ctx (downcase context-type))
+          (new (downcase new-type)))
+      (cond
+       ;; Defect from User Story -> Requirement field
+       ((and (equal new "defect")
+             (equal ctx "hierarchicalrequirement"))
+        (cons "Requirement" context-ref))
+       ;; Task from User Story or Defect -> WorkProduct
+       ((and (equal new "task")
+             (member ctx '("hierarchicalrequirement" "defect")))
+        (cons "WorkProduct" context-ref))
+       ;; Child User Story from User Story -> Parent
+       ((and (equal new "hierarchicalrequirement")
+             (equal ctx "hierarchicalrequirement"))
+        (cons "Parent" context-ref))
+       ;; User Story from a PortfolioItem (Feature/Epic/…) -> Feature field
+       ;; Rally always calls this field "Feature" regardless of workspace naming
+       ((and (equal new "hierarchicalrequirement")
+             (string-prefix-p "portfolioitem/" ctx))
+        (cons "Feature" context-ref))
+       ;; Test Case from User Story -> WorkProduct
+       ((and (equal new "testcase")
+             (equal ctx "hierarchicalrequirement"))
+        (cons "WorkProduct" context-ref))
+       ;; Nested PortfolioItem from another PortfolioItem -> Parent
+       ((and (string-prefix-p "portfolioitem/" new)
+             (string-prefix-p "portfolioitem/" ctx))
+        (cons "Parent" context-ref))
+       (t nil)))))
+
+(defun bug--rally-get-portfolio-item-types (instance)
+  "Return an alist of (display-name . type-path) for PortfolioItem sub-types.
+
+This is mainly relevant for creating new items as Portfolio item types (Feature,
+Epic, Initiative, etc.) are workspace-specific and must be queried from the
+TypeDefinition API. They're not expected to change, so the result is cached."
+  (let* ((cache-key 'rally-portfolio-item-types)
+         (cached (bug--cache-get-valid cache-key instance)))
+    (or cached
+        (condition-case err
+            (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
+                   (workspace-ref (format "/workspace/%s" workspace-oid))
+                   (response (bug--rpc-rally
+                              `((resource . "typedefinition")
+                                (operation . "query")
+                                (data . ((query "(Creatable = true)")
+                                         (fetch "Name,ElementName,TypePath")
+                                         (workspace ,workspace-ref)
+                                         (pagesize 200))))
+                              instance))
+                   (results (cdr (assoc 'Results (cdr (assoc 'QueryResult response)))))
+                   (types nil))
+              (when results
+                (dotimes (i (length results))
+                  (let* ((def (aref results i))
+                         (name (cdr (assoc 'Name def)))
+                         (type-path (cdr (assoc 'TypePath def))))
+                    ;; Keep only PortfolioItem sub-types
+                    (when (and name type-path
+                               (string-prefix-p "PortfolioItem/"
+                                                (if (symbolp type-path)
+                                                    (symbol-name type-path)
+                                                  type-path)))
+                      (let ((path-str (if (symbolp type-path)
+                                          (symbol-name type-path)
+                                        type-path)))
+                        (push (cons name path-str) types))))))
+              (let ((result (nreverse types)))
+                (bug--cache-put-timed cache-key result bug--rally-cache-ttl instance)
+                result))
+          (error
+           (message "bug-mode: error fetching portfolio item types: %s"
+                    (error-message-string err))
+           nil)))))
+
+(defun bug--rally-get-draft-fields (type-name instance)
+  "Return field names for a new-artifact draft buffer of type `type-name'.
+
+Merges hardcoded baseline fields with any API-Required custom fields from
+the workspace TypeDefinition.  Required non-readonly non-hidden fields from
+the API are appended to the baseline so workspace-specific required fields
+always appear even if not in the hardcoded list.
+
+Falls back to the baseline alone when the TypeDefinition query fails."
+  (let* (;; ElementName is the last path segment: \"Feature\" from \"PortfolioItem/Feature\"
+         (element-name (car (last (split-string type-name "/"))))
+         ;; Hardcoded baseline: standard fields for each core type
+         (baseline (or (cdr (assoc type-name bug--rally-draft-fields))
+                       (when (string-prefix-p "PortfolioItem/" type-name)
+                         (cdr (assoc "PortfolioItem" bug--rally-draft-fields)))
+                       '("Name" "Owner" "Description")))
+         (attrs (bug--rally-get-type-attributes element-name instance))
+         (required-from-api '()))
+    ;; Collect Required + !ReadOnly + !Hidden fields from TypeDefinition.
+    ;; Only process each attribute once by matching the key against ElementName.
+    (when attrs
+      (maphash
+       (lambda (key attr)
+         (when (equal key (cdr (assoc 'ElementName attr)))
+           (when (and (equal t (cdr (assoc 'Required attr)))
+                      (not (equal t (cdr (assoc 'ReadOnly attr))))
+                      (not (equal t (cdr (assoc 'Hidden attr)))))
+             (push key required-from-api))))
+       attrs))
+    ;; Merge: baseline order preserved, API-required fields appended if absent
+    (let ((result (copy-sequence baseline)))
+      (dolist (f required-from-api)
+        (unless (member f result)
+          (setq result (append result (list f)))))
+      result)))
+
+(defun bug--create-rally-bug-interactive (context instance)
+  "Open a draft buffer for creating a new Rally artifact.
+
+`context' is nil for standalone creation, or the current bug's data alist (from
+bug---data) when invoked from an existing bug buffer.  The parent link is
+inferred automatically from the two artifact types.
+
+Only prompts for artifact type (and project when not derivable from context or
+instance config).  All other fields are edited in the draft buffer using the
+normal \\[bug--bug-mode-edit-thing-near-point] key; press \\[bug--bug-mode-commit] to create."
+  (let* (;; Type selection: core types hardcoded; portfolio items queried per workspace
+         (core-types '(("Defect"      . "Defect")
+                       ("User Story"  . "HierarchicalRequirement")
+                       ("Task"        . "Task")
+                       ("Test Case"   . "TestCase")))
+         (portfolio-types (bug--rally-get-portfolio-item-types instance))
+         (type-choices (append core-types portfolio-types))
+         (type-display (completing-read "Artifact type: "
+                                        (mapcar #'car type-choices) nil t))
+         (rally-type (cdr (assoc type-display type-choices)))
+
+         ;; Context analysis
+         (context-type-raw
+          (when context
+            (let ((ot (cdr (assoc 'ObjectType context))))
+              (cond ((symbolp ot) (symbol-name ot))
+                    ((stringp ot) ot)
+                    (t nil)))))
+         (context-ref (when context (cdr (assoc '_ref context))))
+
+         ;; Parent field from context types
+         (parent-info (bug--rally-create-parent-field rally-type context-type-raw context-ref))
+         (parent-field (car parent-info))
+         (parent-ref   (cdr parent-info))
+
+         ;; Project: inherit from context, or use :project-id from instance config.
+         ;; No interactive prompt — user fills it in the draft buffer if needed.
+         (ctx-project (when context (cdr (assoc 'Project context))))
+         (project-ref
+          (or (when (listp ctx-project) (cdr (assoc '_ref ctx-project)))
+              (let ((pid (bug--instance-property :project-id instance)))
+                (when pid (format "/project/%s" pid)))))
+
+         ;; Fields to pre-populate in bug---changed-data (sent to create API)
+         (create-alist (when project-ref `((Project . ,project-ref))))
+
+         ;; Display alist for the draft buffer.
+         ;; bug--rally-get-draft-fields merges the hardcoded baseline with any
+         ;; workspace-required custom fields from the TypeDefinition API.
+         (field-names (bug--rally-get-draft-fields rally-type instance))
+         (display-alist
+          (let ((base (list (cons 'ObjectType (intern rally-type)))))
+            (when project-ref
+              (let* ((obj-name (when (listp ctx-project)
+                                 (cdr (assoc '_refObjectName ctx-project))))
+                     (proj-display (if obj-name
+                                       `((_ref . ,project-ref)
+                                         (_refObjectName . ,obj-name))
+                                     (bug--rally-project-display project-ref instance))))
+                (push (cons 'Project proj-display) base)))
+            base)))
+
+    ;; Add pre-filled parent to both create-alist (API value) and display-alist
+    (when (and parent-field parent-ref)
+      (push `(,(intern parent-field) . ,parent-ref) create-alist)
+      ;; Display the parent as an object reference so it renders as "-> Name"
+      (let ((ctx-name (or (cdr (assoc 'FormattedID context))
+                          (cdr (assoc 'Name context))
+                          "")))
+        (push (cons (intern parent-field)
+                    `((_ref . ,parent-ref) (_refObjectName . ,ctx-name)))
+              display-alist)))
+
+    ;; Add empty draft fields; skips any already set (e.g. Project from above)
+    (dolist (name field-names)
+      (unless (equal name "Description")  ;; bug-show handles Description separately
+        (unless (assoc (intern name) display-alist)
+          (push (cons (intern name) nil) display-alist))))
+
+    ;; Auto-populate required non-OBJECT enum fields with their first allowed value
+    ;; so the user doesn't have to pick an obvious default (e.g. ScheduleState).
+    (let* ((element-name (car (last (split-string rally-type "/"))))
+           (attrs (bug--rally-get-type-attributes element-name instance)))
+      (when attrs
+        (dolist (name field-names)
+          (let* ((field-sym (intern name))
+                 (entry (assoc field-sym display-alist)))
+            (when (and entry (null (cdr entry)))
+              (let* ((attr (gethash name attrs))
+                     (attr-type (when attr (cdr (assoc 'AttributeType attr))))
+                     (required (when attr (equal t (cdr (assoc 'Required attr))))))
+                (when (and required attr-type
+                           (not (member attr-type '("OBJECT" "COLLECTION"))))
+                  (let ((vals (bug--rally-field-allowed-values element-name name instance)))
+                    (when vals
+                      (let ((first-val (car vals)))
+                        (setcdr entry first-val)
+                        (unless (assoc field-sym create-alist)
+                          (push (cons field-sym first-val) create-alist))))))))))))
+
+    ;; If ScheduleState was auto-populated and FlowState linking is enabled,
+    ;; pre-fill FlowState so the draft buffer shows it immediately.
+    (when bug-rally-link-flowstate
+      (let* ((ss-val (cdr (assoc 'ScheduleState create-alist))))
+        (when (stringp ss-val)
+          (let* ((mapping (bug--rally-get-flowstate-mapping instance))
+                 (fs-entry (assoc ss-val mapping)))
+            (when fs-entry
+              (let* ((fs-name (cadr fs-entry))
+                     (fs-ref  (cddr fs-entry))
+                     (fs-display `((_ref . ,fs-ref) (_refObjectName . ,fs-name))))
+                (unless (assoc 'FlowState create-alist)
+                  (push (cons 'FlowState fs-ref) create-alist))
+                (let ((fs-disp (assoc 'FlowState display-alist)))
+                  (when fs-disp
+                    (setcdr fs-disp fs-display)))))))))
+
+    ;; Description must be in display-alist for bug-show to render it in drafts
+    (push '(Description . nil) display-alist)
+
+    (bug-new-draft display-alist create-alist instance)))
+
+(defun bug--create-rally-new-artifact (args instance)
+  "Create a Rally artifact from a draft buffer's committed data.
+
+`args' is (bug-data changed-data) where `bug-data' contains the draft display
+alist (with ObjectType) and `changed-data' contains the user-edited fields plus
+pre-filled project/parent refs.
+
+Called by `bug--bug-mode-commit' when bug---is-new is non-nil."
+  (let* ((bug-data     (car args))
+         (changed-data (cadr args))
+         (object-type-raw (cdr (assoc 'ObjectType bug-data)))
+         (type-path
+          (cond ((symbolp object-type-raw) (symbol-name object-type-raw))
+                ((stringp object-type-raw) object-type-raw)
+                (t (error "No ObjectType in draft buffer"))))
+         (draft-buffer (current-buffer))
+         (created (bug--create-rally-bug type-path changed-data instance)))
+    (if created
+        (let ((uuid (cdr (assoc '_refObjectUUID created)))
+              (name (cdr (assoc '_refObjectName created))))
+          (message "Created: %s" (or name ""))
+          (bug-open uuid instance)
+          (kill-buffer draft-buffer))
+      (message "Failed to create %s" type-path))))
 
 (defun bug--update-rally-bug (args instance)
   "Update a Rally object via POST /<type>/<id>.
@@ -937,7 +1259,7 @@ or nil on failure. Results are cached for 24 hours."
                         (bug--rpc-rally
                          `((resource . ,(format "typedefinition/%s/Attributes" typedef-oid))
                            (operation . "query")
-                           (data . ((fetch "Name,ElementName,ObjectID,AttributeType,AllowedValues")
+                           (data . ((fetch "Name,ElementName,ObjectID,AttributeType,AllowedValues,Required,ReadOnly,Hidden,Custom")
                                     (pagesize 200))))
                          instance)))
                      (query-result (cdr (assoc 'QueryResult response)))
@@ -956,7 +1278,7 @@ or nil on failure. Results are cached for 24 hours."
                         ;; "ScheduleState") so lookups by buffer field-name succeed.
                         (when (and element-name (not (equal element-name name)))
                           (puthash element-name attr attrs))))))
-                (bug--cache-put-timed cache-key attrs (* 24 60 60) instance)
+                (bug--cache-put-timed cache-key attrs bug--rally-cache-ttl instance)
                 attrs))
           (error
            (message "bug-mode: error fetching Rally field definitions: %s"
@@ -989,12 +1311,13 @@ display name can be mapped back to a Rally object reference for updates."
                                                              attr-oid
                                                              "/AllowedValues"))
                                         (operation . "query")
-                                        (data . ((fetch "StringValue,Name")
+                                        (data . ((fetch "StringValue,Name,_refObjectName")
                                                  (pagesize 200))))
                                       instance))
                            (query-result (cdr (assoc 'QueryResult response)))
                            (results (cdr (assoc 'Results query-result)))
-                           (values nil))
+                           (values nil)
+                           (null-entry nil))
                       (when results
                         (dotimes (i (length results))
                           (let* ((val (aref results i))
@@ -1003,20 +1326,34 @@ display name can be mapped back to a Rally object reference for updates."
                                  (display-name
                                   (when str-value
                                     (replace-regexp-in-string "<[^>]+>" "" str-value)))
-                                 (display-name-plain
-                                  (or display-name (cdr (assoc 'Name val))))
-                                 ;; For OBJECT types, _ref on the item IS the object URL
+                                 ;; For null-ref entries use Name or _refObjectName as label
                                  (item-ref (cdr (assoc '_ref val)))
+                                 (null-ref-p (or (null item-ref)
+                                                 (equal item-ref "null")))
+                                 (display-name-plain
+                                  (if (and null-ref-p
+                                           (or (null display-name)
+                                               (string-empty-p display-name)))
+                                      (or (cdr (assoc '_refObjectName val))
+                                          (cdr (assoc 'Name val)))
+                                    (or (and display-name
+                                             (not (string-empty-p display-name))
+                                             display-name)
+                                        (cdr (assoc 'Name val)))))
                                  (value-ref
-                                  (when (and item-ref (stringp item-ref)
-                                             (not (equal item-ref "null")))
-                                    item-ref))
+                                  (when (not null-ref-p) item-ref))
                                  (push-val
                                   (if (equal attr-type "OBJECT")
-                                      ;; alist entry: display-name for UI, ref for update
-                                      (when (and value-ref display-name
-                                                 (not (string-empty-p display-name)))
-                                        (cons display-name value-ref))
+                                      (cond
+                                       ;; Null-ref entry: "no selection" — always record,
+                                       ;; using "—" when the API provides no label.
+                                       (null-ref-p
+                                        (setq null-entry (cons (or display-name-plain "—") nil))
+                                        nil)
+                                       ;; Normal ref entry
+                                       ((and value-ref display-name-plain
+                                             (not (string-empty-p display-name-plain)))
+                                        (cons display-name-plain value-ref)))
                                     ;; plain string for STRING/STATE/RATING etc.
                                     (when (and display-name-plain
                                                (stringp display-name-plain)
@@ -1024,15 +1361,74 @@ display name can be mapped back to a Rally object reference for updates."
                                       display-name-plain))))
                             (when push-val
                               (push push-val values)))))
-                      (let ((sorted-values (nreverse values)))
-                        (bug--cache-put-timed cache-key sorted-values (* 24 60 60) instance)
-                        sorted-values))
+                      (let* ((sorted-values (nreverse values))
+                             ;; Prepend the null-ref "no selection" entry (e.g. "Unscheduled"
+                             ;; for Iteration, "No Release" for Release) at the top so it's
+                             ;; always accessible.  Its display name comes from the API.
+                             (with-null (if null-entry
+                                            (cons null-entry sorted-values)
+                                          sorted-values)))
+                        (bug--cache-put-timed cache-key with-null bug--rally-cache-ttl instance)
+                        with-null))
                   (error
                    (message "bug-mode: error fetching Rally allowed values for %s: %s"
                             field-name-str (error-message-string err))
                    nil)))))))))
 
 ;;;###autoload
+(defun bug--validate-draft-rally (args instance)
+  "Validate a Rally draft before submission.
+
+`args' is (bug-data changed-data). Returns a list of required field names
+that are missing or empty in changed-data, or nil when everything is present."
+  (let* ((bug-data (car args))
+         (changed-data (cadr args))
+         (object-type (cdr (assoc 'ObjectType bug-data)))
+         (type-name (cond ((symbolp object-type) (symbol-name object-type))
+                          ((stringp object-type) object-type)
+                          (t nil)))
+         (element-name (when type-name (car (last (split-string type-name "/")))))
+         (attrs (when element-name (bug--rally-get-type-attributes element-name instance)))
+         (missing '()))
+    (when attrs
+      (maphash
+       (lambda (key attr)
+         (when (equal key (cdr (assoc 'ElementName attr)))
+           (when (and (equal t (cdr (assoc 'Required attr)))
+                      (not (equal t (cdr (assoc 'ReadOnly attr))))
+                      (not (equal t (cdr (assoc 'Hidden attr)))))
+             (let* ((field-sym (intern key))
+                    (val (or (cdr (assoc field-sym changed-data))
+                             (cdr (assoc key changed-data)))))
+               (when (or (null val)
+                         (and (stringp val) (string-empty-p (string-trim val))))
+                 (push key missing))))))
+       attrs))
+    (nreverse missing)))
+
+(defun bug--available-field-names-rally (args instance)
+  "Return an alist of (display-name . element-name) for addable fields.
+
+`args' is (type-name present-keys) where present-keys is a list of symbols or
+strings already in the buffer.  Hidden fields and fields already present are
+excluded.  Result is sorted by display name."
+  (let* ((type-name (car args))
+         (present (cadr args))
+         (element-name (car (last (split-string type-name "/"))))
+         (attrs (bug--rally-get-type-attributes element-name instance))
+         (present-strings (mapcar (lambda (k) (if (symbolp k) (symbol-name k) k)) present))
+         (result '()))
+    (when attrs
+      (maphash
+       (lambda (key attr)
+         (when (equal key (cdr (assoc 'ElementName attr)))
+           (unless (or (equal t (cdr (assoc 'Hidden attr)))
+                       (member key present-strings))
+             (let ((display-name (or (cdr (assoc 'Name attr)) key)))
+               (push (cons display-name key) result)))))
+       attrs))
+    (sort result (lambda (a b) (string< (car a) (car b))))))
+
 (defun bug--field-completion-rally (field-name instance)
   "Return completion candidates for `field-name' in the current Rally artifact.
 
@@ -1046,6 +1442,91 @@ Returns a list of value strings, or nil if no completion is available."
                             (t nil))))
       (when type-name
         (bug--rally-field-allowed-values type-name field-name instance)))))
+
+;;;;;;
+;; FlowState / ScheduleState linking
+;;
+;; For now this impacts only those two fields, but implements generic logic for
+;; both marking fields as non-editable (which is a frontend  feature), as well
+;; as linking fields together.
+
+(defun bug--rally-get-flowstate-mapping (instance)
+  "Return an alist mapping ScheduleState strings to (name . ref) FlowState pairs.
+
+Queries all FlowState objects, keeping the lowest-OrderIndex entry per
+ScheduleStateMapping value, caching the result."
+  (let* ((cache-key 'rally-flowstate-mapping)
+         (cached (bug--cache-get-valid cache-key instance)))
+    (or cached
+        (condition-case err
+            (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
+                   (workspace-ref (format "/workspace/%s" workspace-oid))
+                   (response (bug--rpc-rally
+                              `((resource . "flowstate")
+                                (operation . "query")
+                                (data . ((fetch "Name,_ref,ScheduleStateMapping,OrderIndex")
+                                         (workspace ,workspace-ref)
+                                         (order "OrderIndex")
+                                         (pagesize 100))))
+                              instance))
+                   (results (cdr (assoc 'Results (cdr (assoc 'QueryResult response)))))
+                   (mapping nil))
+              (when results
+                (dotimes (i (length results))
+                  (let* ((fs (aref results i))
+                         (name (cdr (assoc 'Name fs)))
+                         (ref  (cdr (assoc '_ref fs)))
+                         (ss   (let ((v (cdr (assoc 'ScheduleStateMapping fs))))
+                                 (if (symbolp v) (symbol-name v) v))))
+                    ;; First (lowest OrderIndex) FlowState per ScheduleState wins
+                    (when (and name ref ss (not (assoc ss mapping)))
+                      (push (cons ss (cons name ref)) mapping)))))
+              (let ((result (nreverse mapping)))
+                (bug--cache-put-timed cache-key result bug--rally-cache-ttl instance)
+                result))
+          (error
+           (message "bug-mode: error fetching Rally FlowState mapping: %s"
+                    (error-message-string err))
+           nil)))))
+
+(defun bug--field-edit-blocked-rally (field-name instance)
+  "Return a message string when `field-name' must not be edited directly.
+
+This is called by the frontend to check if a specific field can be edited
+interactively.
+
+When `bug-rally-link-flowstate' is t, FlowState is managed automatically
+whenever ScheduleState changes and cannot be set by hand. Currentnly we're
+not marking any other field as non-editable"
+  (ignore instance)
+  (when (and bug-rally-link-flowstate
+             (memq field-name '(FlowState)))
+    "FlowState is linked to ScheduleState (see bug-rally-link-flowstate); edit ScheduleState instead"))
+
+(defun bug--linked-field-changes-rally (args instance)
+  "Return linked field changes when `args' field edit should trigger
+side-effects.
+
+`args' is (field-name new-ref).  When `bug-rally-link-flowstate' is t and
+field-name is ScheduleState, derives the matching FlowState and returns:
+
+  ((changes . ((FlowState . ref-string)))
+   (display . ((FlowState . ((_ref . ref) (_refObjectName . name))))))
+
+Returns nil when no linked change is needed."
+  (let ((field-name (car args))
+        (new-ref    (cadr args)))
+    (when (and bug-rally-link-flowstate
+               (memq field-name '(ScheduleState))
+               (stringp new-ref))
+      (let* ((mapping (bug--rally-get-flowstate-mapping instance))
+             (entry   (assoc new-ref mapping)))
+        (when entry
+          (let* ((fs-name (cadr entry))
+                 (fs-ref  (cddr entry)))
+            `((changes . ((FlowState . ,fs-ref)))
+              (display . ((FlowState . ((_ref . ,fs-ref)
+                                        (_refObjectName . ,fs-name))))))))))))
 
 (provide 'bug-backend-rally)
 ;;; bug-backend-rally.el ends here
