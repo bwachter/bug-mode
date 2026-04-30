@@ -52,6 +52,7 @@
     (define-key keymap (kbd "RET") 'bug--list-mode-select-bug)
     (define-key keymap "b"         'bug--list-mode-browse-bug)
     (define-key keymap "i"         'bug--list-mode-info)
+    (define-key keymap "g"         'bug--list-mode-update-list)
     (define-key keymap "u"         'bug--list-mode-update-list)
     (define-key keymap "q"         'bug--mode-default-quit-window)
     keymap)
