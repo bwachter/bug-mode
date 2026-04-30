@@ -564,9 +564,9 @@ are used.
 (defun bug-update (id fields instance)
   "Update fields in a bug using the backend-specific update function.
 
-`id' is the backend-specific bug identifier, as returned by `bug--get-update-id'.
-`fields' is an alist of field names and values to update.
-`instance' is the bug tracker instance.
+`id' is the backend-specific bug identifier, as returned by `bug--get-update-id'
+`fields' is an alist of field names and values to update
+`instance' is the bug tracker instance
 
 Returns the updated bug data from the backend."
   (message "Updating bug %s with fields: %s" id fields)

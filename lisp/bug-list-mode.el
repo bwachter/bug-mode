@@ -109,8 +109,8 @@
     (tabulated-list-init-header)
 
     ;; populate list entries
-    (dolist (element bugs)
-      (add-to-list 'tabulated-list-entries `(nil ,element)))
+    (setq tabulated-list-entries
+          (mapcar (lambda (element) `(nil ,element)) bugs))
     (tabulated-list-print t)
     (bug--debug-log-time "stop")))
 

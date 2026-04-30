@@ -132,6 +132,12 @@ rally side by filters we can't control."
   :type 'sexp
   :group 'bug)
 
+(defcustom bug-add-field-prompt t
+  "When non-nil, immediately prompt for a value after adding a new field.
+When nil, the field is inserted empty and must be edited manually."
+  :type 'boolean
+  :group 'bug)
+
 (defcustom bug-autoload-attachments nil
   "Controls autoloading of attachments when opening a bug"
   :type 'sexp

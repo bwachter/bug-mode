@@ -39,6 +39,7 @@
 (require 'bug-debug)
 (require 'bug-persistent-data)
 (require 'bug-custom)
+(require 'bug-html-edit)
 
 (transient-define-prefix bug-mode-menu ()
   "Transient for bug-mode"
@@ -193,7 +194,10 @@
         (concat
          (bug--format-field-name prop instance)
          (let ((fv (bug--format-field-value prop instance t)))
-           (propertize (if (string-empty-p fv) " " fv) 'field (car prop)))))
+           (propertize (if (string-empty-p fv) " " fv)
+                       'field (car prop)
+                       'bug-field-type (bug--get-field-property (car prop) 'type instance)
+                       'bug-field-name (car prop)))))
       (filter (lambda (prop) (bug--visible-field-p prop instance)) bug)
       "\n"))
 
@@ -211,7 +215,9 @@
                 "\n\n"
                 (let ((fv (bug--format-field-value description-prop instance t)))
                   (propertize (if (string-empty-p fv) " " fv)
-                              'field (car description-prop))))))
+                              'field (car description-prop)
+                              'bug-field-type (bug--get-field-property (car description-prop) 'type instance)
+                              'bug-field-name (car description-prop))))))
 
     (bug--backend-function-optional "bug--backend-%s-show-additional-data" bug instance)
     (goto-char 0)
@@ -365,7 +371,14 @@ be edited immediately with \\[bug--bug-mode-edit-thing-near-point]."
          (type-name (cond ((symbolp object-type) (symbol-name object-type))
                           ((stringp object-type) object-type)
                           (t nil)))
-         (present (mapcar #'car bug---data))
+         ;; Exclude nil and "" fields: Rally returns empty fields as "" rather
+         ;; than omitting them, so they must not block re-adding via add-field.
+         (present (mapcar #'car
+                          (cl-remove-if (lambda (cell)
+                                          (let ((v (cdr cell)))
+                                            (or (null v)
+                                                (and (stringp v) (string-empty-p v)))))
+                                        bug---data)))
          (candidates (when type-name
                        (bug--backend-function-optional
                         "bug--available-field-names-%s"
@@ -377,11 +390,14 @@ be edited immediately with \\[bug--bug-mode-edit-thing-near-point]."
              (chosen-display (completing-read "Add field: " display-names nil t))
              (field-name-str (cdr (assoc chosen-display candidates)))
              (field-sym (intern field-name-str))
+             (field-type (bug--get-field-property field-sym 'type bug---instance))
              (field-prop (cons field-sym nil))
              (new-line (concat
                         "\n"
                         (bug--format-field-name field-prop bug---instance)
-                        (propertize " " 'field field-sym))))
+                        (propertize " " 'field field-sym
+                                    'bug-field-type field-type
+                                    'bug-field-name field-sym))))
         ;; Add to bug---data so filter and subsequent re-renders include it
         (push field-prop bug---data)
         ;; Insert into buffer before Description, or at end of field block
@@ -395,7 +411,15 @@ be edited immediately with \\[bug--bug-mode-edit-thing-near-point]."
                   (goto-char (1- desc-pos))
                 (goto-char (point-max)))
               (insert new-line))))
-        (message "Added field %s — press e to edit it" field-name-str)))))
+        (if bug-add-field-prompt
+            ;; Immediately prompt for the value using the appropriate editor.
+            (let ((value-pos (text-property-any (point-min) (point-max) 'field field-sym)))
+              (when value-pos
+                (if (equal field-type 99)
+                    (bug--bug-mode-open-html-editor field-sym value-pos "")
+                  (goto-char value-pos)
+                  (bug--bug-mode-edit-thing-near-point))))
+          (message "Added field %s — press %s e to edit it" field-name-str bug-menu-key))))))
 
 (defun bug--bug-mode-commit ()
   "Commit changes in the bug to the bug tracker.
@@ -495,103 +519,108 @@ Tries backend-provided completion first; falls back to type-specific input."
           (let ((field-pos (bug--bug-mode-locate-field field-name)))
             (setq field-pos (constrain-to-field (+ 1 field-pos)
                                                 field-pos t))
-            (let* ((field-value (string-trim (field-string field-pos)))
-                   (field-type (get-text-property field-pos 'bug-field-type))
-                   (new-value
-                    (bug--bug-mode-edit-field field-name field-type field-value))
-                   ;; Object completions return (ref-url . display-name); normalize
-                   ;; so new-ref goes to the backend and new-data-value is stored
-                   ;; locally in a form that renders as "-> Name".
-                   (new-ref
-                    (if (consp new-value) (car new-value) new-value))
-                   (new-data-value
-                    (if (consp new-value)
-                        `((_ref . ,new-ref) (_refObjectName . ,(cdr new-value)))
-                      new-value)))
-              (unless (and (stringp new-value) (string= field-value new-value))
-                ;; Collect any backend-linked field changes (e.g. FlowState <> ScheduleState)
-                (let* ((linked (bug--backend-function-optional
-                                "bug--linked-field-changes-%s"
-                                (list field-name new-ref)
-                                bug---instance))
-                       (extra-changes (cdr (assoc 'changes linked)))
-                       (extra-display (cdr (assoc 'display linked))))
-                  ;; Pre-update bug---data for linked fields so next reload is consistent
-                  (dolist (disp extra-display)
-                    (if (assoc (car disp) bug---data)
-                        (setf (cdr (assoc (car disp) bug---data)) (cdr disp))
-                      (push disp bug---data)))
-                  (setq buffer-read-only nil)
-                  (goto-char field-pos)
-                  (delete-field field-pos)
-
-                  (cond
-                   ;; Immediate update mode: write to backend immediately.
-                   ;; Bypassed for new-artifact drafts — no UUID exists yet.
-                   ((and (eq bug-update-mode 'immediate) (not bug---is-new))
-                    (condition-case err
-                        (let ((update-id (bug--get-update-id bug---instance)))
-                          (message "Updating field %s..." field-name)
-                          (bug-update update-id
-                                      (append `((,field-name . ,new-ref)) extra-changes)
-                                      bug---instance)
-                          ;; Update succeeded - update buffer and local data
-                          (if (assoc field-name bug---data)
-                              (setf (cdr (assoc field-name bug---data)) new-data-value)
-                            (push (cons field-name new-data-value) bug---data))
-                          (insert
-                           (propertize
-                            (bug--format-field-value (cons field-name new-data-value)
-                                                     bug---instance t)
-                            'field field-name))
-                          (message "Field %s updated successfully." field-name))
-                      (error
-                       ;; Update failed - restore old value and show error
-                       (insert
-                        (propertize
-                         (bug--format-field-value (cons field-name field-value)
-                                                  bug---instance t)
-                         'field field-name))
-                       (message "Failed to update field: %s" (error-message-string err)))))
-
-                   ;; On-commit mode: track changes locally
-                   ((eq bug-update-mode 'on-commit)
-                    ;; add or replace the new field in `bug---changed-data'
-                    (if (assoc field-name bug---changed-data)
-                        (setf (cdr (assoc field-name bug---changed-data)) new-ref)
-                      (push (cons field-name new-ref) bug---changed-data))
-                    ;; propagate linked field changes
-                    (dolist (change extra-changes)
-                      (if (assoc (car change) bug---changed-data)
-                          (setf (cdr (assoc (car change) bug---changed-data)) (cdr change))
-                        (push change bug---changed-data)))
-                    ;; replace old data with new ones, nicely formatted
-                    (insert
-                     (propertize
-                      (bug--format-field-value (cons field-name new-data-value)
-                                               bug---instance t)
-                      'field field-name))
-                    (message "Field %s changed (use C-c C-c to commit)" field-name)))
-
-                  ;; Live-update buffer text for linked fields visible in the buffer
-                  (save-excursion
+            (if (equal (get-text-property field-pos 'bug-field-type) 99)
+                ;; HTML field: open org-mode editor asynchronously
+                (bug--bug-mode-open-html-editor
+                 field-name field-pos
+                 (or (cdr (assoc field-name bug---data)) ""))
+              (let* ((field-value (string-trim (field-string field-pos)))
+                     (field-type (get-text-property field-pos 'bug-field-type))
+                     (new-value
+                      (bug--bug-mode-edit-field field-name field-type field-value))
+                     ;; Object completions return (ref-url . display-name); normalize
+                     ;; so new-ref goes to the backend and new-data-value is stored
+                     ;; locally in a form that renders as "-> Name".
+                     (new-ref
+                      (if (consp new-value) (car new-value) new-value))
+                     (new-data-value
+                      (if (consp new-value)
+                          `((_ref . ,new-ref) (_refObjectName . ,(cdr new-value)))
+                        new-value)))
+                (unless (and (stringp new-value) (string= field-value new-value))
+                  ;; Collect any backend-linked field changes (e.g. FlowState <> ScheduleState)
+                  (let* ((linked (bug--backend-function-optional
+                                  "bug--linked-field-changes-%s"
+                                  (list field-name new-ref)
+                                  bug---instance))
+                         (extra-changes (cdr (assoc 'changes linked)))
+                         (extra-display (cdr (assoc 'display linked))))
+                    ;; Pre-update bug---data for linked fields so next reload is consistent
                     (dolist (disp extra-display)
-                      (let* ((fname (car disp))
-                             (fval  (cdr disp))
-                             (fpos  (text-property-any (point-min) (point-max) 'field fname))
-                             (fend  (when fpos
-                                      (or (text-property-not-all fpos (point-max) 'field fname)
-                                          (point-max)))))
-                        (when fpos
-                          (goto-char fpos)
-                          (delete-region fpos fend)
-                          (insert (propertize
-                                   (let ((fv (bug--format-field-value
-                                              (cons fname fval) bug---instance t)))
-                                     (if (string-empty-p fv) " " fv))
-                                   'field fname))))))
-                  (bug--bug-mode-update-header)
-                  (setq buffer-read-only t))))))))))
+                      (if (assoc (car disp) bug---data)
+                          (setf (cdr (assoc (car disp) bug---data)) (cdr disp))
+                        (push disp bug---data)))
+                    (setq buffer-read-only nil)
+                    (goto-char field-pos)
+                    (delete-field field-pos)
+
+                    (cond
+                     ;; Immediate update mode: write to backend immediately.
+                     ;; Bypassed for new-artifact drafts — no UUID exists yet.
+                     ((and (eq bug-update-mode 'immediate) (not bug---is-new))
+                      (condition-case err
+                          (let ((update-id (bug--get-update-id bug---instance)))
+                            (message "Updating field %s..." field-name)
+                            (bug-update update-id
+                                        (append `((,field-name . ,new-ref)) extra-changes)
+                                        bug---instance)
+                            ;; Update succeeded - update buffer and local data
+                            (if (assoc field-name bug---data)
+                                (setf (cdr (assoc field-name bug---data)) new-data-value)
+                              (push (cons field-name new-data-value) bug---data))
+                            (insert
+                             (propertize
+                              (bug--format-field-value (cons field-name new-data-value)
+                                                       bug---instance t)
+                              'field field-name))
+                            (message "Field %s updated successfully." field-name))
+                        (error
+                         ;; Update failed - restore old value and show error
+                         (insert
+                          (propertize
+                           (bug--format-field-value (cons field-name field-value)
+                                                    bug---instance t)
+                           'field field-name))
+                         (message "Failed to update field: %s" (error-message-string err)))))
+
+                     ;; On-commit mode: track changes locally
+                     ((eq bug-update-mode 'on-commit)
+                      ;; add or replace the new field in `bug---changed-data'
+                      (if (assoc field-name bug---changed-data)
+                          (setf (cdr (assoc field-name bug---changed-data)) new-ref)
+                        (push (cons field-name new-ref) bug---changed-data))
+                      ;; propagate linked field changes
+                      (dolist (change extra-changes)
+                        (if (assoc (car change) bug---changed-data)
+                            (setf (cdr (assoc (car change) bug---changed-data)) (cdr change))
+                          (push change bug---changed-data)))
+                      ;; replace old data with new ones, nicely formatted
+                      (insert
+                       (propertize
+                        (bug--format-field-value (cons field-name new-data-value)
+                                                 bug---instance t)
+                        'field field-name))
+                      (message "Field %s changed (use C-c C-c to commit)" field-name)))
+
+                    ;; Live-update buffer text for linked fields visible in the buffer
+                    (save-excursion
+                      (dolist (disp extra-display)
+                        (let* ((fname (car disp))
+                               (fval  (cdr disp))
+                               (fpos  (text-property-any (point-min) (point-max) 'field fname))
+                               (fend  (when fpos
+                                        (or (text-property-not-all fpos (point-max) 'field fname)
+                                            (point-max)))))
+                          (when fpos
+                            (goto-char fpos)
+                            (delete-region fpos fend)
+                            (insert (propertize
+                                     (let ((fv (bug--format-field-value
+                                                (cons fname fval) bug---instance t)))
+                                       (if (string-empty-p fv) " " fv))
+                                     'field fname))))))
+                    (bug--bug-mode-update-header)
+                    (setq buffer-read-only t)))))))))))
 
 ;;;###autoload
 (defun bug--bug-mode-peek-completions ()

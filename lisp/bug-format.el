@@ -29,6 +29,9 @@
 (require 'bug-common-functions)
 (require 'bug-custom)
 
+(defvar shr-width)      ; dynamic var from shr.el; declare here so let-binding works under lexical-binding
+(defvar shr-use-fonts)  ; ditto
+
 (defun bug--format-bool (value)
   "Format a bool converted from JSON to `yes' or `no'"
   (cond ((equal value t)
@@ -61,7 +64,7 @@ is formatted to take more space"
   (let ((content-type (bug--get-field-property
                        (car field) 'type instance))
         (field-id (bug--get-field-property
-                       (car field) 'id instance)))
+                   (car field) 'id instance)))
     (propertize
      (cond
       ((equal :json-false (cdr field))
@@ -103,9 +106,7 @@ is formatted to take more space"
       ((equal content-type 98)
        (propertize (prin1-to-string (cdr field) t)))
       ((equal content-type 99)
-       (let ((html-string
-              (replace-regexp-in-string "[[:space:]\n]+\\'" ""
-                                        (bug--format-html (cdr field)))))
+       (let ((html-string (bug--format-html (cdr field))))
          (if (fboundp 'add-face-text-property)
              (add-face-text-property 0 (length html-string)
                                      'bug-field-type-99 t html-string))

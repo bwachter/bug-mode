@@ -75,6 +75,7 @@ API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
   "Features supported by Rally backend"
   '(:read :write :create :delete))
 
+;;;###autoload
 (defun bug--backend-rally-default-url (_args _instance)
   "Return the default Rally API URL"
   bug-rally-url)
@@ -263,29 +264,55 @@ object-id for read (or any other call requiring an object-id):
     response))
 
 ;;;###autoload
-(defun bug--rpc-rally-get-fields (_object _instance)
-  "Return a static list of valid field names for rally
+(defun bug--rally-attribute-type-to-field-type (attr-type element-name)
+  "Map a Rally AttributeType string and ELEMENT-NAME to a numeric field type code.
 
-Unlike Bugzilla Rally does not have an API call to retrieve a list of
-supported fields, so this function parses a json file containing field
-definitions.
+Type codes match the Bugzilla-compatible field definition format:
+  0  boolean   1  string/enum   5  date   6  bug ID
+  98 object    99 HTML/rich-text"
+  (cond
+   ((equal element-name "FormattedID")                        6)
+   ((equal attr-type "BOOLEAN")                               0)
+   ((equal attr-type "DATE")                                  5)
+   ((equal attr-type "TEXT")                                  99)
+   ((member attr-type '("OBJECT" "COLLECTION" "WEB_LINK"))   98)
+   (t                                                         1)))
 
-The syntax of the file follows the Bugzilla field definition response
-as described here:
- https://www.bugzilla.org/docs/3.6/en/html/api/Bugzilla/WebService/Bug.html#Utility_Functions
+;;;###autoload
+(defun bug--rpc-rally-get-fields (_object instance)
+  "Return field definitions for Rally.
 
-The following additions are supported for Rally:
-
-- type 98 for rally objects
-- type 99 for HTML objects
-- is_readonly to mark read-only fields (defaults to `false')
-"
-  (let ((rally-fields-file (concat
-                            bug-json-data-dir
-                            "/rally-fields.json")))
-    (if (file-exists-p rally-fields-file)
-        (json-read-file rally-fields-file)
-      (error "Field definition file for Rally not found"))))
+Queries the workspace TypeDefinition API via `bug--rally-get-type-attributes'
+for HierarchicalRequirement, converts the result to the Bugzilla-compatible
+field list format expected by `bug--get-fields', and falls back to the static
+rally-fields.json on nil result or error."
+  (let* ((attrs (bug--rally-get-type-attributes "HierarchicalRequirement" instance))
+         (fields (when attrs
+                   (let (result)
+                     (maphash
+                      (lambda (key attr)
+                        ;; Index only by ElementName to avoid duplicate entries
+                        (when (equal key (cdr (assoc 'ElementName attr)))
+                          (let* ((attr-type (let ((v (cdr (assoc 'AttributeType attr))))
+                                              (if (symbolp v) (symbol-name v) v)))
+                                 (field-type (bug--rally-attribute-type-to-field-type
+                                              attr-type key)))
+                            (push `((name         . ,key)
+                                    (display_name . ,(cdr (assoc 'Name attr)))
+                                    (type         . ,field-type)
+                                    (is_mandatory . ,(eq t (cdr (assoc 'Required attr))))
+                                    (is_readonly  . ,(eq t (cdr (assoc 'ReadOnly attr))))
+                                    (is_custom    . ,(eq t (cdr (assoc 'Custom attr)))))
+                                  result))))
+                      attrs)
+                     result))))
+    (or (when fields `((result . ((fields . ,fields)))))
+        (progn
+          (bug--debug "bug--rpc-rally-get-fields: falling back to static JSON")
+          (let ((file (concat bug-json-data-dir "/rally-fields.json")))
+            (if (file-exists-p file)
+                (json-read-file file)
+              (error "Rally field definition file not found: %s" file)))))))
 
 ;;;###autoload
 (defun bug--rally-list-columns (_object _instance)
