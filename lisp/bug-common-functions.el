@@ -526,7 +526,10 @@ from the available instances in bug-instances-list or bug-instance-plist."
   (let* ( ; check if instance already is correct type, if not, convert string to symbol
          (instance (if instance
                        (cond ((symbolp instance) instance)
-                             ((stringp instance) (intern instance))
+                             ((stringp instance)
+                              (intern (if (string-prefix-p ":" instance)
+                                          instance
+                                        (concat ":" instance))))
                              (t instance))
                      ;; Use the full resolution hierarchy when instance is nil
                      (or (bug--get-active-instance)
@@ -553,6 +556,21 @@ are used.
   "Close the search result window"
   (interactive)
   (quit-window t))
+
+(defun bug--get-update-id (instance)
+  "Get the appropriate ID for update operations."
+  (bug--backend-function "bug--backend-%s-get-update-id" nil instance))
+
+(defun bug-update (id fields instance)
+  "Update fields in a bug using the backend-specific update function.
+
+`id' is the backend-specific bug identifier, as returned by `bug--get-update-id'.
+`fields' is an alist of field names and values to update.
+`instance' is the bug tracker instance.
+
+Returns the updated bug data from the backend."
+  (message "Updating bug %s with fields: %s" id fields)
+  (bug--backend-function "bug--update-%s-bug" (list id fields) instance))
 
 (provide 'bug-common-functions)
 ;;; bug-common-functions.el ends here

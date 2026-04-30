@@ -270,20 +270,6 @@ defines no filters, this does nothing. Empty filter lists show all fields."
       ;; Refresh the bug display
       (bug-show bug---data instance))))
 
-(defun bug--get-update-id (instance)
-  "Get the appropriate ID for update operations."
-  (bug--backend-function "bug--backend-%s-get-update-id" nil instance))
-
-(defun bug-update (id fields instance)
-  "Update fields in a bug using the backend-specific update function.
-
-ID is the backend-specific bug identifier, as returned by `bug--get-update-id'.
-FIELDS is an alist of field names and values to update.
-INSTANCE is the bug tracker instance.
-
-Returns the updated bug data from the backend."
-  (message "Updating bug %s with fields: %s" id fields)
-  (bug--backend-function "bug--update-%s-bug" (list id fields) instance))
 
 ;;;###autoload
 (defun bug-create (&optional instance)
