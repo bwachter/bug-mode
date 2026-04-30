@@ -30,6 +30,9 @@
 (require 'ert)
 (require 'json)
 
+;; prefer source over stale byte-compiled files
+(setq load-prefer-newer t)
+
 (load-file (concat
             (file-name-directory (or load-file-name (buffer-file-name)))
             "../bug.el"))

@@ -45,7 +45,10 @@
                                                           :type rally)
                                       ))
          (bug-default-instance :bug-2))
-     ,@body))
+     (cl-letf (((symbol-function 'url-retrieve-synchronously)
+                (lambda (&rest _)
+                  (error "Network access not available in unit tests"))))
+       ,@body)))
 
 (provide 'bug-test-mock)
 ;;; bug-test-mock.el ends here

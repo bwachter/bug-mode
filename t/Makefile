@@ -12,6 +12,7 @@ TESTS += test-bug-format.el
 #TESTS += test-bug-rally-subscription-mode.el
 TESTS += test-bug-rpc.el
 TESTS += test-bug-backend-rally.el
+TESTS += test-bug-html-edit.el
 #TESTS += test-bug-backend-bz-rpc.el
 #TESTS += test-bug-search-common.el
 #TESTS += test-bug-search.el
