@@ -127,19 +127,35 @@ the call would look like this:
         (setq count (- count 1))))
     pos))
 
-(defun bug--query-instance ()
-  "Query for a bug tracker instance, providing completion with the instances
-configured in bug-instance-plist. Returns the entered bug tracker instance.
+(defun bug--query-instance (&optional required-feature)
+  "Prompt for an instance, optionally filtered by `required-feature'.
 
-Instance name only needs to be entered enough to get a match."
-  (let ((completions
-         (cl-remove-if nil
-                       (cl-loop for record in bug-instance-plist collect
-                                (unless (listp record)
-                                  (replace-regexp-in-string "^:" "" (prin1-to-string record)))))))
-    (if (= (length completions) 1)
-        (car completions)
-      (completing-read "Instance: " completions nil t))))
+Reads instances from both `bug-instances-list' and `bug-instance-plist'.
+When `required-feature' is a keyword, only instances whose backend declares
+that feature are offered.
+
+Returns the instance symbol directly (without prompting) when exactly one
+qualifying instance exists."
+  (let* ((all (bug--get-all-instances))
+         (matching
+          (if required-feature
+              (cl-remove-if-not
+               (lambda (inst)
+                 (condition-case nil
+                     (bug--backend-feature (car inst) required-feature)
+                   (error nil)))
+               all)
+            all))
+         (names (mapcar (lambda (x) (symbol-name (car x))) matching)))
+    (cond
+     ((null names)
+      (if required-feature
+          (error "No instances found supporting %s" required-feature)
+        (error "No bug tracker instances configured")))
+     ((= (length names) 1)
+      (intern (car names)))
+     (t
+      (intern (completing-read "Instance: " names nil t))))))
 
 ;;;;;;
 ;; Instance management functions (bug-instances-list support)

@@ -73,7 +73,7 @@ API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
 ;;;###autoload
 (defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
-  '(:read :write :create :delete))
+  '(:read :write :create :delete :projects :project-bugs))
 
 ;;;###autoload
 (defun bug--backend-rally-default-url (_args _instance)
@@ -680,10 +680,6 @@ Property-to-field mapping:
 
 ;;;;;;
 ;; project and workspace management
-;;
-;; if we encounter other backends with a similar concept of projects we might
-;; want to move some of that logic here into shared structures, but for now
-;; this is good enough.
 
 (defun bug--rally-get-workspace-oid (instance)
   "Get the workspace ObjectID for this instance.
@@ -843,6 +839,26 @@ Requires Workspace Administrator or Subscription Administrator permissions."
         (message "Created project: %s (ID: %s)" project-name project-oid)
         project-oid))))
 
+;;;###autoload
+(defun bug--list-rally-projects (_args instance)
+  "Return available Rally projects as ((name . id-string) ...) alist."
+  (bug--rally-list-projects (bug--rally-get-workspace-oid instance) instance))
+
+;;;###autoload
+(defun bug--list-rally-project-bugs (project-id instance)
+  "Return search params for listing all open artifacts in `project-id'.
+
+`project-id' is the Rally project ObjectID string (e.g. \"12345\").
+Falls back to :project-id from instance config when nil."
+  (let* ((pid (or project-id (bug--instance-property :project-id instance)))
+         (project-ref (when pid (format "/project/%s" pid))))
+    (unless project-ref
+      (error "No project-id provided and no :project-id configured"))
+    `((data . ((project ,project-ref)
+                (order "FormattedID DESC")
+                (fetch "FormattedID,LastUpdateDate,Name,State,ScheduleState")
+                (pagesize 200))))))
+
 ;;;;;;
 ;; Write operations (create, update, delete)
 
@@ -874,21 +890,16 @@ Fetches the project name from rally the first time and caches it. Falls back to
           (error `((_ref . ,project-ref) (_type . "Project")))))))
 
 (defun bug--rally-get-project-ref (instance)
-  "Get or prompt for a Rally project reference.
+  "Get or prompt for a Rally project reference string (/project/ID).
 
-Returns a project reference string in the format /project/12345.
-Tries these methods in order:
-1. Use :project-id from instance config
-2. Interactive project selection from available projects
-3. Manual input if selection fails"
+Tries :project-id from instance config first, then interactive selection,
+then manual input."
   (let ((project-id (bug--instance-property :project-id instance)))
     (if project-id
         (format "/project/%s" project-id)
-      ;; Try interactive project selection
-      (or (bug-rally-select-project instance)
-          ;; Fallback to manual input
-          (let ((input-project-id (read-string "Rally Project ID: ")))
-            (format "/project/%s" input-project-id))))))
+      (let ((selected-id (or (bug-select-project instance)
+                             (read-string "Rally Project ID: "))))
+        (format "/project/%s" selected-id)))))
 
 (defun bug--rally-type-name (object-type)
   "Convert object-type to proper Rally API type name.

@@ -70,21 +70,38 @@
   "Check if all backends implement all mandatory functions"
   (unless bug--available-backends
     (error "No backends found"))
-  (let* ((backend-functions '("bug--%s-field-name"
-                              "bug--%s-list-columns"
-                              "bug--backend-%s-features"
-                              "bug--browse-%s-bug"
-                              "bug--do-%s-search"
-                              "bug--fetch-%s-bug"
-                              "bug--parse-%s-search-query"
-                              "bug--rpc-%s"
-                              "bug--rpc-%s-get-fields"
-                              "bug--rpc-%s-handle-error")))
+  (let* ((base-functions '("bug--%s-field-name"
+                           "bug--%s-list-columns"
+                           "bug--backend-%s-features"
+                           "bug--browse-%s-bug"
+                           "bug--do-%s-search"
+                           "bug--fetch-%s-bug"
+                           "bug--parse-%s-search-query"
+                           "bug--rpc-%s"
+                           "bug--rpc-%s-get-fields"
+                           "bug--rpc-%s-handle-error"))
+         (feature-functions
+          '((:write        . ("bug--backend-%s-get-update-id"
+                              "bug--update-%s-bug"))
+            (:create       . ("bug--create-%s-bug-interactive"
+                              "bug--create-%s-new-artifact"))
+            (:delete       . ("bug--delete-%s-bug"))
+            (:projects     . ("bug--list-%s-projects"))
+            (:project-bugs . ("bug--list-%s-project-bugs")))))
     (dolist (backend bug--available-backends)
       (message (format "Checking backend '%s'"
                        (prin1-to-string backend t)))
-      (dolist (fn backend-functions)
-        (should (fboundp (intern (format fn backend))))))))
+      (dolist (fn base-functions)
+        (should (fboundp (intern (format fn backend)))))
+      (let ((features (funcall (intern (format "bug--backend-%s-features" backend))
+                               nil nil)))
+        (dolist (feature-entry feature-functions)
+          (when (memq (car feature-entry) features)
+            (message (format "Checking %s functions for '%s'"
+                             (car feature-entry) (prin1-to-string backend t)))
+            (dolist (fn (cdr feature-entry))
+              (should (fboundp (intern (format fn backend)))))))))))
+
 
 (provide 'bug-tests)
 ;;; bug-tests.el ends here

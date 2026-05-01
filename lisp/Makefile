@@ -12,6 +12,7 @@ SOURCES += bug-rally-iteration.el
 SOURCES += bug-format.el bug-custom.el
 SOURCES += bug-debug.el bug-persistent-data.el
 SOURCES += bug-backend-bz-rpc.el
+SOURCES += bug-backend-github.el
 SOURCES += bug-backend-rally.el
 SOURCES += bug-field-completion.el
 SOURCES += bug-html-edit.el

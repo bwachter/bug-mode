@@ -153,8 +153,8 @@ for inclusion in tabulated-list-entries"
              (field-name (if (listp header-item) (car header-item) header-item))
              (_value (or (cdr field) ""))
              (map (make-sparse-keymap))
-             (bug-uuid (cdr (assoc (bug--field-name :bug-uuid bug---instance) (cdr bug))))
-             (bug-id (cdr (assoc (bug--field-name :bug-friendly-id bug---instance) (cdr bug))))
+             (bug-uuid (cdr (assoc (bug--field-name :bug-uuid bug---instance) bug)))
+             (bug-id (cdr (assoc (bug--field-name :bug-friendly-id bug---instance) bug)))
              (cached-length (cdr (assoc field-name bug---field-length)))
              (formatted-string))
         (define-key map [mouse-1] 'bug--list-mode-select-bug-with-mouse)
@@ -162,9 +162,10 @@ for inclusion in tabulated-list-entries"
         (setq formatted-string
               (propertize
                (bug--format-field-value field bug---instance)
-               'bug-uuid bug-uuid
-               'bug-id bug-id
-               'keymap map))
+               'bug-uuid  bug-uuid
+               'bug-id    bug-id
+               'help-echo bug-uuid
+               'keymap    map))
         ;; keep track of the longest field values for header length calculation
         (if (numberp cached-length)
             (when (> (length formatted-string) cached-length)

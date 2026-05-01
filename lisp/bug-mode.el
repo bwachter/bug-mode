@@ -41,6 +41,7 @@
 (require 'bug-custom)
 (require 'bug-html-edit)
 (require 'bug-search)
+(require 'bug-project)
 
 (transient-define-prefix bug-mode-menu ()
   "Transient for bug-mode"
