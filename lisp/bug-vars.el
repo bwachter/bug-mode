@@ -42,6 +42,8 @@
 (make-variable-buffer-local 'bug---field-filter-index)
 (defvar bug---query)
 (make-variable-buffer-local 'bug---query)
+(defvar bug---query-string nil)
+(make-variable-buffer-local 'bug---query-string)
 (defvar bug---field-length)
 (make-variable-buffer-local 'bug---field-length)
 

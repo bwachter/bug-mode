@@ -29,6 +29,10 @@
 (require 'bug-search-common)
 (require 'bug-debug)
 (require 'bug-persistent-data)
+(require 'bug-vars)
+
+(defvar bug--pending-query-string nil
+  "Temporarily holds the user-typed query string until bug-list-show stores it.")
 
 ;;;###autoload
 (defun bug-stored-bugs (list-name &optional instance)
@@ -59,6 +63,7 @@
                   (read-string "Search query: " nil nil t)))
      (list (read-string "Search query: " nil nil t))))
   (bug--debug-log-time "start")
+  (setq bug--pending-query-string query)
   (bug--do-search
    (bug--backend-function "bug--parse-%s-search-query" query instance)
    instance))
@@ -86,6 +91,29 @@ prompts and execute them"
                   (puthash key (vector current value) terms))
               (puthash key value terms)))))
     (bug--do-search terms instance)))
+
+(defun bug--search-candidates (search-str instance)
+  "Search for artifacts matching `search-str' and return a candidate alist.
+
+Each element is (display-string . identifier) for use in `completing-read'.
+Returns nil when no results are found or the backend lacks support."
+  (let* ((params (bug--backend-function
+                  "bug--parse-%s-search-query" search-str instance))
+         (results (bug--backend-function-optional
+                   "bug--execute-%s-search" params instance)))
+    (when (and results (> (cdr results) 0))
+      (bug--backend-function-optional
+       "bug--format-%s-search-candidates" (car results) instance))))
+
+;;;###autoload
+(defun bug-edit-search ()
+  "Edit and re-run the search query associated with the current buffer."
+  (interactive)
+  (let* ((current-query (if (boundp 'bug---query-string) bug---query-string ""))
+         (instance (if (boundp 'bug---instance) bug---instance nil))
+         (new-query (read-string "Search query: " current-query)))
+    (unless (string-empty-p new-query)
+      (bug-search new-query instance))))
 
 (provide 'bug-search)
 ;;; bug-search.el ends here

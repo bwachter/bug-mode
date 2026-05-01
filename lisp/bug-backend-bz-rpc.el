@@ -111,8 +111,7 @@ don't match the fields found in a bug."
 (defun bug--do-bz-rpc-search (params instance)
   "Execute a search query in Bugzilla.
 
-This function takes a pre-parsed Bugzilla search query as argument.
-"
+This function takes a pre-parsed Bugzilla search query as argument."
   (bug--handle-bz-rpc-search-response params
                                (bug-rpc `((resource . "Bug")
                                           (operation . "search")
@@ -133,6 +132,27 @@ This function takes a pre-parsed Bugzilla search query as argument.
             (bug-list-show query bugs instance))))
     response))
 
+(defun bug--execute-bz-rpc-search (params instance)
+  "Execute a Bugzilla search RPC and return (bugs-array . count)."
+  (let ((response (bug-rpc `((resource . "Bug")
+                              (operation . "search")
+                              (data . ,params))
+                            instance)))
+    (if (and (assoc 'result response)
+             (assoc 'bugs (assoc 'result response)))
+        (let ((bugs (cdr (assoc 'bugs (assoc 'result response)))))
+          (cons bugs (length bugs)))
+      (cons [] 0))))
+
+(defun bug--format-bz-rpc-search-candidates (results)
+  "Format a Bugzilla bug array as ((\"ID: Summary\" . id-string) ...) alist."
+  (mapcar (lambda (bug)
+            (cons (format "%s: %s"
+                          (or (cdr (assoc 'id bug)) "?")
+                          (or (cdr (assoc 'summary bug)) ""))
+                  (number-to-string (or (cdr (assoc 'id bug)) 0))))
+          (append results nil)))
+
 ;;;###autoload
 (defun bug--parse-bz-rpc-search-query (query _instance)
   "Parse search query from minibuffer for Bugzilla"
@@ -141,6 +161,31 @@ This function takes a pre-parsed Bugzilla search query as argument.
     (if (string-match "[[:space:]]*[0-9]+[:space:]*" query)
         `((id . ,(string-to-number query)))
       `((summary . ,query)))))
+
+(defun bug--search-filter-bz-rpc-query (properties _instance)
+  "Translate generic search `properties'  to Bugzilla search parameters.
+
+Dispatched from `bug--search-filter-to-query' by the frontend.
+
+Property-to-field mapping:
+- `title'    -- summary (contains)
+- `status'   -- status (exact)
+- `owner'    -- assigned_to (contains)
+- `type'     -- component
+- `priority' -- priority (exact)
+- `tag'      -- keywords (contains)
+
+`iteration' and `description' have no Bugzilla equivalent and are ignored."
+  (let ((result '()))
+    (dolist (prop properties)
+      (pcase (car prop)
+        ('title    (push (cons 'summary     (cdr prop)) result))
+        ('status   (push (cons 'status      (cdr prop)) result))
+        ('owner    (push (cons 'assigned_to (cdr prop)) result))
+        ('type     (push (cons 'component   (cdr prop)) result))
+        ('priority (push (cons 'priority    (cdr prop)) result))
+        ('tag      (push (cons 'keywords    (cdr prop)) result))))
+    (nreverse result)))
 
 
 ;;;;;;

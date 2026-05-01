@@ -40,6 +40,7 @@
 (require 'bug-persistent-data)
 (require 'bug-custom)
 (require 'bug-html-edit)
+(require 'bug-search)
 
 (transient-define-prefix bug-mode-menu ()
   "Transient for bug-mode"
@@ -498,8 +499,7 @@ Tries backend-provided completion first; falls back to type-specific input."
                                 (format "%s search (empty to cancel): "
                                         (prin1-to-string field-name t))))
                    (candidates (when (not (string-empty-p search-str))
-                                 (bug--backend-function-optional
-                                  "bug--search-artifact-%s" search-str bug---instance))))
+                                 (bug--search-candidates search-str bug---instance))))
               (cond
                ((string-empty-p search-str)
                 (setq searching nil))

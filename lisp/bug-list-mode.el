@@ -65,10 +65,13 @@
     :if (lambda () (equal 'rally (bug--backend-type bug---instance)))
     ("s" "Subscription" bug--list-mode-rally-subscription)]])
 
+(declare-function bug-edit-search "bug-search")
+
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
     (define-key keymap (kbd "RET") #'bug--list-mode-select-bug)
     (define-key keymap bug-menu-key #'bug-list-mode-menu)
+    (define-key keymap "e"         #'bug-edit-search)
     (define-key keymap "g"         #'bug--list-mode-update-list)
     (define-key keymap "q"         #'bug--mode-default-quit-window)
     keymap)
@@ -87,6 +90,8 @@
   (bug-list-mode)
   (setq bug---query query)
   (setq bug---instance instance)
+  (setq bug---query-string (or bug--pending-query-string ""))
+  (setq bug--pending-query-string nil)
   (setq bug---field-length nil)
   (setq buffer-read-only nil)
 

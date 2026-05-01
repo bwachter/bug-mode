@@ -516,6 +516,38 @@ Default options are added to the list, if not present:
     ;; return the response for debugging, as that should not happen.
     response))
 
+(defun bug--execute-rally-search (params instance)
+  "Execute a Rally search RPC and return (results-array . total-count).
+
+Uses defaults suited for candidate lookup: fetches FormattedID, Name,
+_refObjectUUID. Does not mutate `params'."
+  (let* ((params (copy-tree params))
+         (data (assoc 'data params)))
+    (unless (assoc 'pagesize (cdr data))
+      (push '(pagesize 200) (cdr data)))
+    (unless (assoc 'fetch (cdr data))
+      (push '(fetch "FormattedID,Name,_refObjectUUID") (cdr data)))
+    (unless (assoc 'resource params)
+      (push '(resource . "artifact") params))
+    (unless (assoc 'operation params)
+      (push '(operation . "query") params))
+    (let ((response (bug-rpc params instance)))
+      (if (and (assoc 'QueryResult response)
+               (assoc 'TotalResultCount (assoc 'QueryResult response)))
+          (let* ((qr (cdr (assoc 'QueryResult response))))
+            (cons (cdr (assoc 'Results qr))
+                  (cdr (assoc 'TotalResultCount qr))))
+        (cons [] 0)))))
+
+(defun bug--format-rally-search-candidates (results)
+  "Format a Rally results array as ((\"ID: Name\" . uuid) ...) alist."
+  (mapcar (lambda (r)
+            (cons (format "%s: %s"
+                          (or (cdr (assoc 'FormattedID r)) "?")
+                          (or (cdr (assoc 'Name r)) ""))
+                  (cdr (assoc '_refObjectUUID r))))
+          (append results nil)))
+
 ;;;###autoload
 (defun bug--parse-rally-search-query (query instance)
   "Parse search query from minibuffer for rally"
@@ -555,6 +587,70 @@ Default options are added to the list, if not present:
     `((data . ((query
                 ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
                          query query query))))))))
+
+
+;;;###autoload
+(defun bug--search-filter-rally-query (properties instance)
+  "Translate generic search `properties' to a Rally WSAPI query.
+
+Dispatched from `bug--search-filter-to-query' by the frontend.
+
+Property-to-field mapping:
+- title       -- Name contains
+- status      -- ScheduleState = (exact; use `state' for Defect/Task State)
+- state       -- State = (exact; for Defect and Task items)
+- owner       -- Owner.Name contains (cross-object; forces
+                 hierarchicalrequirement)
+- type        -- resource type: story, defect, task, testcase, feature
+- iteration   -- Iteration.Name contains (cross-object; forces
+                 hierarchicalrequirement)
+- priority    -- Priority = (exact)
+- description -- (Notes contains OR Description contains)
+- tag         -- Tags.Name contains (cross-object; forces
+                  hierarchicalrequirement)"
+  (let* ((parts '())
+         (cross-object nil)
+         (explicit-type (cdr (assoc 'type properties)))
+         (project-id (bug--instance-property :project-id instance)))
+    (dolist (prop properties)
+      (pcase (car prop)
+        ('title
+         (push (format "(Name contains \"%s\")" (cdr prop)) parts))
+        ('status
+         (push (format "(ScheduleState = \"%s\")" (cdr prop)) parts))
+        ('state
+         (push (format "(State = \"%s\")" (cdr prop)) parts))
+        ('owner
+         (push (format "(Owner.Name contains \"%s\")" (cdr prop)) parts)
+         (setq cross-object t))
+        ('iteration
+         (push (format "(Iteration.Name contains \"%s\")" (cdr prop)) parts)
+         (setq cross-object t))
+        ('priority
+         (push (format "(Priority = \"%s\")" (cdr prop)) parts))
+        ('description
+         (let ((val (cdr prop)))
+           (push (format "((Notes contains \"%s\") OR (Description contains \"%s\"))"
+                         val val)
+                 parts)))
+        ('tag
+         (push (format "(Tags.Name contains \"%s\")" (cdr prop)) parts)
+         (setq cross-object t))))
+    (let* ((resource (cond
+                      ((string= explicit-type "story")    "hierarchicalrequirement")
+                      ((string= explicit-type "defect")   "defect")
+                      ((string= explicit-type "task")     "task")
+                      ((string= explicit-type "testcase") "testcase")
+                      ((string= explicit-type "feature")  "portfolioitem/feature")
+                      (cross-object                       "hierarchicalrequirement")
+                      (t                                  "artifact")))
+           (query-string (mapconcat #'identity (reverse parts) " AND "))
+           (data-params `((query ,query-string)
+                          ,@(when project-id
+                              `((project ,(format "/project/%s" project-id))
+                                (scopeDown "true"))))))
+      `((data . ,data-params)
+        (resource . ,resource)))))
 
 
 ;;;;;;
