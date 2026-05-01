@@ -53,6 +53,7 @@ field descriptions. `field' is expected to be a bug field cons cell."
                         `(,field-name)) t)
       ": ")
      'face 'bug-field-description
+     'bug-field-type (bug--get-field-property field-name 'type instance)
      'bug-field-name field-name)))
 
 (defun bug--format-field-value (field instance &optional long)

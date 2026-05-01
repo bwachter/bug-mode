@@ -45,9 +45,9 @@
 (ert-deftest test-bug-format-field-name ()
   "Test field name formatting"
   (bug--with-dummy-config
-   (should (equal-including-properties #("(foo): " 0 7 (bug-field-name foo face bug-field-description))
+   (should (equal-including-properties #("(foo): " 0 7 (face bug-field-description bug-field-type nil bug-field-name foo))
                   (bug--format-field-name '(foo . bar) :rally-1)))
-   (should (equal-including-properties #("ID: " 0 4 (bug-field-name FormattedID face bug-field-description))
+   (should (equal-including-properties #("ID: " 0 4 (face bug-field-description bug-field-type 6 bug-field-name FormattedID))
                   (bug--format-field-name '(FormattedID . "US1234") :rally-1)))
   ))
 

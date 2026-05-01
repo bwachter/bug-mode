@@ -1142,7 +1142,7 @@ normal \\[bug--bug-mode-edit-thing-near-point] key; press \\[bug--bug-mode-commi
                     (setcdr fs-disp fs-display)))))))))
 
     ;; Description must be in display-alist for bug-show to render it in drafts
-    (push '(Description . nil) display-alist)
+    (push (cons 'Description nil) display-alist)
 
     (bug-new-draft display-alist create-alist instance)))
 

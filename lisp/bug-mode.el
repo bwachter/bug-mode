@@ -484,12 +484,37 @@ Tries backend-provided completion first; falls back to type-specific input."
     (error "Backend does not support editing"))
   (or (bug--completing-read-field field-name field-value bug---instance)
       (cond
-       ((or (null field-type) (equal field-type 0))
+       ;; TODO: type 0 (bool) without backend completion should offer yes/no
+       ;; TODO: type 5 (date) without backend completion should offer calendar picker
+       ((memql field-type '(nil 0 1 5 6))
         (let ((_my-history (list field-value)))
           (read-string (concat (prin1-to-string field-name) ": ")
                        "" 'my-history)))
+       ((equal field-type 98)
+        (let ((result field-value)
+              (searching t))
+          (while searching
+            (let* ((search-str (read-string
+                                (format "%s search (empty to cancel): "
+                                        (prin1-to-string field-name t))))
+                   (candidates (when (not (string-empty-p search-str))
+                                 (bug--backend-function-optional
+                                  "bug--search-artifact-%s" search-str bug---instance))))
+              (cond
+               ((string-empty-p search-str)
+                (setq searching nil))
+               ((null candidates)
+                (message "No results for '%s'" search-str))
+               (t
+                (let* ((options (cons "-- search again --" (mapcar #'car candidates)))
+                       (choice (completing-read "Select: " options nil t)))
+                  (if (string= choice "-- search again --")
+                      nil
+                    (setq result (cons (cdr (assoc choice candidates)) choice))
+                    (setq searching nil)))))))
+          result))
        (t
-        (message "Editing a field of type %s is not implemented"
+        (message "Editing a field of type %s is not yet supported without completion data"
                  (prin1-to-string field-type t))
         field-value))))
 
@@ -516,16 +541,17 @@ Tries backend-provided completion first; falls back to type-specific input."
         (if blocked-msg
             (message "%s" blocked-msg)
           ;; field found and not blocked: query for a new value
-          (let ((field-pos (bug--bug-mode-locate-field field-name)))
+          (let* ((field-pos (bug--bug-mode-locate-field field-name))
+                 (field-type (or (bug--get-field-property field-name 'type bug---instance)
+                                 (get-text-property field-pos 'bug-field-type))))
             (setq field-pos (constrain-to-field (+ 1 field-pos)
                                                 field-pos t))
-            (if (equal (get-text-property field-pos 'bug-field-type) 99)
+            (if (equal field-type 99)
                 ;; HTML field: open org-mode editor asynchronously
                 (bug--bug-mode-open-html-editor
                  field-name field-pos
                  (or (cdr (assoc field-name bug---data)) ""))
               (let* ((field-value (string-trim (field-string field-pos)))
-                     (field-type (get-text-property field-pos 'bug-field-type))
                      (new-value
                       (bug--bug-mode-edit-field field-name field-type field-value))
                      ;; Object completions return (ref-url . display-name); normalize
@@ -662,28 +688,33 @@ relying on any cached attribute definitions or allowed-value lists."
 
 This is mostly useful for debugging text properties"
   (interactive)
-  (let ((field-name (get-text-property (point) 'bug-field-name))
-        (content-type (get-text-property (point) 'bug-field-type))
-        (field-id (get-text-property (point) 'bug-field-id))
-        (field (get-text-property (point) 'field)))
-    (message
-     (concat
-      "object = "
-      (prin1-to-string (cdr (assoc 'ObjectType bug---data)))
-      "; "
-      "type = "
-      (prin1-to-string content-type)
-      "; "
-      "field-id = "
-      (prin1-to-string field-id)
-      "; "
-      "field = "
-      (prin1-to-string field)
-      "; "
-      (prin1-to-string field-name)
-      " = "
-      (prin1-to-string (cdr (assoc field-name bug---data)))
-      ))))
+  (let* ((field-name (get-text-property (point) 'bug-field-name))
+         (content-type (get-text-property (point) 'bug-field-type))
+         (field-id (get-text-property (point) 'bug-field-id))
+         (field (get-text-property (point) 'field))
+         (def-type (when (and field-name (boundp 'bug---instance))
+                     (bug--get-field-property field-name 'type bug---instance))))
+    (message "%s"
+             (concat
+              "object = "
+              (prin1-to-string (cdr (assoc 'ObjectType bug---data)))
+              "; "
+              "type = "
+              (prin1-to-string content-type)
+              "; "
+              "def-type = "
+              (prin1-to-string def-type)
+              "; "
+              "field-id = "
+              (prin1-to-string field-id)
+              "; "
+              "field = "
+              (prin1-to-string field)
+              "; "
+              (prin1-to-string field-name)
+              " = "
+              (prin1-to-string (cdr (assoc field-name bug---data)))
+              ))))
 
 ;;;###autoload
 (defun bug--bug-mode-remember-bug (list-name &optional id instance)

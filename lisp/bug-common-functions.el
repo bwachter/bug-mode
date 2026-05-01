@@ -494,9 +494,15 @@ Special handling:
              that file
 - :url - For Rally instances, falls back to bug-rally-url if not specified"
   (let* ((instance (bug--instance-to-symbolp instance))
-         ;; Try bug-instances-list first, then bug-instance-plist
-         (property-list (or (cdr (assoc instance bug-instances-list))
-                            (plist-get bug-instance-plist instance))))
+         ;; bug-instances-list uses plain symbols; bug-instance-plist uses keywords
+         (plain-sym (if (keywordp instance)
+                        (intern (substring (symbol-name instance) 1))
+                      instance))
+         (keyword-sym (if (keywordp instance)
+                          instance
+                        (intern (concat ":" (symbol-name instance)))))
+         (property-list (or (cdr (assoc plain-sym bug-instances-list))
+                            (plist-get bug-instance-plist keyword-sym))))
     (cond
      ;; Special handling for API key - check for file-based key
      ((equal property :api-key)
