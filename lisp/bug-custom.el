@@ -285,6 +285,12 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
   "Face used for HTML field values"
   :group 'bug-faces)
 
+(defface bug-field-type-100
+  '((((class color) (background light)) :background "grey95")
+    (((class color) (background dark))  :background "grey20"))
+  "Face used for Markdown field values"
+  :group 'bug-faces)
+
 ;;;;;;
 ;; Expert settings
 ;; Those variables are customizable, but not exposed to easy customize

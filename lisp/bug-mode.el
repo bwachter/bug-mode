@@ -417,8 +417,10 @@ be edited immediately with \\[bug--bug-mode-edit-thing-near-point]."
             ;; Immediately prompt for the value using the appropriate editor.
             (let ((value-pos (text-property-any (point-min) (point-max) 'field field-sym)))
               (when value-pos
-                (if (equal field-type 99)
-                    (bug--bug-mode-open-html-editor field-sym value-pos "")
+                (if (memql field-type '(99 100))
+                    (bug--bug-mode-open-html-editor
+                     field-sym value-pos ""
+                     (if (equal field-type 100) 'markdown 'html))
                   (goto-char value-pos)
                   (bug--bug-mode-edit-thing-near-point))))
           (message "Added field %s — press %s e to edit it" field-name-str bug-menu-key))))))
@@ -547,11 +549,12 @@ Tries backend-provided completion first; falls back to type-specific input."
                                  (get-text-property field-pos 'bug-field-type))))
             (setq field-pos (constrain-to-field (+ 1 field-pos)
                                                 field-pos t))
-            (if (equal field-type 99)
-                ;; HTML field: open org-mode editor asynchronously
+            (if (memql field-type '(99 100))
+                ;; Rich-text field: open editor asynchronously
                 (bug--bug-mode-open-html-editor
                  field-name field-pos
-                 (or (cdr (assoc field-name bug---data)) ""))
+                 (or (cdr (assoc field-name bug---data)) "")
+                 (if (equal field-type 100) 'markdown 'html))
               (let* ((field-value (string-trim (field-string field-pos)))
                      (new-value
                       (bug--bug-mode-edit-field field-name field-type field-value))

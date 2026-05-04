@@ -112,6 +112,12 @@ is formatted to take more space"
              (add-face-text-property 0 (length html-string)
                                      'bug-field-type-99 t html-string))
          html-string))
+      ((equal content-type 100)
+       (let ((md-string (bug--format-markdown (cdr field))))
+         (if (fboundp 'add-face-text-property)
+             (add-face-text-property 0 (length md-string)
+                                     'bug-field-type-100 t md-string))
+         md-string))
       (t
        (let ((s (prin1-to-string (cdr field) t)))
          (if (string= s "nil") "" s))))
