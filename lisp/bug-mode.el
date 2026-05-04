@@ -50,16 +50,20 @@
     ("B" "Open in browser" bug--bug-mode-browse-bug)
     ("r" "Remember bug"   bug--bug-mode-remember-bug)]
    ["Edit"
+    :if (lambda () (and (bound-and-true-p bug---instance) (bug--backend-feature bug---instance :write)))
     ("a" "Add new field" bug--bug-mode-add-field)
     ("c" "Add new comment" bug--bug-mode-create-comment)
     ("e" "Edit field" bug--bug-mode-edit-thing-near-point)]
+   ["Create"
+    :if (lambda () (and (bound-and-true-p bug---instance) (bug--backend-feature bug---instance :create)))
+    ("C"  "Create related bug" bug--bug-mode-create-related)]
    ["View"
     ("v"  "Toggle field filter" bug--bug-mode-toggle-field-filter)]
    ["Interact"
     ("i"  "Info"  bug--bug-mode-info)
     ("d"  "Download attachment" bug--bug-mode-download-attachment)
-    ("c"  "Create related bug" bug--bug-mode-create-related)
-    ("D"  "Delete this bug" bug--bug-mode-delete-bug)]])
+    ("D"  "Delete this bug" bug--bug-mode-delete-bug
+     :if (lambda () (and (bound-and-true-p bug---instance) (bug--backend-feature bug---instance :del))))]])
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))

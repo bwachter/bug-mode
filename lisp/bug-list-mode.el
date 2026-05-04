@@ -62,7 +62,8 @@
     ("c"  "Create related bug" bug--bug-mode-create-related)
     ("D"  "Delete this bug" bug--bug-mode-delete-bug)]
    ["Rally"
-    :if (lambda () (equal 'rally (bug--backend-type bug---instance)))
+    :if (lambda () (and (bound-and-true-p bug---instance)
+                        (equal 'rally (bug--backend-type bug---instance))))
     ("s" "Subscription" bug--list-mode-rally-subscription)]])
 
 (declare-function bug-edit-search "bug-search")
