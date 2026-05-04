@@ -31,6 +31,7 @@
 (require 'url-parse)
 (require 'bug-rpc)
 (require 'bug-common-functions)
+(require 'bug-instance)
 
 (defun bug-credentials (instance)
   "Return credentials for the given bug tracker instances, if set. The

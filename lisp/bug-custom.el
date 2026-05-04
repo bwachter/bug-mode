@@ -240,6 +240,12 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
   "Face used for a header field in bug-list-mode"
   :group 'bug-faces)
 
+(defface bug-list-item
+  '((((class color) (background light)) :foreground "SkyBlue4")
+    (((class color) (background dark))  :foreground "LightSkyBlue1"))
+  "Face used for field names in bug-mode lists"
+  :group 'bug-faces)
+
 (defface bug-field-description
   '((((class color) (background light)) :foreground "SkyBlue4")
     (((class color) (background dark))  :foreground "LightSkyBlue1"))
@@ -346,8 +352,8 @@ When non-nil, only this instance is accessible for new operations.
 Existing buffers with different buffer-local instances continue to work
 but show a warning that they use a different instance.
 
-Set via `bug-switch-instance' or `bug-activate-instance'.
-Set to nil via `bug-deactivate-instance' to allow all instances.")
+Set via `bug-instance-switch' or `bug-instance-activate'.
+Set to nil via `bug-instance-deactivate' to allow all instances.")
 
 (defvar bug-data-file (concat bug-data-directory "data")
   "The file containing saved searches and similar user data. Change

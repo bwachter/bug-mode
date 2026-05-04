@@ -28,10 +28,11 @@
 ;;; Code:
 
 (require 'bug-common-functions)
+(require 'bug-instance)
 
 (defun bug--do-search (params instance)
   "Execute a bug search query"
-  (bug--backend-function "bug--do-%s-search" params instance))
+  (bug--instance-backend-function "bug--do-%s-search" params instance))
 
 (provide 'bug-search-common)
 ;;; bug-search-common.el ends here

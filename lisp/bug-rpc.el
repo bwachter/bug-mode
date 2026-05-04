@@ -29,6 +29,7 @@
 (require 'cl-lib)
 (require 'bug-custom)
 (require 'bug-common-functions)
+(require 'bug-instance)
 (require 'bug-debug)
 (require 'json)
 
@@ -52,7 +53,7 @@ to be added.
 Backends may define additional keys, check the documentation of their RPC
 functions for details.
 "
-   (bug--backend-function "bug--rpc-%s" args instance))
+   (bug--instance-backend-function "bug--rpc-%s" args instance))
 
 (defun bug--rpc-response-store-cookies (instance)
   "Try to extract cookies from an RPC response, and store them in the cache"
@@ -76,7 +77,7 @@ functions for details.
   (goto-char 0)
   (if (re-search-forward "\n\n" nil t)
       (let ((response (json-read-from-string (decode-coding-string (buffer-substring (point) (point-max)) 'utf-8))))
-        (bug--backend-function "bug--rpc-%s-handle-error" response instance))
+        (bug--instance-backend-function "bug--rpc-%s-handle-error" response instance))
     (error "Failed to parse http response")))
 
 (provide 'bug-rpc)

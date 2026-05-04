@@ -161,6 +161,13 @@ or refreshed (revert/derive).")
 ;;       the user
 (defun bug--html-edit-set-keys ()
   "Bind bug-html-edit keys in the current buffer after a mode change."
+  ;; After a major-mode change the local map is often a shared symbol
+  ;; (e.g. `org-mode-map').  `local-set-key' on a symbol mutates the
+  ;; global map, so we must install a private copy first.
+  (unless (keymapp (current-local-map))
+    (use-local-map (make-sparse-keymap)))
+  (when (symbolp (current-local-map))
+    (use-local-map (copy-keymap (current-local-map))))
   (local-set-key (kbd "C-c C-c") #'bug--html-edit-commit)
   (local-set-key (kbd "C-c C-k") #'bug--html-edit-abort)
   (local-set-key (kbd "C-c C-t") #'bug--html-edit-toggle-mode)

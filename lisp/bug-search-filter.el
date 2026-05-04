@@ -28,6 +28,7 @@
 
 (require 'bug-common-functions)
 (require 'bug-search-common)
+(require 'bug-instance)
 
 (defun bug--parse-search-filter (input)
   "Parse filter expression `input' into a property alist.
@@ -66,7 +67,7 @@ passed through so backends can handle backend-specific properties."
 
 Dispatches to the backend-specific `bug--search-filter-<backend>-query'
 function.  Returns a params alist suitable for `bug--do-search'."
-  (bug--backend-function "bug--search-filter-%s-query" properties instance))
+  (bug--instance-backend-function "bug--search-filter-%s-query" properties instance))
 
 ;;;###autoload
 (defun bug-search-filter (input &optional instance)

@@ -41,7 +41,6 @@
 (require 'bug-debug)
 (require 'bug-format)
 
-(require 'vtable)
 (require 'json)
 (require 'url-cookie)
 
@@ -760,42 +759,6 @@ Returns the project reference string (/project/12345) or nil if cancelled."
           (let ((project-ref (format "/project/%s" selected-oid)))
             (message "Selected project: %s (ID: %s)" selected-name selected-oid)
             project-ref))))))
-
-;;;###autoload
-(defun bug-rally-list-projects (&optional instance)
-  "Display all available Rally projects in a table.
-
-  Useful for finding project IDs to configure in instance settings."
-  (interactive (list (bug--query-instance)))
-  (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
-         (projects (bug--rally-list-projects workspace-oid instance))
-         (buffer (get-buffer-create "*Rally Projects*")))
-    (if (null projects)
-        (message "No open projects found")
-      (with-current-buffer buffer
-        (let ((inhibit-read-only t))
-          (erase-buffer)
-          (insert (format "Rally Projects (Workspace OID: %s)\n" workspace-oid))
-          (insert (format "Total: %d open projects\n\n" (length projects)))
-          (insert "To use a project, add :project-id \"<ObjectID>\" to your instance config.\n")
-          (insert "Use 'c' on a row to copy its ObjectID.\n\n")
-
-          (make-vtable
-           :columns '((:name "Project Name" :width 40)
-                      (:name "ObjectID" :width 15)
-                      (:name "State" :width 10))
-           :objects projects
-           :getter (lambda (project column vtable)
-                     (pcase (vtable-column vtable column)
-                       ("Project Name" (car project))
-                       ("ObjectID" (cdr project))
-                       ("State" "Open")))
-           :actions `("c" ,(lambda (project)
-                             (kill-new (cdr project))
-                             (message "Copied ObjectID: %s" (cdr project))))))
-        (special-mode)
-        (goto-char (point-min)))
-      (pop-to-buffer buffer))))
 
 ;;;###autoload
 (defun bug-rally-create-project (name &optional instance)

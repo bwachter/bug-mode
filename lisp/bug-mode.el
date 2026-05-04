@@ -42,20 +42,21 @@
 (require 'bug-html-edit)
 (require 'bug-search)
 (require 'bug-project)
+(require 'bug-instance)
 
 (transient-define-prefix bug-mode-menu ()
   "Transient for bug-mode"
 
-  [["Bug"
+  [[:description (lambda () (format "Bug %s" bug---uuid))
     ("B" "Open in browser" bug--bug-mode-browse-bug)
     ("r" "Remember bug"   bug--bug-mode-remember-bug)]
    ["Edit"
-    :if (lambda () (and (bound-and-true-p bug---instance) (bug--backend-feature bug---instance :write)))
+    :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-backend-feature bug---instance :write)))
     ("a" "Add new field" bug--bug-mode-add-field)
     ("c" "Add new comment" bug--bug-mode-create-comment)
     ("e" "Edit field" bug--bug-mode-edit-thing-near-point)]
    ["Create"
-    :if (lambda () (and (bound-and-true-p bug---instance) (bug--backend-feature bug---instance :create)))
+    :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-backend-feature bug---instance :create)))
     ("C"  "Create related bug" bug--bug-mode-create-related)]
    ["View"
     ("v"  "Toggle field filter" bug--bug-mode-toggle-field-filter)]
@@ -63,7 +64,7 @@
     ("i"  "Info"  bug--bug-mode-info)
     ("d"  "Download attachment" bug--bug-mode-download-attachment)
     ("D"  "Delete this bug" bug--bug-mode-delete-bug
-     :if (lambda () (and (bound-and-true-p bug---instance) (bug--backend-feature bug---instance :del))))]])
+     :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-backend-feature bug---instance :del))))]])
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -91,19 +92,19 @@
                   (bug--query-instance)
                   (read-string "Bug ID: " nil nil t)))
      (list (read-string "Bug ID: " nil nil t))))
-  (let* ((bug-content (bug--backend-function "bug--fetch-%s-bug" id instance)))
+  (let* ((bug-content (bug--instance-backend-function "bug--fetch-%s-bug" id instance)))
     (if bug-content (bug-show bug-content instance))))
 
 (defun bug--buffer-string (bug-id instance)
   "Return a buffer name string for bug-id/instance combination"
   (format "*%s bug: %s*"
-          (prin1-to-string (bug--backend-type instance) t)
+          (prin1-to-string (bug--instance-backend-type instance) t)
           bug-id))
 
 (defun bug--field-filtered-p (instance field)
   "Return t for non-filtered fields, nil for filtered ones"
   ;; Get field filters from backend
-  (let* ((field-filters (bug--backend-function-optional "bug--%s-field-filters" instance))
+  (let* ((field-filters (bug--instance-backend-function-optional "bug--%s-field-filters" instance))
          (current-filter (when field-filters
                            (nth bug---field-filter-index field-filters))))
 
@@ -158,7 +159,7 @@
     (setq bug---is-new (if bug---id nil t))
     ;; Sort: use filter-list order when a named filter is active, else alphabetical
     (let* ((instance-sym (bug--instance-to-symbolp instance))
-           (all-filters (bug--backend-function-optional "bug--%s-field-filters" nil instance-sym))
+           (all-filters (bug--instance-backend-function-optional "bug--%s-field-filters" nil instance-sym))
            (current-filter (when all-filters
                              (nth (or tmp-filter-index 0) all-filters))))
       (setq bug
@@ -187,7 +188,7 @@
     (setq bug---field-filter-index
           (if bug---is-new
               (let* ((inst (bug--instance-to-symbolp instance))
-                     (filters (bug--backend-function-optional "bug--%s-field-filters" nil inst)))
+                     (filters (bug--instance-backend-function-optional "bug--%s-field-filters" nil inst)))
                 (if filters (1- (length filters)) 0))
             (or tmp-filter-index 0)))
     (setq buffer-read-only nil)
@@ -225,7 +226,7 @@
                               'bug-field-type (bug--get-field-property (car description-prop) 'type instance)
                               'bug-field-name (car description-prop))))))
 
-    (bug--backend-function-optional "bug--backend-%s-show-additional-data" bug instance)
+    (bug--instance-backend-function-optional "bug--backend-%s-show-additional-data" bug instance)
     (goto-char 0)
     (setq buffer-read-only t)
     (bug--bug-mode-update-header)
@@ -267,7 +268,7 @@ Cycles through the field filters defined by the backend. If the backend
 defines no filters, this does nothing. Empty filter lists show all fields."
   (interactive)
   (let* ((instance bug---instance)
-         (field-filters (bug--backend-function-optional "bug--%s-field-filters" instance)))
+         (field-filters (bug--instance-backend-function-optional "bug--%s-field-filters" instance)))
     (if (null field-filters)
         (message "No field filters defined for this backend")
       (setq bug---field-filter-index
@@ -296,9 +297,9 @@ With a prefix argument, also prompts for which instance to use."
    (list (if current-prefix-arg
              (bug--instance-to-symbolp (bug--query-instance))
            (bug--instance-to-symbolp nil))))
-  (unless (bug--backend-feature instance :create)
+  (unless (bug--instance-backend-feature instance :create)
     (error "Backend does not support issue creation"))
-  (bug--backend-function "bug--create-%s-bug-interactive" nil instance))
+  (bug--instance-backend-function "bug--create-%s-bug-interactive" nil instance))
 
 ;;;###autoload
 (defun bug-new-draft (display-alist create-alist instance)
@@ -329,9 +330,9 @@ Passes the current bug's data to the backend so it can prefill the parent
 link and select a sensible default type. The exact relationship depends on
 the backend and the current artifact type."
   (interactive)
-  (unless (bug--backend-feature bug---instance :create)
+  (unless (bug--instance-backend-feature bug---instance :create)
     (error "Backend does not support issue creation"))
-  (bug--backend-function "bug--create-%s-bug-interactive" bug---data bug---instance))
+  (bug--instance-backend-function "bug--create-%s-bug-interactive" bug---data bug---instance))
 
 ;; functions usually called through keybindings in bug-mode
 ;;;###autoload
@@ -341,29 +342,29 @@ the backend and the current artifact type."
 Note: This passes in the user friendly ID, and assumes that the backend
 function can handle it for browser display."
   (interactive)
-  (bug--backend-function "bug--browse-%s-bug" bug---id bug---instance))
+  (bug--instance-backend-function "bug--browse-%s-bug" bug---id bug---instance))
 
 ;;;###autoload
 (defun bug--bug-mode-create-comment ()
   "Create a comment on the current bug"
   (interactive)
-  (bug--backend-function "bug--backend-%s-create-comment" bug---id bug---instance))
+  (bug--instance-backend-function "bug--backend-%s-create-comment" bug---id bug---instance))
 
 (defun bug-find-attachment-url (instance)
   "Return the URL for the attachment near point, dispatched per backend."
-  (bug--backend-function-optional "bug--backend-%s-find-attachment-url" nil instance))
+  (bug--instance-backend-function-optional "bug--backend-%s-find-attachment-url" nil instance))
 
 ;;;###autoload
 (defun bug--bug-mode-download-attachment ()
   "Download the attachment near point to the home directory."
   (interactive)
-  (bug--backend-function-optional "bug--backend-%s-download-attachment" nil bug---instance))
+  (bug--instance-backend-function-optional "bug--backend-%s-download-attachment" nil bug---instance))
 
 ;;;###autoload
 (defun bug--bug-mode-open-thing-near-point ()
   "Open the thing near point — attachment, link, or referenced object."
   (interactive)
-  (bug--backend-function-optional "bug--backend-%s-open-thing" nil bug---instance))
+  (bug--instance-backend-function-optional "bug--backend-%s-open-thing" nil bug---instance))
 
 ;;;###autoload
 (defun bug--bug-mode-add-field ()
@@ -386,7 +387,7 @@ be edited immediately with \\[bug--bug-mode-edit-thing-near-point]."
                                                 (and (stringp v) (string-empty-p v)))))
                                         bug---data)))
          (candidates (when type-name
-                       (bug--backend-function-optional
+                       (bug--instance-backend-function-optional
                         "bug--available-field-names-%s"
                         (list type-name present)
                         bug---instance))))
@@ -437,7 +438,7 @@ If the bug is a new artifact this will create it in the backend."
   (cond
    ;; New-artifact draft: validate and dispatch to backend create
    (bug---is-new
-    (let ((missing (bug--backend-function-optional
+    (let ((missing (bug--instance-backend-function-optional
                     "bug--validate-draft-%s"
                     (list bug---data bug---changed-data)
                     bug---instance)))
@@ -445,7 +446,7 @@ If the bug is a new artifact this will create it in the backend."
         (user-error "Cannot submit — required fields missing: %s"
                     (mapconcat #'identity missing ", "))))
     (message "Creating artifact...")
-    (bug--backend-function "bug--create-%s-new-artifact"
+    (bug--instance-backend-function "bug--create-%s-new-artifact"
                            (list bug---data bug---changed-data)
                            bug---instance))
    ;; Existing artifact: normal update
@@ -488,7 +489,7 @@ If no (valid) field was found `nil' is returned."
 value if nothing has changed or editing is unsupported for the field type.
 
 Tries backend-provided completion first; falls back to type-specific input."
-  (unless (bug--backend-feature bug---instance :write)
+  (unless (bug--instance-backend-feature bug---instance :write)
     (error "Backend does not support editing"))
   (or (bug--completing-read-field field-name field-value bug---instance)
       (cond
@@ -530,7 +531,7 @@ Tries backend-provided completion first; falls back to type-specific input."
   "Edit the bug field at or near point"
   ;; TODO: when called with prefix argument, prompt for which field to edit
   (interactive)
-  (unless (bug--backend-feature bug---instance :write)
+  (unless (bug--instance-backend-feature bug---instance :write)
     (error "Backend does not support editing"))
   (let ((field-name (or (get-text-property (point) 'bug-field-name)
                         (save-excursion
@@ -542,7 +543,7 @@ Tries backend-provided completion first; falls back to type-specific input."
         ;; no field found? Bail out.
         (message "Unable to locate an editable field near point")
       ;; Check if the backend blocks direct editing of this field
-      (let ((blocked-msg (bug--backend-function-optional
+      (let ((blocked-msg (bug--instance-backend-function-optional
                           "bug--field-edit-blocked-%s"
                           field-name bug---instance)))
         (if blocked-msg
@@ -573,7 +574,7 @@ Tries backend-provided completion first; falls back to type-specific input."
                         new-value)))
                 (unless (and (stringp new-value) (string= field-value new-value))
                   ;; Collect any backend-linked field changes (e.g. FlowState <> ScheduleState)
-                  (let* ((linked (bug--backend-function-optional
+                  (let* ((linked (bug--instance-backend-function-optional
                                   "bug--linked-field-changes-%s"
                                   (list field-name new-ref)
                                   bug---instance))
@@ -673,7 +674,7 @@ relying on any cached attribute definitions or allowed-value lists."
       ;; get a fresh API response.  The prefix is the backend type name so this
       ;; works for any backend whose cache keys follow the "<backend>-" convention.
       (let ((backend-prefix (concat (prin1-to-string
-                                     (bug--backend-type bug---instance) t)
+                                     (bug--instance-backend-type bug---instance) t)
                                     "-")))
         (bug-cache-clear-matching backend-prefix bug---instance))
       (let ((completions (bug--field-completion-values field-name bug---instance)))
@@ -781,10 +782,10 @@ This is mostly useful for debugging text properties"
 The buffer is closed on success. Backends that use a soft-delete (e.g.
 Rally's Recycle Bin) note this in their confirmation prompt."
   (interactive)
-  (unless (bug--backend-feature bug---instance :delete)
+  (unless (bug--instance-backend-feature bug---instance :delete)
     (error "Backend does not support deleting bugs"))
   (when (yes-or-no-p (format "Delete bug '%s'? " (or bug---id "this bug")))
-    (bug--backend-function "bug--delete-%s-bug" bug---uuid bug---instance)
+    (bug--instance-backend-function "bug--delete-%s-bug" bug---uuid bug---instance)
     (message "Deleted bug: %s" (or bug---id "unknown"))
     (kill-buffer)))
 

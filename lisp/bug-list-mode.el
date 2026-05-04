@@ -63,7 +63,7 @@
     ("D"  "Delete this bug" bug--bug-mode-delete-bug)]
    ["Rally"
     :if (lambda () (and (bound-and-true-p bug---instance)
-                        (equal 'rally (bug--backend-type bug---instance))))
+                        (equal 'rally (bug--instance-backend-type bug---instance))))
     ("s" "Subscription" bug--list-mode-rally-subscription)]])
 
 (declare-function bug-edit-search "bug-search")
@@ -86,7 +86,7 @@
   "Display the result of a bug search returning a list of bugs"
   (bug--debug-log-time "bug-list-show")
   (pop-to-buffer (format "*%s results: %s*"
-                         (prin1-to-string (bug--backend-type instance) t)
+                         (prin1-to-string (bug--instance-backend-type instance) t)
                          (pretty-kvs query)))
   (bug-list-mode)
   (setq bug---query query)
@@ -249,7 +249,7 @@ the backend can handle user friendly IDs for this."
   (let* ((bug-info (bug-list-mode-bug-near-point))
          (bug-id (cdr (assoc 'bug-id bug-info))))
     (if 'bug-id
-        (bug--backend-function "bug--browse-%s-bug" bug-id bug---instance))))
+        (bug--instance-backend-function "bug--browse-%s-bug" bug-id bug---instance))))
 
 ;;;###autoload
 (defun bug--list-mode-select-bug-with-mouse (event)

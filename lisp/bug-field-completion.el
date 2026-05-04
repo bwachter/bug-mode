@@ -33,7 +33,7 @@
 
 Dispatches to the backend-specific `bug--field-completion-<backend>' function.
 Returns a list of strings, or nil if no completion is available."
-  (bug--backend-function-optional "bug--field-completion-%s" field-name instance))
+  (bug--instance-backend-function-optional "bug--field-completion-%s" field-name instance))
 
 (defun bug--completing-read-field (field-name current-value instance)
   "Prompt for a new value of `field-name' using backend-provided completion.

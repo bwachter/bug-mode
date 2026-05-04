@@ -30,6 +30,7 @@
 (require 'bug-debug)
 (require 'bug-persistent-data)
 (require 'bug-vars)
+(require 'bug-instance)
 
 (defvar bug--pending-query-string nil
   "Temporarily holds the user-typed query string until bug-list-show stores it.")
@@ -65,7 +66,7 @@
   (bug--debug-log-time "start")
   (setq bug--pending-query-string query)
   (bug--do-search
-   (bug--backend-function "bug--parse-%s-search-query" query instance)
+   (bug--instance-backend-function "bug--parse-%s-search-query" query instance)
    instance))
 
 ;;;###autoload
@@ -80,7 +81,7 @@ prompts and execute them"
     (while (not (string= term ""))
       (setq term (read-from-minibuffer "query term: "))
       (if (not (string= term ""))
-          (let* ((parsed (bug--backend-function "bug--parse-%s-search-query"
+          (let* ((parsed (bug--instance-backend-function "bug--parse-%s-search-query"
                                                 term instance))
                  (key (car parsed))
                  (value (cdr parsed))
@@ -97,12 +98,12 @@ prompts and execute them"
 
 Each element is (display-string . identifier) for use in `completing-read'.
 Returns nil when no results are found or the backend lacks support."
-  (let* ((params (bug--backend-function
+  (let* ((params (bug--instance-backend-function
                   "bug--parse-%s-search-query" search-str instance))
-         (results (bug--backend-function-optional
+         (results (bug--instance-backend-function-optional
                    "bug--execute-%s-search" params instance)))
     (when (and results (> (cdr results) 0))
-      (bug--backend-function-optional
+      (bug--instance-backend-function-optional
        "bug--format-%s-search-candidates" (car results) instance))))
 
 ;;;###autoload
