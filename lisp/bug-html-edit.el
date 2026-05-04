@@ -43,7 +43,7 @@ Uses pandoc if available, then libxml, then strips tags as a last resort."
           (insert (or html ""))
           (when (zerop (call-process-region (point-min) (point-max)
                                             "pandoc" t t nil
-                                            "-f" "html" "-t" "org" "--no-highlight"))
+                                            "-f" "html" "-t" "org" "–syntax-highlighting=none"))
             (string-trim (buffer-string)))))
       (bug--html-to-org-libxml (or html ""))))
 
@@ -113,7 +113,7 @@ Uses pandoc if available, otherwise returns the markdown text as-is
           (insert (or markdown ""))
           (when (zerop (call-process-region (point-min) (point-max)
                                             "pandoc" t t nil
-                                            "-f" "markdown" "-t" "org" "--no-highlight"))
+                                            "-f" "markdown" "-t" "org" "–syntax-highlighting=none"))
             (string-trim (buffer-string)))))
       (or markdown "")))
 
@@ -126,7 +126,7 @@ Uses pandoc if available, otherwise falls back to ox-md."
           (insert (or org ""))
           (when (zerop (call-process-region (point-min) (point-max)
                                             "pandoc" t t nil
-                                            "-f" "org" "-t" "markdown" "--no-highlight"))
+                                            "-f" "org" "-t" "markdown" "–syntax-highlighting=none"))
             (string-trim (buffer-string)))))
       (progn
         (require 'ox-md)
