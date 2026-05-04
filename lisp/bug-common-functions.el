@@ -594,5 +594,52 @@ Returns the updated bug data from the backend."
   (message "Updating bug %s with fields: %s" id fields)
   (bug--backend-function "bug--update-%s-bug" (list id fields) instance))
 
+;;;;;;
+;; Section header functions
+
+(defun bug--insert-section-header (section-name &optional display-label)
+  "Insert a section header for SECTION-NAME into the current buffer.
+
+Ensures the header is always preceded by a blank line regardless of what
+the preceding content ends with.  The label is propertized with
+`bug-section-header' face and a `bug-section' text property set to
+SECTION-NAME (a symbol).  DISPLAY-LABEL overrides the default label,
+which is the capitalized symbol name.
+
+`rear-nonsticky' on the header text prevents the properties from bleeding
+into content inserted immediately after the header.
+
+Use `bug--find-section-content-start' to locate the insertion point
+when filling a section asynchronously."
+  (let ((label (or display-label (capitalize (symbol-name section-name)))))
+    ;; Start on a fresh line if the preceding content did not end with one
+    (unless (or (bobp) (eq (char-before) ?\n))
+      (insert "\n"))
+    ;; Blank line before the header for visual separation
+    (insert "\n")
+    (insert (propertize label
+                        'face 'bug-section-header
+                        'bug-section section-name
+                        'rear-nonsticky t))
+    (insert "\n")))
+
+(defun bug--find-section-content-start (section-name)
+  "Return the buffer position just after the SECTION-NAME header line.
+
+Searches for the section by its `bug-section' text property rather than
+by text content, so it is not fooled by content that contains the section
+label.  Returns nil when the section is not present in the current buffer."
+  (let* ((hstart (text-property-any (point-min) (point-max)
+                                    'bug-section section-name))
+         (hend   (when hstart
+                   (or (text-property-not-all hstart (point-max)
+                                              'bug-section section-name)
+                       (point-max)))))
+    (when hend
+      ;; Skip the newline inserted after the label text
+      (if (and (< hend (point-max)) (eq (char-after hend) ?\n))
+          (1+ hend)
+        hend))))
+
 (provide 'bug-common-functions)
 ;;; bug-common-functions.el ends here

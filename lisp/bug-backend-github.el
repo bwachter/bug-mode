@@ -501,7 +501,7 @@ configured as owner/repo in the instance settings."
                                ((and pid (string-match "^\\([^/]+\\)/" pid))
                                 (match-string 1 pid))
                                ((and pid (not (string-match-p "/" pid))
-                                         (not (string-match-p "^user:" pid)))
+                                     (not (string-match-p "^user:" pid)))
                                 pid))))
                   (if owner
                       (format "https://github.com/%s/%s/issues/%s" owner repo num)
@@ -593,8 +593,8 @@ suitable for `bug-list-projects' and `bug-select-project'."
 `id' is the friendly issue number used to locate the bug buffer.
 When `issue' is provided, its body is shown as the first entry."
   (let* ((response (bug-rpc `((resource . ,(concat resource-path "/comments"))
-                               (operation . "get"))
-                             instance))
+                              (operation . "get"))
+                            instance))
          (issue-user    (when issue (cdr (assoc 'user issue))))
          (issue-created (when issue (cdr (assoc 'created_at issue))))
          (issue-body    (when issue (cdr (assoc 'body issue)))))
@@ -602,46 +602,38 @@ When `issue' is provided, its body is shown as the first entry."
       (with-current-buffer (bug--buffer-string id instance)
         (setq buffer-read-only nil)
         (save-excursion
-          (goto-char 0)
-          (if (re-search-forward "^COMMENTS:$" nil t)
-              (let ((count 0))
-                (delete-region (point) (point-max))
-                (insert "\n")
-                (when (and issue-body (not (string-empty-p issue-body)))
-                  (insert (format "[Original issue] %s %s:\n%s"
-                                  (if (and issue-created (not (string-empty-p issue-created)))
-                                      (bug--format-time-date issue-created t)
-                                    "")
-                                  (or issue-user "unknown")
-                                  issue-body))
-                  (when (and (vectorp response) (> (length response) 0))
-                    (insert "\n\n")))
-                (when (vectorp response)
-                  (insert (mapconcat
-                           (lambda (comment)
-                             (setq count (1+ count))
-                             (let* ((user-obj (cdr (assoc 'user comment)))
-                                    (login    (or (when (consp user-obj)
-                                                    (let ((l (cdr (assoc 'login user-obj))))
-                                                      (if (symbolp l) (symbol-name l) l)))
-                                                  "unknown"))
-                                    (created  (or (cdr (assoc 'created_at comment)) ""))
-                                    (body     (or (cdr (assoc 'body comment)) "")))
-                               (format "[Comment #%d] %s %s:\n%s"
-                                       count
-                                       (if (string-empty-p created) ""
-                                         (bug--format-time-date created t))
-                                       login
-                                       body)))
-                           (append response nil)
-                           "\n\n"))))
-            (error "Could not find area for comments in buffer")))
+          (let ((cstart (bug--find-section-content-start 'comments)))
+            (if cstart
+                (let ((count 0))
+                  (delete-region cstart (point-max))
+                  (insert "\n")
+                  (when (and issue-body (not (string-empty-p issue-body)))
+                    (insert (bug--format-comment-entry
+                             "Issue" nil issue-user issue-created issue-body))
+                    (when (and (vectorp response) (> (length response) 0))
+                      (insert "\n\n")))
+                  (when (vectorp response)
+                    (insert (mapconcat
+                             (lambda (comment)
+                               (setq count (1+ count))
+                               (let* ((user-obj (cdr (assoc 'user comment)))
+                                      (login    (or (when (consp user-obj)
+                                                      (let ((l (cdr (assoc 'login user-obj))))
+                                                        (if (symbolp l) (symbol-name l) l)))
+                                                    "unknown"))
+                                      (created  (or (cdr (assoc 'created_at comment)) ""))
+                                      (body     (or (cdr (assoc 'body comment)) "")))
+                                 (bug--format-comment-entry
+                                  "Comment" count login created body)))
+                             (append response nil)
+                             "\n\n"))))
+              (error "Could not find comments section in buffer"))))
         (setq buffer-read-only t)))))
 
 ;;;###autoload
 (defun bug--backend-github-show-additional-data (bug instance)
   "Insert and load GitHub issue comments in the current bug buffer."
-  (insert "\nCOMMENTS:\n")
+  (bug--insert-section-header 'comments)
   (when (and bug---uuid bug-autoload-comments)
     (bug--github-get-comments bug---uuid bug---id instance bug)))
 

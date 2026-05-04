@@ -45,19 +45,6 @@
 (require 'json)
 (require 'url-cookie)
 
-(defcustom bug-rally-link-flowstate t
-  "When non-nil, link FlowState changes to ScheduleState automatically.
-
-FlowState is a Rally object that mirrors ScheduleState at a finer
-granularity.  When this option is t:
-- FlowState cannot be edited directly in bug buffers.
-- Changing ScheduleState automatically derives and sends the matching
-  FlowState reference to Rally.
-
-Set to nil to allow independent FlowState editing."
-  :group 'bug
-  :type 'boolean)
-
 (defconst bug--rally-draft-fields
   '(("Defect"                   "Name" "State" "Priority" "Severity" "Owner" "Description")
     ("HierarchicalRequirement"  "Name" "ScheduleState" "Owner" "Description")
@@ -373,20 +360,15 @@ Returns a list of discussion post alists, or nil if no discussion exists."
 POSTS is a list of post alists with Text, User, CreationDate, and PostNumber
 fields."
   (when posts
-    (insert "\n\nDISCUSSION:\n")
-    (insert (make-string 70 ?-) "\n")
+    (bug--insert-section-header 'discussion)
+    (insert "\n")
     (dolist (post posts)
       (let* ((post-num (cdr (assoc 'PostNumber post)))
-             (user (cdr (assoc '_refObjectName (cdr (assoc 'User post)))))
-             (date (cdr (assoc 'CreationDate post)))
-             (text (cdr (assoc 'Text post))))
-        (insert (propertize (format "Post #%d by %s on %s:\n"
-                                    post-num
-                                    (or user "Unknown")
-                                    (bug--format-time-date date t))
-                            'face 'bold))
-        (insert (or text "") "\n")
-        (insert (make-string 70 ?-) "\n")))))
+             (user     (cdr (assoc '_refObjectName (cdr (assoc 'User post)))))
+             (date     (cdr (assoc 'CreationDate post)))
+             (text     (cdr (assoc 'Text post))))
+        (insert (bug--format-comment-entry "Post" post-num (or user "Unknown") date text))
+        (insert "\n\n")))))
 
 ;;;###autoload
 (defun bug--create-rally-discussion-post (artifact-uuid text instance)
@@ -855,9 +837,9 @@ Falls back to :project-id from instance config when nil."
     (unless project-ref
       (error "No project-id provided and no :project-id configured"))
     `((data . ((project ,project-ref)
-                (order "FormattedID DESC")
-                (fetch "FormattedID,LastUpdateDate,Name,State,ScheduleState")
-                (pagesize 200))))))
+               (order "FormattedID DESC")
+               (fetch "FormattedID,LastUpdateDate,Name,State,ScheduleState")
+               (pagesize 200))))))
 
 ;;;;;;
 ;; Write operations (create, update, delete)
@@ -876,17 +858,19 @@ Fetches the project name from rally the first time and caches it. Falls back to
             (let* ((response (bug--rpc-rally
                               `((resource . "project")
                                 (operation . "query")
-                                (data . ((query ,(format "(objectid = %s)" oid))
-                                         (fetch "name,objectid")
+                                (data . ((query ,(format "(ObjectID = %s)" oid))
+                                         (fetch "Name,ObjectID")
                                          (pagesize 1))))
                               instance))
-                   (results (cdr (assoc 'results (cdr (assoc 'queryresult response)))))
+                   (results (cdr (assoc 'Results (cdr (assoc 'QueryResult response)))))
                    (name (when (and results (> (length results) 0))
-                           (cdr (assoc 'name (aref results 0)))))
-                   (display `((_ref . ,project-ref)
-                              (_refObjectName . ,(or name project-ref)))))
-              (bug--cache-put-timed cache-key display bug--rally-cache-ttl instance)
-              display)
+                           (cdr (assoc 'Name (aref results 0))))))
+              (if name
+                  (let ((display `((_ref . ,project-ref)
+                                   (_refObjectName . ,name))))
+                    (bug--cache-put-timed cache-key display bug--rally-cache-ttl instance)
+                    display)
+                `((_ref . ,project-ref) (_type . "Project"))))
           (error `((_ref . ,project-ref) (_type . "Project")))))))
 
 (defun bug--rally-get-project-ref (instance)
@@ -1399,16 +1383,18 @@ or nil on failure. Results are cached for 24 hours."
         (condition-case err
             (progn
               (message "Fetching field definitions for %s..." type-name)
-              (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
-                     (workspace-ref (format "/workspace/%s" workspace-oid))
-                     ;; Step 1: resolve TypeDefinition OID for this type name
+              (let* (;; Step 1: resolve TypeDefinition OID for this type name.
+                     ;; No workspace scoping: TypePath is globally unique, and
+                     ;; the encoded workspace path (%2F) can trigger auth-dropping
+                     ;; redirects in url-retrieve-synchronously.
+                     ;; Use TypePath not ElementName: portfolio items like Feature have
+                     ;; ElementName="Feature" but TypePath="PortfolioItem/Feature".
                      (typedef-response
                       (bug--rpc-rally
                        `((resource . "typedefinition")
                          (operation . "query")
-                         (data . ((query ,(format "(ElementName = \"%s\")" type-name))
-                                  (fetch "ObjectID,ElementName")
-                                  (workspace ,workspace-ref)
+                         (data . ((query ,(format "(TypePath = \"%s\")" type-name))
+                                  (fetch "ObjectID,ElementName,TypePath")
                                   (pagesize 1))))
                        instance))
                      (typedef-results

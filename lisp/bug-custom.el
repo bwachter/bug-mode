@@ -132,6 +132,19 @@ rally side by filters we can't control."
   :type 'sexp
   :group 'bug)
 
+(defcustom bug-rally-link-flowstate t
+  "When non-nil, link FlowState changes to ScheduleState automatically.
+
+FlowState is a Rally object that mirrors ScheduleState at a finer
+granularity.  When this option is t:
+- FlowState cannot be edited directly in bug buffers.
+- Changing ScheduleState automatically derives and sends the matching
+  FlowState reference to Rally.
+
+Set to nil to allow independent FlowState editing."
+  :group 'bug
+  :type 'boolean)
+
 (defcustom bug-add-field-prompt t
   "When non-nil, immediately prompt for a value after adding a new field.
 When nil, the field is inserted empty and must be edited manually."
@@ -186,7 +199,7 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
                (when (boundp (car entry))
                  (define-key (symbol-value (car entry)) (kbd old) nil)
                  (define-key (symbol-value (car entry)) (kbd value)
-                   (cdr entry))))))))
+                             (cdr entry))))))))
 
 ;;;;;;
 ;; Customizable faces for bug-mode
@@ -233,6 +246,37 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
   "Face used for field names in bug-mode"
   :group 'bug-faces)
 
+;;;;;;
+;; Semantic faces — shared across display contexts
+
+(defface bug-date
+  '((((class color) (background light)) :foreground "grey40")
+    (((class color) (background dark))  :foreground "grey60"))
+  "Face for date/time values.  Used in comment headers and date fields.
+Customize this to change how all dates appear; `bug-field-type-5' inherits it."
+  :group 'bug-faces)
+
+(defface bug-user
+  '((((class color) (background light)) :foreground "SteelBlue4")
+    (((class color) (background dark))  :foreground "SteelBlue1"))
+  "Face for user/author references.  Used in comment headers and
+should be applied to owner and assignee fields."
+  :group 'bug-faces)
+
+(defface bug-comment-id
+  '((((class color) (background light)) :foreground "DarkGoldenrod4" :weight bold)
+    (((class color) (background dark))  :foreground "LightGoldenrod2" :weight bold))
+  "Face for comment/post identifiers in comment headers."
+  :group 'bug-faces)
+
+(defface bug-comment
+  '((((class color) (background light)) :background "grey98")
+    (((class color) (background dark))  :background "grey18"))
+  "Base face for comment entries.  Applied to the whole comment (header and
+body); specific header faces (`bug-comment-id', `bug-user', `bug-date') take
+priority via face merging."
+  :group 'bug-faces)
+
 (defface bug-field-type-0
   '((t :inherit default))
   "Face used for unspecified field values"
@@ -259,8 +303,8 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
   :group 'bug-faces)
 
 (defface bug-field-type-5
-  '((t :inherit bug-field-type-0))
-  "Face used for date/time field values"
+  '((t :inherit bug-date))
+  "Face used for date/time field values (inherits `bug-date')."
   :group 'bug-faces)
 
 (defface bug-field-type-6

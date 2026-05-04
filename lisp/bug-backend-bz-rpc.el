@@ -74,7 +74,7 @@ parsed response as alist"
 (defun bug--rpc-bz-rpc-get-fields (_object instance)
   "Download the field list for Bugzilla"
   (bug-rpc '((resource . "Bug")
-                          (operation . "fields")) instance))
+             (operation . "fields")) instance))
 
 ;;;###autoload
 (defun bug--rpc-bz-rpc-map-field (field-name)
@@ -113,11 +113,11 @@ don't match the fields found in a bug."
 
 This function takes a pre-parsed Bugzilla search query as argument."
   (bug--handle-bz-rpc-search-response params
-                               (bug-rpc `((resource . "Bug")
-                                          (operation . "search")
-                                          (data . ,params))
-                                        instance)
-                               instance))
+                                      (bug-rpc `((resource . "Bug")
+                                                 (operation . "search")
+                                                 (data . ,params))
+                                               instance)
+                                      instance))
 
 (defun bug--handle-bz-rpc-search-response (query response instance)
   "Parse the result of a bug search and either show a single bug or a bug list"
@@ -135,9 +135,9 @@ This function takes a pre-parsed Bugzilla search query as argument."
 (defun bug--execute-bz-rpc-search (params instance)
   "Execute a Bugzilla search RPC and return (bugs-array . count)."
   (let ((response (bug-rpc `((resource . "Bug")
-                              (operation . "search")
-                              (data . ,params))
-                            instance)))
+                             (operation . "search")
+                             (data . ,params))
+                           instance)))
     (if (and (assoc 'result response)
              (assoc 'bugs (assoc 'result response)))
         (let ((bugs (cdr (assoc 'bugs (assoc 'result response)))))
@@ -261,19 +261,20 @@ Returns the response from Bugzilla's Bug.update call."
         (with-current-buffer (bug--buffer-string id bug---instance)
           (setq buffer-read-only nil)
           (save-excursion
-            (goto-char 0)
-            (if (re-search-forward "^COMMENTS:$" nil t)
-                (progn
-                  (delete-region (point) (point-max))
-                  (insert "\n")
-                  (insert (mapconcat (lambda (comment)
-                                       (format "[Comment #%s] %s %s:\n%s"
-                                               (cdr (assoc 'count comment))
-                                               (cdr (assoc 'time comment))
-                                               (cdr (assoc 'creator comment))
-                                               (cdr (assoc 'text comment))))
-                                     comments "\n\n")))
-              (error "Could not find area for comments in buffer")))
+            (let ((cstart (bug--find-section-content-start 'comments)))
+              (if cstart
+                  (progn
+                    (delete-region cstart (point-max))
+                    (insert "\n")
+                    (insert (mapconcat (lambda (comment)
+                                         (bug--format-comment-entry
+                                          "Comment"
+                                          (cdr (assoc 'count comment))
+                                          (cdr (assoc 'creator comment))
+                                          (cdr (assoc 'time comment))
+                                          (cdr (assoc 'text comment))))
+                                       comments "\n\n")))
+                (error "Could not find comments section in buffer"))))
           (setq buffer-read-only t)))))
 
 (defun bug-get-attachments (id instance)
@@ -293,25 +294,26 @@ Returns the response from Bugzilla's Bug.update call."
         (with-current-buffer (bug--buffer-string id bug---instance)
           (setq buffer-read-only nil)
           (save-excursion
-            (goto-char 0)
-            (if (re-search-forward "^ATTACHMENTS:$" nil t)
-                (progn
-                  (insert "\n")
-                  (insert (mapconcat (lambda (attachment)
-                                       (format "attachment %s: %s; %s; %s"
-                                               (cdr (assoc 'id attachment))
-                                               (cdr (assoc 'description attachment))
-                                               (cdr (assoc 'file_name attachment))
-                                               (cdr (assoc 'content_type attachment))))
-                                     attachments "\n")))
-              (error "Could not find area for attachments in buffer")))
+            (let ((cstart (bug--find-section-content-start 'attachments)))
+              (if cstart
+                  (progn
+                    (goto-char cstart)
+                    (insert "\n")
+                    (insert (mapconcat (lambda (attachment)
+                                         (format "attachment %s: %s; %s; %s"
+                                                 (cdr (assoc 'id attachment))
+                                                 (cdr (assoc 'description attachment))
+                                                 (cdr (assoc 'file_name attachment))
+                                                 (cdr (assoc 'content_type attachment))))
+                                       attachments "\n")))
+                (error "Could not find attachments section in buffer"))))
           (setq buffer-read-only t)))))
 
 ;;;###autoload
 (defun bug--backend-bz-rpc-show-additional-data (_bug instance)
   "Insert comment and attachment sections and load their content."
-  (insert "\nATTACHMENTS:\n")
-  (insert "\nCOMMENTS:\n")
+  (bug--insert-section-header 'attachments)
+  (bug--insert-section-header 'comments)
   (when (and bug---id bug-autoload-attachments)
     (bug-get-attachments bug---id instance))
   (when (and bug---id bug-autoload-comments)

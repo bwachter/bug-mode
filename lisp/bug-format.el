@@ -140,6 +140,63 @@ returned as string."
             (buffer-string))))
     html))
 
+(defun bug--format-markdown (markdown &optional base-url)
+  "Render a Markdown string for display in a buffer.
+
+Uses pandoc to convert to HTML and then shr when pandoc is available.
+Falls back to rendering the raw markdown text."
+  (unless markdown (setq markdown ""))
+  (if (executable-find "pandoc")
+      (let ((html
+             (with-temp-buffer
+               (insert markdown)
+               (when (zerop (call-process-region (point-min) (point-max)
+                                                 "pandoc" t t nil
+                                                 "-f" "markdown" "-t" "html"))
+                 (buffer-string)))))
+        (if html
+            (bug--format-html html base-url)
+          markdown))
+    markdown))
+
+(defun bug--format-comment-header (label number user date &optional suffix)
+  "Return a propertized comment/post header string.
+
+Format: LABEL [#NUMBER] by USER on DATE[: SUFFIX]
+
+LABEL is the entry type (e.g. \"Comment\", \"Post\", \"Issue\").
+NUMBER is the comment/post number; when nil the \"#N\" part is omitted.
+USER is the author name.
+DATE is a date string passed through `bug--format-time-date'.
+SUFFIX is optional additional text appended after the colon."
+  (let* ((id-str    (if number (format "%s #%s" label number) label))
+         (date-str  (let ((d (if (stringp date) date (format "%s" date))))
+                      (if (string-empty-p d) d (bug--format-time-date d t))))
+         (suffix-str (if (and suffix (not (string-empty-p suffix)))
+                         (concat " " suffix) "")))
+    (concat
+     (propertize id-str  'face 'bug-comment-id)
+     (propertize " by "  'face 'bug-comment)
+     (propertize (or user "unknown") 'face 'bug-user)
+     (propertize " on "  'face 'bug-comment)
+     (propertize date-str 'face 'bug-date)
+     (propertize (format ":%s" suffix-str) 'face 'bug-comment))))
+
+(defun bug--format-comment-entry (label number user date body &optional suffix)
+  "Return a fully propertized comment entry (header and body).
+
+The header is produced by `bug--format-comment-header'.  The `bug-comment'
+face is applied as a base to the entire entry so that the background extends
+across both header and body; specific header faces take priority via face
+merging.  A `bug-comment-index' text property set to NUMBER is added when
+NUMBER is non-nil, enabling navigation to a specific comment by property."
+  (let* ((header (bug--format-comment-header label number user date suffix))
+         (entry  (concat header "\n" (or body ""))))
+    (add-face-text-property 0 (length entry) 'bug-comment t entry)
+    (when number
+      (put-text-property 0 (length entry) 'bug-comment-index number entry))
+    entry))
+
 (defun bug--format-kv (key value)
   "Format a key value pair for prettyprinting. The output is
 
