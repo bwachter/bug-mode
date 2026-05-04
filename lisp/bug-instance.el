@@ -30,6 +30,7 @@
 ;;; Code:
 
 (require 'vtable)
+(require 'transient)
 (require 'project)
 (require 'bug-custom)
 
@@ -101,6 +102,70 @@ checks with `memq' if `feature' is present"
                                               (substring (symbol-name f) 1))))
                       features)))))
 
+(defclass bug-prefix (transient-prefix)
+  ((current-instance-name :initarg :current-instance-name :initform nil)
+   (current-instance-type :initarg :current-instance-type :initform nil))
+  "Custom transient class tracking three specific bug attributes.")
+
+(transient-define-prefix bug-instance-mode-menu ()
+  "Transient for bug-mode"
+  :class 'bug-prefix
+  :init-value (lambda (obj)
+                (let ((entry (vtable-current-object)))
+                  (oset obj current-instance-name (car entry))
+                  (oset obj current-instance-type (plist-get (cdr entry) :type))))
+  [[:description
+    (lambda ()
+      (let ((obj (transient-prefix-object)))
+        (format "Instance%s"
+                (if-let ((name (oref obj current-instance-name)))
+                    (format " %s" name)
+                  ""))))
+    ("a" "Activate instance" (lambda ()
+                               (interactive)
+                               (let ((obj (transient-prefix-object)))
+                                 (bug-instance-activate (oref obj current-instance-name))
+                                 (bug-list-instances)))
+     :if (lambda ()
+           (let ((obj (transient-prefix-object)))
+             (oref obj current-instance-name))))
+    ("d" "Deactivate instance" (lambda ()
+                                 (interactive)
+                                 (bug-instance-deactivate)
+                                 (bug-list-instances)))]
+   ["Interact"
+    ("i"  "Info"  bug--bug-mode-info)
+    ;; offer creation, unless point is on an instance not supporting creation
+    ("c"  "Create bug" (lambda ()
+                         (interactive)
+                         (let* ((obj (transient-prefix-object))
+                                (instance-name (oref obj current-instance-name)))
+                           (bug-create instance-name)))
+     :if (lambda ()
+                (let* ((obj (transient-prefix-object))
+                       (instance-name (oref obj current-instance-name)))
+                  (or (not instance-name)
+                      (bug--instance-backend-feature instance-name :create)))))]
+   ["Rally"
+    :if (lambda ()
+          (let* ((obj (transient-prefix-object))
+                 (instance-name (oref obj current-instance-name)))
+            (and instance-name
+                 (equal 'rally (bug--instance-backend-type instance-name)))))
+    ("s" "Subscription" (lambda ()
+                          (interactive)
+                          (let ((obj (transient-prefix-object)))
+                            (bug-rally-subscription (oref obj current-instance-name)))))]])
+
+(defvar bug-instance-mode-map
+  (let ((keymap (copy-keymap special-mode-map)))
+    (define-key keymap bug-menu-key #'bug-instance-mode-menu)
+    keymap)
+  "Keymap for bug instance mode")
+
+(define-derived-mode bug-instance-mode special-mode "Bug instances"
+  "Mode for a list of bug instances")
+
 ;;;###autoload
 (defun bug-list-instances ()
   "Display all configured bug tracker instances with their status."
@@ -108,7 +173,7 @@ checks with `memq' if `feature' is present"
   (let ((buffer (get-buffer-create "*Bug Instances*"))
         (all-instances (bug--instance-get-all)))
     (with-current-buffer buffer
-      (special-mode)
+      (bug-instance-mode)
       (when (bound-and-true-p flyspell-mode)
         (flyspell-mode -1))
       (display-line-numbers-mode -1)
@@ -140,6 +205,8 @@ checks with `memq' if `feature' is present"
                             (type (plist-get plist :type))
                             (url (or (bug--instance-property :url name) ""))
                             (status (cond
+                                     ;; TODO, make that look nicer. also, properly
+                                     ;; handle default
                                      ((eq name bug-active-instance) "[ACTIVE]")
                                      ((eq name bug-default-instance) "[DEFAULT]")
                                      (t ""))))
@@ -148,17 +215,10 @@ checks with `memq' if `feature' is present"
                          ("Type" (symbol-name type))
                          ("Status" status)
                          ("URL/Details" url))))
-           :actions `("s" ,(lambda (inst-info)
-                             (bug-instance-activate (car inst-info))
-                             (bug-list-instances))
-                      "d" ,(lambda (_inst-info)
-                             (bug-instance-deactivate)
-                             (bug-list-instances))))
-          (goto-char (point-max))
-          (insert "\n")
-          (insert "Use 's' on a row to switch to that instance.\n")
-          (insert "Use 'd' to deactivate instance restrictions.\n\n")
-          ))
+           ;; TODO, we probably should also check if the instance has project support
+           :actions `("RET" ,(lambda (inst-info)
+                                     (bug-list-projects (car inst-info)))))
+          (goto-char (point-max))))
       (goto-char (point-min)))
     (pop-to-buffer buffer)))
 
