@@ -69,14 +69,16 @@
   [["Instances"
     ("l" "List instances" bug-list-instances)
     ("a" "Switch active instance" bug-switch-instance)
-    ("d" "Deactivate current active instance" bug-deactivate-instance)
-    ]
+    ("d" "Deactivate current active instance" bug-deactivate-instance)]
+   ["Bug"
+    ("c" "Create by prompting for instance" bug-create)
+    ("o" "Open by prompting ID and instance" bug-open)]
    ["Search"
     ("s" "Prompt for search string and instance" bug-search)
     ("f" "Prompt for filter properties and instance" bug-search-filter)
-    ("m" "Prompt for multiple search strings and instance" bug-search-multiple)
-    ("o" "Prompt for bug ID and instance" bug-open)
-    ]
+    ("m" "Prompt for multiple search strings and instance" bug-search-multiple)]
+   ["Misc"
+    ("R" "Clear metadata cache" bug-cache-clear)]
    ])
 
 (provide 'bug)
