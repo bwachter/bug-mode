@@ -102,14 +102,21 @@ checks with `memq' if `feature' is present"
                                               (substring (symbol-name f) 1))))
                       features)))))
 
-(defclass bug-prefix (transient-prefix)
+(defclass bug-instance-prefix (transient-prefix)
   ((current-instance-name :initarg :current-instance-name :initform nil)
    (current-instance-type :initarg :current-instance-type :initform nil))
   "Custom transient class tracking three specific bug attributes.")
 
+;;; bytecompiler stubs for functions in the transient (and only those)
+;;  make sure they can be autoloaded!
+
+(declare-function bug-list-projects "bug-project")
+(declare-function bug-rally-subscription "bug-rally-subscription")
+(declare-function bug-create "bug-mode")
+
 (transient-define-prefix bug-instance-mode-menu ()
-  "Transient for bug-mode"
-  :class 'bug-prefix
+  "Transient for bug-instance-mode"
+  :class 'bug-instance-prefix
   :init-value (lambda (obj)
                 (let ((entry (vtable-current-object)))
                   (oset obj current-instance-name (car entry))

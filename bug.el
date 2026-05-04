@@ -26,6 +26,8 @@
 ;;
 ;;; Code:
 
+(require 'transient)
+
 (unless (or (> emacs-major-version 24)
             (and (= emacs-major-version 24)
                  (>= emacs-minor-version 3)))
@@ -58,6 +60,24 @@
 ;;;;;;
 ;; startup code to read persistent data
 (bug--read-data-file)
+
+;; Unhandled, as they are still bz specific, and need work:
+;; bug-login/bug-logout
+(transient-define-prefix bug-menu ()
+  "Top level bug mode menu"
+
+  [["Instances"
+    ("l" "List instances" bug-list-instances)
+    ("a" "Switch active instance" bug-switch-instance)
+    ("d" "Deactivate current active instance" bug-deactivate-instance)
+    ]
+   ["Search"
+    ("s" "Prompt for search string and instance" bug-search)
+    ("f" "Prompt for filter properties and instance" bug-search-filter)
+    ("m" "Prompt for multiple search strings and instance" bug-search-multiple)
+    ("o" "Prompt for bug ID and instance" bug-open)
+    ]
+   ])
 
 (provide 'bug)
 ;;; bug.el ends here

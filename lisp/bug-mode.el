@@ -64,7 +64,8 @@
     ("i"  "Info"  bug--bug-mode-info)
     ("d"  "Download attachment" bug--bug-mode-download-attachment)
     ("D"  "Delete this bug" bug--bug-mode-delete-bug
-     :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-backend-feature bug---instance :del))))]])
+     :if (lambda () (and (bound-and-true-p bug---instance)
+                         (bug--instance-backend-feature bug---instance :del))))]])
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
