@@ -222,9 +222,10 @@ checks with `memq' if `feature' is present"
                          ("Type" (symbol-name type))
                          ("Status" status)
                          ("URL/Details" url))))
-           ;; TODO, we probably should also check if the instance has project support
            :actions `("RET" ,(lambda (inst-info)
-                                     (bug-list-projects (car inst-info)))))
+                               (if (bug--instance-backend-feature (car inst-info) :projects)
+                                   (bug-list-projects (car inst-info))
+                                 (message "Instance %s does not support projects." (car inst-info))))))
           (goto-char (point-max))))
       (goto-char (point-min)))
     (pop-to-buffer buffer)))
