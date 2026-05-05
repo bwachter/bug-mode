@@ -114,7 +114,7 @@ checks with `memq' if `feature' is present"
 (declare-function bug-rally-subscription "bug-rally-subscription")
 (declare-function bug-create "bug-mode")
 
-(transient-define-prefix bug-instance-mode-menu ()
+(transient-define-prefix bug--instance-mode-menu ()
   "Transient for bug-instance-mode"
   :class 'bug-instance-prefix
   :init-value (lambda (obj)
@@ -166,7 +166,7 @@ checks with `memq' if `feature' is present"
 
 (defvar bug-instance-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
-    (define-key keymap bug-menu-key #'bug-instance-mode-menu)
+    (define-key keymap bug-menu-key #'bug--instance-mode-menu)
     keymap)
   "Keymap for bug instance mode")
 

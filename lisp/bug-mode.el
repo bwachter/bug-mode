@@ -44,7 +44,7 @@
 (require 'bug-project)
 (require 'bug-instance)
 
-(transient-define-prefix bug-mode-menu ()
+(transient-define-prefix bug--mode-menu ()
   "Transient for bug-mode"
 
   [[:description (lambda () (format "Bug %s" bug---uuid))
@@ -71,7 +71,7 @@
   (let ((keymap (copy-keymap special-mode-map)))
     (define-key keymap (kbd "RET") 'bug--bug-mode-open-thing-near-point)
     (define-key keymap (kbd "TAB") 'bug--bug-mode-peek-completions)
-    (define-key keymap bug-menu-key #'bug-mode-menu)
+    (define-key keymap bug-menu-key #'bug--mode-menu)
     ;; TODO: this should change to 'status change' instead of 'resolve'
     (define-key keymap "s"         'bug--bug-mode-resolve-bug)
     (define-key keymap "u"         'bug--bug-mode-update-bug)

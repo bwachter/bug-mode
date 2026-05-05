@@ -44,7 +44,7 @@
 (declare-function bug-rally-subscription "bug-rally-subscription")
 (declare-function bug-create "bug-mode")
 
-(transient-define-prefix bug-project-mode-menu ()
+(transient-define-prefix bug--project-mode-menu ()
   "Transient for bug-project-mode"
   :class 'bug-project-prefix
   :init-value (lambda (obj)
@@ -89,7 +89,7 @@
 
 (defvar bug-project-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
-    (define-key keymap bug-menu-key #'bug-project-mode-menu)
+    (define-key keymap bug-menu-key #'bug--project-mode-menu)
     keymap)
   "Keymap for bug project mode")
 

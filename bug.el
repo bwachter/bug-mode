@@ -68,8 +68,8 @@
 
   [["Instances"
     ("l" "List instances" bug-list-instances)
-    ("a" "Switch active instance" bug-switch-instance)
-    ("d" "Deactivate current active instance" bug-deactivate-instance)]
+    ("a" "Switch active instance" bug-instance-switch)
+    ("d" "Deactivate current active instance" bug-instance-deactivate)]
    ["Bug"
     ("c" "Create by prompting for instance" bug-create)
     ("o" "Open by prompting ID and instance" bug-open)]

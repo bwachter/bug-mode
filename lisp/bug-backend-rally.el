@@ -747,26 +747,7 @@ Returns an alist of (name . oid) pairs."
     (nreverse projects)))
 
 ;;;###autoload
-(defun bug-rally-select-project (&optional instance)
-  "Interactively select a Rally project from available projects.
-
-Returns the project reference string (/project/12345) or nil if cancelled."
-  (interactive (list (bug--query-instance)))
-  (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
-         (projects (bug--rally-list-projects workspace-oid instance)))
-    (if (null projects)
-        (progn
-          (message "No open projects found in workspace")
-          nil)
-      (let* ((project-names (mapcar #'car projects))
-             (selected-name (completing-read "Select project: " project-names nil t))
-             (selected-oid (cdr (assoc selected-name projects))))
-        (when selected-oid
-          (let ((project-ref (format "/project/%s" selected-oid)))
-            (message "Selected project: %s (ID: %s)" selected-name selected-oid)
-            project-ref))))))
-
-;;;###autoload
+;; TODO, move to project frontend
 (defun bug-rally-create-project (name &optional instance)
   "Create a new Rally project.
 
@@ -905,6 +886,7 @@ Returns the created object from Rally's CreateResult."
     object))
 
 ;;;###autoload
+;; TODO, check if we still need the dedicated entry point
 (defun bug-rally-create-defect (&optional instance)
   "Interactively create a new Rally Defect.
 

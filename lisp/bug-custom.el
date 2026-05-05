@@ -194,8 +194,8 @@ https://www.gnu.org/software/emacs/manual/html_node/elisp/Time-Parsing.html
          (let ((old (and (boundp symbol) (symbol-value symbol))))
            (set-default symbol value)
            (when old
-             (dolist (entry '((bug-mode-map . bug-mode-menu)
-                              (bug-list-mode-map . bug-list-mode-menu)))
+             (dolist (entry '((bug-mode-map . bug--mode-menu)
+                              (bug-list-mode-map . bug--list-mode-menu)))
                (when (boundp (car entry))
                  (define-key (symbol-value (car entry)) (kbd old) nil)
                  (define-key (symbol-value (car entry)) (kbd value)
