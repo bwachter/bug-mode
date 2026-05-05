@@ -26,6 +26,7 @@
 ;;
 ;;; Code:
 
+(require 'bug-auth)
 (require 'bug-vars)
 (require 'bug-search-common)
 (require 'bug-mode)
@@ -44,24 +45,69 @@
   '(:read))
 
 ;;;###autoload
-(defun bug--rpc-bz-rpc (args instance)
-  "Send an RPC response to the given (or default) Bugzilla instance and return the
-parsed response as alist"
-  ;; used by url, make the byte compiler happy
+(defun bug--rpc-bz-rpc--send (args instance)
+  "Internal helper to send a single Bugzilla JSON-RPC request.
+Parses the response, stores cookies, and returns the alist."
   (defvar tls-program)
   (let* ((method (concat (cdr (assoc 'resource args)) "."
                          (cdr (assoc 'operation args))))
          (data (cdr (assoc 'data args)))
-         (json-str (json-encode `((method . ,method) (params . [,data]) (id 11))))
+         (api-key (bug--instance-property :api-key instance))
+         (data-with-key (if api-key
+                            (append data `((Bugzilla_api_key . ,api-key)))
+                          data))
+         (json-str (json-encode `((method . ,method) (params . [,data-with-key]) (id 11))))
          (url (concat (bug--instance-property :url instance) "/jsonrpc.cgi"))
          (url-request-method "POST")
          (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?
-         (url-request-extra-headers '(("Content-Type" . "application/json")))
+         (cookie-header (bug--rpc-cookie-header instance))
+         (url-request-extra-headers
+          (append '(("Content-Type" . "application/json"))
+                  (when cookie-header (list cookie-header))))
          (url-request-data json-str))
     (bug--debug (concat "request " url "\n" json-str "\n"))
     (with-current-buffer (url-retrieve-synchronously url)
+      (bug--rpc-response-store-cookies instance)
       (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
       (bug--parse-rpc-response instance))))
+
+(defun bug--rpc-bz-rpc-login (instance)
+  "Log in to the Bugzilla INSTANCE using stored credentials.
+This is called automatically when a request requires authentication."
+  (let ((creds (condition-case nil
+                   (bug--auth-credentials instance)
+                 (error nil))))
+    (unless creds
+      (error "Bugzilla requires login, but no credentials are configured for instance '%s'"
+             (prin1-to-string instance t)))
+    (message "Logging in to Bugzilla...")
+    (bug--rpc-bz-rpc--send
+     `((resource . "User")
+       (operation . "login")
+       (data . ((login . ,(car creds))
+                (password . ,(cadr creds))
+                (remember . t))))
+     instance)
+    (bug--get-fields instance)
+    (message "Bugzilla login successful")))
+
+;;;###autoload
+(defun bug--rpc-bz-rpc (args instance)
+  "Send an RPC request to the given Bugzilla instance and return the parsed
+response.
+
+If an API key is configured it is passed automatically in the request params.
+If the server responds with a login-required error (code 410) and credentials
+are available, log in transparently and retry the request once."
+  (condition-case err
+      (bug--rpc-bz-rpc--send args instance)
+    (error
+     (if (and (stringp (error-message-string err))
+              (string-match "You must log in" (error-message-string err)))
+         (progn
+           (bug--rpc-bz-rpc-login instance)
+           (bug--rpc-bz-rpc--send args instance))
+       (signal (car err) (cdr err))))))
 
 ;;;###autoload
 (defun bug--rpc-bz-rpc-handle-error (response _instance)

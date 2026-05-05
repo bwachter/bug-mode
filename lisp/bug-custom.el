@@ -58,17 +58,21 @@ Example:
   :secure (:url \"https://bz.secure.example\" :authinfo \"~/.netrc\" :type bz-rpc)
   :fun    (:url \"https://bz.fun.example\"
            :type bz-rpc
-           :login \"username\" :password \"password\"))
+           :login \"username\" :password \"password\")
+  :rally  (:api-key-file \"~/rally-api-key.gpg\" :type rally))
 
 The :work instance is either without auth, with auth-data in ~/.authinfo, or
 behind basic auth with the url-package prompting for credentials
 
 The :secure instance uses regular bz auth, with credentials stored in ~/.netrc.
-It requires a call to (bug-login \"secure\") before you can modify bugs.
 
 The :fun instance uses regular bz auth, with credentials stored inside the
-configuration, which you should try to avoid for security reasons. It also
-requires a call to (bug-login \"fun\") before you can modify bugs.
+configuration, which you should try to avoid for security reasons.
+
+The :rally instance uses an api key, securely stored as a gpg encrypted file.
+It'd also be possible to specify the key directly as :api-key, but it is not
+recommended. All backends support api keys, so if the server supports that you
+should use that over username/password.
 
 :type is a mandatory option defining the backend type, valid values include `bz'
 and `rally'

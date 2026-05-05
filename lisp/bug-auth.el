@@ -29,11 +29,11 @@
 (require 'auth-source)
 (require 'netrc)
 (require 'url-parse)
-(require 'bug-rpc)
-(require 'bug-common-functions)
+;;(require 'bug-rpc)
+;;(require 'bug-common-functions)
 (require 'bug-instance)
 
-(defun bug-credentials (instance)
+(defun bug--auth-credentials (instance)
   "Return credentials for the given bug tracker instances, if set. The
 configuration data for the instance and authinfo files will be searched, with
 the configuration data taking precedence. Search order for authinfo is :authinfo
@@ -58,28 +58,6 @@ The return value is a two element list (login password)
     (unless (file-exists-p authinfo-file)
       (error (format "Authinfo file in '%s' does not exist." authinfo-file)))
     (list login password)))
-
-;;;###autoload
-(defun bug-logout (&optional instance)
-  (interactive
-   (if current-prefix-arg
-       (list (bug--query-instance))))
-  (bug-rpc '((resource . "User")
-             (operation . "login")) instance))
-
-;;;###autoload
-(defun bug-login (&optional instance)
-  (interactive
-   (if current-prefix-arg
-       (list (bug--query-instance))))
-  (bug-rpc `((resource . "User")
-             (operation . "login")
-             (data .
-                   ((login . ,(car (bug-credentials instance)))
-                    (password . ,(cadr (bug-credentials instance)))
-                    (remember . t)))) instance)
-  (bug--get-fields instance)
-  (message "Login successful"))
 
 (provide 'bug-auth)
 ;;; bug-auth.el ends here

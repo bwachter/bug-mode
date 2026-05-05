@@ -73,8 +73,8 @@ no API key is configured -- by using basic auth with username and password"
       (cons "zsessionid" (bug--instance-property :api-key instance))
     (cons "Authorization" (concat "Basic "
                                   (base64-encode-string
-                                   (concat (car (bug-credentials instance))
-                                           ":" (cadr (bug-credentials instance))))))))
+                                   (concat (car (bug--auth-credentials instance))
+                                           ":" (cadr (bug--auth-credentials instance))))))))
 
 (defun bug--rally-get-security-token (instance)
   "Obtain a security token from Rally for write operations.
