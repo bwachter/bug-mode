@@ -370,7 +370,7 @@ Special handling:
      ((equal property :api-key)
       (or (plist-get property-list :api-key)
           (when-let ((key-file (plist-get property-list :api-key-file)))
-            (bug--read-api-key-file key-file instance))))
+            (bug--instance-read-api-key-file key-file instance))))
      ;; For :url, fall back to a backend-provided default if not explicitly configured
      ((equal property :url)
       (or (plist-get property-list property)
@@ -433,7 +433,7 @@ Returns the instance symbol if found, nil otherwise."
 Keys are (instance . file-path) cons cells, while values are the trimmed
 file contents.")
 
-(defun bug--read-api-key-file (file-path instance)
+(defun bug--instance-read-api-key-file (file-path instance)
   "Read API key from FILE-PATH, trimming whitespace.
 Supports transparent GPG decryption for .gpg files.
 Results are cached per instance."
