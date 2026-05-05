@@ -328,6 +328,11 @@ priority via face merging."
   "Face used for bug url / `see also' field values"
   :group 'bug-faces)
 
+(defface bug-field-type-8
+  '((t :inherit bug-field-type-3))
+  "Face used for Bugzilla multiple selection field values (e.g. keywords)."
+  :group 'bug-faces)
+
 (defface bug-field-type-98
   '((t :inherit bug-field-type-0
        :box (:line-width -1)))

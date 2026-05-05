@@ -42,13 +42,12 @@
 ;;;###autoload
 (defun bug--backend-bz-rpc-features (_arg _instance)
   "Features supported by Bugzilla JSON-RPC backend"
-  '(:read))
+  '(:read :write))
 
 ;;;###autoload
 (defun bug--rpc-bz-rpc--send (args instance)
   "Internal helper to send a single Bugzilla JSON-RPC request.
 Parses the response, stores cookies, and returns the alist."
-  (defvar tls-program)
   (let* ((method (concat (cdr (assoc 'resource args)) "."
                          (cdr (assoc 'operation args))))
          (data (cdr (assoc 'data args)))
@@ -56,10 +55,9 @@ Parses the response, stores cookies, and returns the alist."
          (data-with-key (if api-key
                             (append data `((Bugzilla_api_key . ,api-key)))
                           data))
-         (json-str (json-encode `((method . ,method) (params . [,data-with-key]) (id 11))))
+         (json-str (json-encode `((method . ,method) (params . [,data-with-key]) (id . 11))))
          (url (concat (bug--instance-property :url instance) "/jsonrpc.cgi"))
          (url-request-method "POST")
-         (tls-program '("openssl s_client -connect %h:%p -ign_eof")) ;; gnutls just hangs.. wtf?
          (cookie-header (bug--rpc-cookie-header instance))
          (url-request-extra-headers
           (append '(("Content-Type" . "application/json"))
@@ -118,21 +116,70 @@ are available, log in transparently and retry the request once."
 
 ;;;###autoload
 (defun bug--rpc-bz-rpc-get-fields (_object instance)
-  "Download the field list for Bugzilla"
-  (bug-rpc '((resource . "Bug")
-             (operation . "fields")) instance))
+  "Download the field list for Bugzilla, map types, and add synthetic
+metadata for fields returned by Bug.get that are missing from Bug.fields."
+  (let* ((response (bug-rpc '((resource . "Bug")
+                              (operation . "fields")) instance))
+         (result (cdr (assoc 'result response)))
+         (bz-fields (cdr (assoc 'fields result)))
+         (synthetic-fields
+          '(((name . "actual_time") (display_name . "Actual Time") (type . 0))
+            ((name . "remaining_time") (display_name . "Remaining Time") (type . 0))
+            ((name . "estimated_time") (display_name . "Estimated Time") (type . 0))
+            ((name . "assigned_to_detail") (display_name . "Assignee Details") (type . 0))
+            ((name . "cc_detail") (display_name . "CC Details") (type . 0))
+            ((name . "creator_detail") (display_name . "Creator Details") (type . 0))
+            ((name . "dupe_of") (display_name . "Duplicate Of") (type . 6))
+            ((name . "is_open") (display_name . "Open") (type . 0))
+            ((name . "update_token") (display_name . "Update Token") (type . 0))
+            ((name . "see_also") (display_name . "See Also") (type . 7)))))
+    `((result . ((fields . ,(append (append bz-fields nil) synthetic-fields)))))))
 
 ;;;###autoload
-(defun bug--rpc-bz-rpc-map-field (field-name)
-  "Try to guess what the definition of a field in a bug is by
-either throwing away ^bug_ or looking up the key in a list.
+(defun bug--rpc-bz-rpc-map-field (field-name _instance)
+  "Map between Bugzilla internal field names and Bug.get JSON field names.
 
-It seems that about half of the fields in Bugzillas field query
-don't match the fields found in a bug."
-  (if (string-match "^bug_" field-name)
-      (replace-regexp-in-string "^bug_" "" field-name)
-    (cond ((string= field-name "summary")
-           "short-desc"))))
+Bug.fields uses names like bug_id/short_desc/creation_ts while Bug.get
+returns id/summary/creation_time.  Returns the mapped name, or nil if
+no mapping is needed.
+
+`_instance' is ignored but required by the backend function dispatcher."
+  (cond
+   ;; Bug.fields → Bug.get
+   ((string= field-name "bug_id")           "id")
+   ((string= field-name "short_desc")       "summary")
+   ((string= field-name "creation_ts")      "creation_time")
+   ((string= field-name "delta_ts")         "last_change_time")
+   ((string= field-name "blocked")          "blocks")
+   ((string= field-name "dependson")        "depends_on")
+   ((string= field-name "bug_status")       "status")
+   ((string= field-name "bug_severity")     "severity")
+   ((string= field-name "rep_platform")     "platform")
+   ((string= field-name "bug_file_loc")    "url")
+   ((string= field-name "reporter")        "creator")
+   ((string= field-name "reporter_accessible")  "is_creator_accessible")
+   ((string= field-name "cclist_accessible")    "is_cc_accessible")
+   ((string= field-name "everconfirmed")    "is_confirmed")
+   ((string= field-name "status_whiteboard")   "whiteboard")
+   ((string= field-name "bug_group")        "groups")
+   ;; Bug.get → Bug.fields (reverse, for updates etc.)
+   ((string= field-name "id")                "bug_id")
+   ((string= field-name "summary")           "short_desc")
+   ((string= field-name "creation_time")     "creation_ts")
+   ((string= field-name "last_change_time")    "delta_ts")
+   ((string= field-name "blocks")            "blocked")
+   ((string= field-name "depends_on")        "dependson")
+   ((string= field-name "status")            "bug_status")
+   ((string= field-name "severity")          "bug_severity")
+   ((string= field-name "platform")          "rep_platform")
+   ((string= field-name "url")               "bug_file_loc")
+   ((string= field-name "creator")           "reporter")
+   ((string= field-name "is_creator_accessible")  "reporter_accessible")
+   ((string= field-name "is_cc_accessible")       "cclist_accessible")
+   ((string= field-name "is_confirmed")     "everconfirmed")
+   ((string= field-name "whiteboard")        "status_whiteboard")
+   ((string= field-name "groups")            "bug_group")
+   (t nil)))
 
 ;;;###autoload
 (defun bug--bz-rpc-list-columns (_object _instance)
@@ -173,9 +220,10 @@ This function takes a pre-parsed Bugzilla search query as argument."
       (let ((bugs (cdr (assoc 'bugs (assoc 'result response)))))
         (if (= (length bugs) 0)
             (message "No results")
-          (if (= (length bugs) 1)
-              (bug-show (aref bugs 0) instance)
-            (bug-list-show query bugs instance))))
+          (let ((normalized (mapcar #'bug--normalize-bz-rpc-bug (append bugs nil))))
+            (if (= (length normalized) 1)
+                (bug-show (car normalized) instance)
+              (bug-list-show query normalized instance)))))
     response))
 
 (defun bug--execute-bz-rpc-search (params instance)
@@ -186,8 +234,9 @@ This function takes a pre-parsed Bugzilla search query as argument."
                            instance)))
     (if (and (assoc 'result response)
              (assoc 'bugs (assoc 'result response)))
-        (let ((bugs (cdr (assoc 'bugs (assoc 'result response)))))
-          (cons bugs (length bugs)))
+        (let* ((bugs (cdr (assoc 'bugs (assoc 'result response))))
+               (normalized (mapcar #'bug--normalize-bz-rpc-bug (append bugs nil))))
+          (cons (vconcat normalized) (length normalized)))
       (cons [] 0))))
 
 (defun bug--format-bz-rpc-search-candidates (results)
@@ -237,6 +286,48 @@ Property-to-field mapping:
 ;;;;;;
 ;; bug-mode functions
 
+(defun bug--normalize-bz-rpc-bug (bug)
+  "Normalize Bugzilla bug data for display in bug-mode.
+- _detail objects become human-readable names (real_name, name, email)
+- Vectors of simple values become comma-separated strings
+- null values become empty strings"
+  (mapcar (lambda (entry)
+            (let* ((key (car entry))
+                   (value (cdr entry))
+                   (new-value
+                    (cond
+                     ;; _detail objects: prefer real_name, then name/email
+                     ((and (consp value)
+                           (or (assoc 'real_name value)
+                               (assoc 'name value)
+                               (assoc 'email value)))
+                      (or (cdr (assoc 'real_name value))
+                          (cdr (assoc 'name value))
+                          (cdr (assoc 'email value))
+                          ""))
+                     ;; Arrays of objects with names (cc_detail): join
+                     ((and (vectorp value)
+                           (> (length value) 0)
+                           (consp (aref value 0))
+                           (or (assoc 'real_name (aref value 0))
+                               (assoc 'name (aref value 0))))
+                      (let ((names (mapcar (lambda (obj)
+                                             (or (cdr (assoc 'real_name obj))
+                                                 (cdr (assoc 'name obj))
+                                                 ""))
+                                           (append value nil))))
+                        (if names (mapconcat #'identity names ", ") "")))
+                     ;; Arrays of simple values: join with commas
+                     ((vectorp value)
+                      (let ((items (append value nil)))
+                        (if (null items) ""
+                          (mapconcat (lambda (x) (format "%s" x)) items ", "))))
+                     ;; null
+                     ((null value) "")
+                     (t value))))
+              (cons key new-value)))
+          bug))
+
 ;;;###autoload
 (defun bug--fetch-bz-rpc-bug (id instance)
   "Retrieve a single bug from Bugzilla"
@@ -251,7 +342,7 @@ Property-to-field mapping:
            ((= (length bugs) 0)
             (message (concat "Bug " id " not found.")))
            ((= (length bugs) 1)
-            (aref bugs 0))
+            (bug--normalize-bz-rpc-bug (aref bugs 0)))
            (t (message "You should never see this message")))))))
 
 ;;;###autoload
