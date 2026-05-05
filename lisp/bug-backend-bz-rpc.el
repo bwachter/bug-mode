@@ -32,6 +32,7 @@
 (require 'bug-mode)
 (require 'bug-list-mode)
 
+(require 'bug-backend-bz-shared)
 (require 'bug-common-functions)
 (require 'bug-rpc)
 (require 'bug-comment-mode)
