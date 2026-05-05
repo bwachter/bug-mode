@@ -73,20 +73,30 @@ is formatted to take more space"
       ((equal :json-true (cdr field))
        "Yes")
       ;; Null-ref object: explicitly unset OBJECT field (e.g. Iteration = Unscheduled).
-      ;; Must be checked before _refObjectName to avoid showing "-> nil".
+      ;; Must be checked before _refObjectName to avoid showing "🔗 nil".
+      ;; TODO: _refObjectname is a rally implementation detail. We'll need to
+      ;;       check later on if we can move that into the rally backend without
+      ;;       making things too complicated. At least it's not interfering with
+      ;;       other backends.
       ((and (listp (cdr field))
             (let ((ref (cdr (assoc '_ref (cdr field)))))
               (and ref (stringp ref)
                    (or (string= ref "null") (string-suffix-p "/null" ref)))))
        (propertize "—" 'face 'bug-field-type-98))
-      ;; Rally objects with _refObjectName: preferred - display the name directly
-      ;; to avoid an extra RPC call to resolve the reference
+      ;; Object references with _refObjectName: display the name directly
+      ;; to avoid an extra RPC call.  When the backend also provides a
+      ;; friendly ID in the reference data (e.g. Rally FormattedID), render
+      ;; it with the bug ID face so references are scannable.
       ((and (listp (cdr field))
             (assoc '_refObjectName (cdr field)))
-       (propertize
-        (concat "-> "
-                (prin1-to-string (cdr (assoc '_refObjectName (cdr field))) t))
-        'face 'bug-field-type-98))
+       (let* ((name (prin1-to-string (cdr (assoc '_refObjectName (cdr field))) t))
+              (fid (bug--object-friendly-id (cdr field) instance))
+              (fid-str (when fid (prin1-to-string fid t))))
+         (if fid-str
+             (concat (propertize "🔗 " 'face 'bug-field-type-98)
+                     (propertize fid-str 'face 'bug-field-type-6)
+                     (propertize (concat ": " name) 'face 'bug-field-type-98))
+           (propertize (concat "🔗 " name) 'face 'bug-field-type-98))))
       ;; Rally objects with only _type (reference metadata without a name, e.g.
       ;; RevisionHistory): show the type rather than the raw alist
       ;; TODO, we probably should implement pulling of those fields on request
@@ -94,9 +104,8 @@ is formatted to take more space"
             (assoc '_type (cdr field)))
        (let ((type-val (cdr (assoc '_type (cdr field)))))
          (propertize
-          (concat "-> ["
-                  (if (symbolp type-val) (symbol-name type-val) type-val)
-                  "]")
+          (concat "🔗 "
+                  (if (symbolp type-val) (symbol-name type-val) type-val))
           'face 'bug-field-type-98)))
       ((equal content-type 5)
        (propertize (bug--format-time-date (cdr field) long)

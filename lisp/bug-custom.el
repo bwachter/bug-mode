@@ -325,7 +325,8 @@ priority via face merging."
   :group 'bug-faces)
 
 (defface bug-field-type-98
-  '((t :inherit bug-field-type-0))
+  '((t :inherit bug-field-type-0
+       :box (:line-width -1)))
   "Face used for rally object field values"
   :group 'bug-faces)
 

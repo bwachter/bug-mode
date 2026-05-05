@@ -218,6 +218,16 @@ setting those values in the instance configuration.
       (bug--instance-property field-name instance)
     (bug--instance-backend-function "bug--%s-field-name" field-name instance)))
 
+(defun bug--object-friendly-id (object-data instance)
+  "Return the friendly ID string from an object reference alist, or nil.
+
+`object-data' is an alist like ((_ref . url) (_refObjectName . name) ...).
+Uses the backend-specific field name for :bug-friendly-id (e.g.
+FormattedID for Rally, _display_id for GitHub, id for Bugzilla)."
+  (let ((fid-field (bug--field-name :bug-friendly-id instance)))
+    (when fid-field
+      (cdr (assoc fid-field object-data)))))
+
 ;; TODO: - pass in object, and first check for property in object, and if not
 ;;       found, check generic one
 (defun bug--get-field-property (field-name property instance &optional _object)

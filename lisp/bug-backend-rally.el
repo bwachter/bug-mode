@@ -168,9 +168,13 @@ if using basic authentication."
             (concat resource "/" object-id "/copy"))
            ((string= operation "query")
             (concat resource "?" query-string))
-           (t (if object-type
-                  (concat resource "/" object-id "/" object-type)
-                (concat resource "/" object-id))))))
+           (t (let ((base (if object-type
+                              (concat resource "/" object-id "/" object-type)
+                            (concat resource "/" object-id))))
+                (if (and (assoc 'data args)
+                         (member operation '("read" "authorize")))
+                    (concat base "?" query-string)
+                  base))))))
     ;; Append security token for write operations if using basic auth
     (if (and needs-token (not (bug--instance-property :api-key instance)))
         (let ((token (bug--rally-ensure-security-token instance)))
@@ -314,9 +318,9 @@ Each inner list contains field names to display in that order. An empty list
 means show all fields alphabetically. Index 0 is the default on first open.
 
 Returns: ((all fields) (minimal fields) (normal fields) (detailed fields))"
-  '(("FormattedID" "Name" "State" "ScheduleState" "Owner" "Priority" "Severity" "Description")
-    ("FormattedID" "Name" "State" "ScheduleState" "Owner" "Priority" "Severity" "Iteration" "Release" "Project" "Description")
-    ("FormattedID" "Name" "ObjectType" "State" "ScheduleState" "Owner" "Priority" "Severity" "Iteration" "Release" "Project" "PlanEstimate" "TaskEstimatedHours" "TaskRemainingHours" "Blocked" "BlockedReason" "Ready" "Tags" "Description")
+  '(("FormattedID" "Name" "State" "ScheduleState" "Owner" "Parent" "Priority" "Severity" "Description")
+    ("FormattedID" "Name" "State" "ScheduleState" "LastUpdateDate" "Owner" "Parent" "Project" "Priority" "Severity" "Iteration" "Release" "Project" "Description")
+    ("FormattedID" "Name" "ObjectType" "State" "ScheduleState" "LastUpdateDate" "Owner" "Parent" "Project" "Priority" "Severity" "Iteration" "Release" "Project" "PlanEstimate" "TaskEstimatedHours" "TaskRemainingHours" "Blocked" "BlockedReason" "Ready" "Tags" "Description")
     ()))
 
 ;;;###autoload
@@ -642,7 +646,9 @@ Property-to-field mapping:
   "Retrieve a single bug from Rally"
   (let* ((search-response (bug-rpc `((resource . "artifact")
                                      (operation . "read")
-                                     (object-id . ,id)) instance))
+                                     (object-id . ,id)
+                                     (data . ((fetch "Name,Description,Type,FormattedID,Parent.FormattedID,Parent.Name,Feature.FormattedID,Feature.Name,Project.FormattedID,Project.Name,Owner.FormattedID,Owner.UserName,Release.FormattedID,Release.Name,Iteration.FormattedID,Iteration.Name"))))
+                                   instance))
          (return-document-type (caar search-response))
          (return-document (cdr (car search-response))))
     ;; error messages are handled in RPC backend already, and -- unlike in
@@ -1542,6 +1548,50 @@ excluded.  Result is sorted by display name."
        attrs))
     (sort result (lambda (a b) (string< (car a) (car b))))))
 
+(defun bug--rally-parent-completion-candidates (type-name instance)
+  "Return completion candidates for the Parent field in Rally.
+
+Queries for artifacts of the appropriate type in the current project that
+can serve as parents.  Returns an alist of (display-name . ref-url), or nil
+if the project is not known or the artifact type has no Parent field."
+  (when (and (boundp 'bug---data) bug---data)
+    (let* ((project (cdr (assoc 'Project bug---data)))
+           (project-ref (when (listp project)
+                          (cdr (assoc '_ref project))))
+           (current-ref (cdr (assoc '_ref bug---data)))
+           (parent-resource (cond
+                             ((equal type-name "HierarchicalRequirement")
+                              "hierarchicalrequirement")
+                             ((string-prefix-p "portfolioitem/"
+                                               (downcase type-name))
+                              type-name)
+                             (t nil))))
+      (when (and parent-resource project-ref)
+        (let* ((response (bug--rpc-rally
+                          `((resource . ,parent-resource)
+                            (operation . "query")
+                            (data . ((project ,project-ref)
+                                     (fetch "FormattedID,Name,_ref")
+                                     (pagesize 200))))
+                          instance))
+               (results (cdr (assoc 'Results (cdr (assoc 'QueryResult response)))))
+               (candidates nil))
+          (when results
+            (dotimes (i (length results))
+              (let* ((item (aref results i))
+                     (fid (cdr (assoc 'FormattedID item)))
+                     (name (cdr (assoc 'Name item)))
+                     (ref (cdr (assoc '_ref item))))
+                (when (and fid name ref (not (equal ref current-ref)))
+                  (push (cons (format "%s - %s"
+                                      (prin1-to-string fid t)
+                                      (prin1-to-string name t))
+                              ref)
+                        candidates))))
+            ;; Prepend a "no parent" entry so the user can clear the field.
+            (cons (cons "-- (no parent)" nil)
+                  (nreverse candidates))))))))
+
 (defun bug--field-completion-rally (field-name instance)
   "Return completion candidates for `field-name' in the current Rally artifact.
 
@@ -1552,9 +1602,18 @@ Returns a list of value strings, or nil if no completion is available."
     (let* ((object-type (cdr (assoc 'ObjectType bug---data)))
            (type-name (cond ((symbolp object-type) (symbol-name object-type))
                             ((stringp object-type) object-type)
-                            (t nil))))
+                            (t nil)))
+           (field-name-str (if (symbolp field-name)
+                               (symbol-name field-name)
+                             field-name)))
       (when type-name
-        (bug--rally-field-allowed-values type-name field-name instance)))))
+        (cond
+         ;; Parent is a dynamic reference field, not a fixed-value attribute.
+         ;; Query for candidate parent artifacts instead of AllowedValues.
+         ((equal field-name-str "Parent")
+          (bug--rally-parent-completion-candidates type-name instance))
+         (t
+          (bug--rally-field-allowed-values type-name field-name instance)))))))
 
 ;;;;;;
 ;; FlowState / ScheduleState linking
