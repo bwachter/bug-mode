@@ -40,7 +40,7 @@
   "Display a stored list of bugs"
   (interactive
    (if current-prefix-arg
-       (nreverse (list(bug--query-instance) (bug--query-remembered-lists)))
+       (nreverse (list(bug--instance-query) (bug--query-remembered-lists)))
      (list
       (bug--query-remembered-lists))))
   (let* ((instance (bug--instance-to-symbolp instance))
@@ -60,7 +60,7 @@
   (interactive
    (if current-prefix-arg
        (nreverse (list
-                  (bug--query-instance)
+                  (bug--instance-query)
                   (read-string "Search query: " nil nil t)))
      (list (read-string "Search query: " nil nil t))))
   (bug--debug-log-time "start")
@@ -75,7 +75,7 @@
 prompts and execute them"
   (interactive
    (if current-prefix-arg
-       (list (bug--query-instance))))
+       (list (bug--instance-query))))
   (let ((terms (make-hash-table :test 'equal))
         (term nil))
     (while (not (string= term ""))

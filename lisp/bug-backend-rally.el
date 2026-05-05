@@ -918,7 +918,7 @@ Returns the created object from Rally's CreateResult."
 
 Opens a draft buffer with artifact type preset to Defect."
   (interactive
-   (list (bug--query-instance)))
+   (list (bug--instance-query)))
   (bug-create '(:artifact-type "Defect") instance))
 
 ;;;###autoload
@@ -927,7 +927,7 @@ Opens a draft buffer with artifact type preset to Defect."
 
 Opens a draft buffer with artifact type preset to HierarchicalRequirement."
   (interactive
-   (list (bug--query-instance)))
+   (list (bug--instance-query)))
   (bug-create '(:artifact-type "HierarchicalRequirement") instance))
 
 ;; TODO, we handle parent relationships when creating a new issue from an
@@ -1068,7 +1068,7 @@ types.  All fields are edited in the draft buffer using the normal
                        (plist-get context :bug-data)
                      context))  ; backward compatibility: raw alist
          (artifact-type (when (plistp context) (plist-get context :artifact-type)))
-         (relation (when (plistp context) (plist-get context :relation)))
+         (_relation (when (plistp context) (plist-get context :relation)))
          (preset-fields (when (plistp context) (plist-get context :preset-fields)))
 
          ;; Type selection: core types hardcoded; portfolio items queried per workspace

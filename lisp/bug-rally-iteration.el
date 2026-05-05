@@ -41,7 +41,7 @@
          (user-prompt "User: ")
          (instance nil))
      (when current-prefix-arg
-       (setq instance (bug--query-instance)))
+       (setq instance (bug--instance-query)))
      (setq default-user (bug--instance-property :user instance))
      (if default-user (setq user-prompt (format "User (%s): " default-user)))
      (list (read-string user-prompt nil nil default-user) instance)))
@@ -51,7 +51,7 @@
   "Display the iteration at a selected date"
   (interactive
    (if current-prefix-arg
-       (nreverse (list (bug--query-instance)
+       (nreverse (list (bug--instance-query)
                        (org-read-date)))
      (list (org-read-date))))
   (bug-rally-iteration instance nil date))

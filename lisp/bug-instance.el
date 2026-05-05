@@ -254,7 +254,7 @@ Only this instance will be accessible for new operations until switched again.
 Existing buffers with different instances continue to work but show warnings.
 
 INSTANCE-NAME can come from either `bug-instances-list' or `bug-instance-plist'."
-  (interactive (list (bug--instance-select-from-all)))
+  (interactive (list (bug--instance-query)))
   (setq bug-active-instance (bug--instance-to-symbolp instance-name))
   (message "Switched to instance: %s" bug-active-instance))
 
@@ -271,17 +271,35 @@ Returns an alist of (NAME . PLIST) pairs."
             when (and (not (listp record)) (keywordp record))
             collect (cons record (plist-get bug-instance-plist record)))))
 
-(defun bug--instance-select-from-all ()
-  "Select an instance from both bug-instances-list and bug-instance-plist.
+(defun bug--instance-query (&optional required-feature)
+  "Prompt for an instance, optionally filtered by `required-feature'.
 
-Returns the instance symbol in its original format (keyword for plist,
-regular symbol for instances-list), or nil if canceled."
-  (let* ((all-instances (bug--instance-get-all))
-         (names (mapcar (lambda (x) (symbol-name (car x))) all-instances))
-         (selected (completing-read "Instance: " names nil t)))
-    ;; Intern the selected string, preserving keyword/symbol format
-    (when (and selected (not (string-empty-p selected)))
-      (intern selected))))
+Reads instances from both `bug-instances-list' and `bug-instance-plist'.
+When `required-feature' is a keyword, only instances whose backend declares
+that feature are offered.
+
+Returns the instance symbol directly (without prompting) when exactly one
+qualifying instance exists."
+  (let* ((all (bug--instance-get-all))
+         (matching
+          (if required-feature
+              (cl-remove-if-not
+               (lambda (inst)
+                 (condition-case nil
+                     (bug--instance-backend-feature (car inst) required-feature)
+                   (error nil)))
+               all)
+            all))
+         (names (mapcar (lambda (x) (symbol-name (car x))) matching)))
+    (cond
+     ((null names)
+      (if required-feature
+          (error "No instances found supporting %s" required-feature)
+        (error "No bug tracker instances configured")))
+     ((= (length names) 1)
+      (intern (car names)))
+     (t
+      (intern (completing-read "Instance: " names nil t))))))
 
 (defun bug-instance-get-active ()
   "Get the currently active instance following resolution hierarchy.
@@ -360,7 +378,7 @@ Special handling:
      ;; Default: just get the property
      (t (plist-get property-list property)))))
 
-(defun bug--instance-to-symbolp (instance)
+(defun bug--instance-to-symbolp (instance &optional feature)
   "Make sure that the instance handle is symbolp; returns default instance
 if instance is nil.
 
@@ -385,7 +403,7 @@ from the available instances in bug-instances-list or bug-instance-plist."
                      (or (bug-instance-get-active)
                          ;; If no explicit instance, prompt user to select one
                          (when (or bug-instances-list bug-instance-plist)
-                           (bug--instance-select-from-all))))))
+                           (bug--instance-query feature))))))
     instance))
 
 (defun bug--get-project-instance ()

@@ -103,7 +103,7 @@
 Requires the backend to support the :projects feature.  Each row shows
 the project name and its ID (the value to use for :project-id in instance
 config).  Press `c' on a row to copy the ID to the kill ring."
-  (interactive (list (bug--query-instance :projects)))
+  (interactive (list (bug--instance-query :projects)))
   (let* ((projects (bug--instance-backend-function "bug--list-%s-projects" nil instance))
          (buffer (get-buffer-create
                   (format "*%s projects*"
@@ -143,7 +143,7 @@ config).  Press `c' on a row to copy the ID to the kill ring."
 The returned value is the project identifier suitable for use as
 :project-id in instance config.  Returns nil if no projects are found
 or the selection is cancelled."
-  (interactive (list (bug--query-instance :projects)))
+  (interactive (list (bug--instance-query :projects)))
   (let ((projects (bug--instance-backend-function "bug--list-%s-projects" nil instance)))
     (if (null projects)
         (progn (message "No projects found") nil)
@@ -158,7 +158,7 @@ or the selection is cancelled."
 Requires the backend to support the :project-bugs feature.  Uses
 :project-id from instance config; if not set, falls back to an
 interactive project selection when the backend also supports :projects."
-  (interactive (list (bug--query-instance :project-bugs)))
+  (interactive (list (bug--instance-query :project-bugs)))
   (unless (bug--instance-backend-feature instance :project-bugs)
     (error "Backend does not support project bug listing"))
   (let* ((project-id
@@ -186,7 +186,7 @@ With a prefix argument, prompts for which instance to use."
   (interactive
    (list (read-string "Project Name: ")
          (if current-prefix-arg
-             (bug--instance-to-symbolp (bug--query-instance :project-create))
+             (bug--instance-to-symbolp (bug--instance-query :project-create))
            (bug--instance-to-symbolp nil))))
   (unless (bug--instance-backend-feature instance :project-create)
     (error "Backend does not support project creation"))

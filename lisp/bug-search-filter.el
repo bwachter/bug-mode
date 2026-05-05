@@ -89,7 +89,7 @@ Supported properties:
 With a prefix argument, also prompts for the instance to search."
   (interactive
    (if current-prefix-arg
-       (nreverse (list (bug--query-instance) (read-string "Filter: ")))
+       (nreverse (list (bug--instance-query) (read-string "Filter: ")))
      (list (read-string "Filter: "))))
   (let ((properties (bug--parse-search-filter input)))
     (unless properties

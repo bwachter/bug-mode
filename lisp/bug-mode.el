@@ -90,7 +90,7 @@
   (interactive
    (if current-prefix-arg
        (nreverse (list
-                  (bug--query-instance)
+                  (bug--instance-query)
                   (read-string "Bug ID: ")))
      (list (read-string "Bug ID: "))))
   (let* ((instance (bug--instance-to-symbolp instance))
@@ -305,8 +305,8 @@ Other backends may ignore unknown keys.
 With a prefix argument, also prompts for which instance to use."
   (interactive
    (list nil (if current-prefix-arg
-                 (bug--instance-to-symbolp (bug--query-instance))
-               (bug--instance-to-symbolp nil))))
+                 (bug--instance-to-symbolp (bug--instance-query :create))
+               (bug--instance-to-symbolp nil :create))))
   (unless (bug--instance-backend-feature instance :create)
     (error "Backend does not support issue creation"))
   (bug--instance-backend-function "bug--create-%s-bug-interactive" context instance))
@@ -746,7 +746,7 @@ This is mostly useful for debugging text properties"
      (list
       (bug--query-remembered-lists)
       (read-string "Bug: ")
-      (if current-prefix-arg (bug--query-instance)))))
+      (if current-prefix-arg (bug--instance-query)))))
   (let* ((instance (bug--instance-to-symbolp instance))
          (lists-for-instance (gethash instance bug-remember-list))
          (list-entries (if lists-for-instance

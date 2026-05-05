@@ -43,7 +43,7 @@
 ;;;###autoload
 (defun bug-rally-subscription (&optional instance)
   "Show details about a Rally subscription"
-  (interactive (list (bug--instance-select-from-all)))
+  (interactive (list (bug--instance-query)))
   (unless (equal 'rally (bug--instance-backend-type instance))
     (error "Not a Rally instance"))
   (let ((subscription (car (bug-rpc '((resource . "Subscription")

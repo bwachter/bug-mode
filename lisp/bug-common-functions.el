@@ -58,35 +58,7 @@ the call would look like this:
         (setq count (- count 1))))
     pos))
 
-(defun bug--query-instance (&optional required-feature)
-  "Prompt for an instance, optionally filtered by `required-feature'.
 
-Reads instances from both `bug-instances-list' and `bug-instance-plist'.
-When `required-feature' is a keyword, only instances whose backend declares
-that feature are offered.
-
-Returns the instance symbol directly (without prompting) when exactly one
-qualifying instance exists."
-  (let* ((all (bug--instance-get-all))
-         (matching
-          (if required-feature
-              (cl-remove-if-not
-               (lambda (inst)
-                 (condition-case nil
-                     (bug--instance-backend-feature (car inst) required-feature)
-                   (error nil)))
-               all)
-            all))
-         (names (mapcar (lambda (x) (symbol-name (car x))) matching)))
-    (cond
-     ((null names)
-      (if required-feature
-          (error "No instances found supporting %s" required-feature)
-        (error "No bug tracker instances configured")))
-     ((= (length names) 1)
-      (intern (car names)))
-     (t
-      (intern (completing-read "Instance: " names nil t))))))
 
 (defun bug--query-remembered-lists ()
   "Query for the name of a locally remembered bug list. Completion is seeded
@@ -141,7 +113,7 @@ Expects values stored by `bug--cache-put-timed'."
   "Clear the cache, either globally, or for a specific instance"
   (interactive
    (if current-prefix-arg
-       (list (bug--instance-to-symbolp (bug--query-instance)))))
+       (list (bug--instance-to-symbolp (bug--instance-query)))))
   (if instance
       (cl-remf bug--cache instance)
     (setq bug--cache nil)))
@@ -157,7 +129,7 @@ With prefix argument, also prompts for the instance."
   (interactive
    (list (read-string "Cache key prefix: ")
          (when current-prefix-arg
-           (bug--instance-to-symbolp (bug--query-instance)))))
+           (bug--instance-to-symbolp (bug--instance-query)))))
   (let ((remove-matching (lambda (entries)
                            (cl-remove-if
                             (lambda (e)
