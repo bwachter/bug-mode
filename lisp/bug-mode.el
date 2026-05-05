@@ -91,9 +91,10 @@
    (if current-prefix-arg
        (nreverse (list
                   (bug--query-instance)
-                  (read-string "Bug ID: " nil nil t)))
-     (list (read-string "Bug ID: " nil nil t))))
-  (let* ((bug-content (bug--instance-backend-function "bug--fetch-%s-bug" id instance)))
+                  (read-string "Bug ID: ")))
+     (list (read-string "Bug ID: "))))
+  (let* ((instance (bug--instance-to-symbolp instance))
+         (bug-content (bug--instance-backend-function "bug--fetch-%s-bug" id instance)))
     (if bug-content (bug-show bug-content instance))))
 
 (defun bug--buffer-string (bug-id instance)
@@ -744,7 +745,7 @@ This is mostly useful for debugging text properties"
         (bug--query-remembered-lists))
      (list
       (bug--query-remembered-lists)
-      (read-string "Bug: " nil nil t)
+      (read-string "Bug: ")
       (if current-prefix-arg (bug--query-instance)))))
   (let* ((instance (bug--instance-to-symbolp instance))
          (lists-for-instance (gethash instance bug-remember-list))

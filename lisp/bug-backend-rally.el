@@ -318,9 +318,9 @@ Each inner list contains field names to display in that order. An empty list
 means show all fields alphabetically. Index 0 is the default on first open.
 
 Returns: ((all fields) (minimal fields) (normal fields) (detailed fields))"
-  '(("FormattedID" "Name" "State" "ScheduleState" "Owner" "Parent" "Priority" "Severity" "Description")
-    ("FormattedID" "Name" "State" "ScheduleState" "LastUpdateDate" "Owner" "Parent" "Project" "Priority" "Severity" "Iteration" "Release" "Project" "Description")
-    ("FormattedID" "Name" "ObjectType" "State" "ScheduleState" "LastUpdateDate" "Owner" "Parent" "Project" "Priority" "Severity" "Iteration" "Release" "Project" "PlanEstimate" "TaskEstimatedHours" "TaskRemainingHours" "Blocked" "BlockedReason" "Ready" "Tags" "Description")
+  '(("FormattedID" "Name" "State" "ScheduleState" "Owner" "Parent" "Priority" "Severity" "Notes" "Description")
+    ("FormattedID" "Name" "State" "ScheduleState" "LastUpdateDate" "Owner" "Parent" "Project" "Priority" "Severity" "Iteration" "Release" "Project" "Notes" "Description")
+    ("FormattedID" "Name" "ObjectType" "State" "ScheduleState" "LastUpdateDate" "Owner" "Parent" "Project" "Priority" "Severity" "Iteration" "Release" "Project" "PlanEstimate" "TaskEstimatedHours" "TaskRemainingHours" "Blocked" "BlockedReason" "Ready" "Tags" "Notes" "Description")
     ()))
 
 ;;;###autoload
@@ -654,11 +654,29 @@ Property-to-field mapping:
 
 ;;;###autoload
 (defun bug--fetch-rally-bug (id instance)
-  "Retrieve a single bug from Rally"
-  (let* ((search-response (bug-rpc `((resource . "artifact")
+  "Retrieve a single bug from Rally.
+
+`id' can be either an ObjectUUID or a Rally FormattedID (e.g. \"US123\",
+\"DE456\").  When a FormattedID is given it is resolved to a UUID via a
+query before the read."
+  (let* ((object-id
+          ;; If id looks like a FormattedID, resolve it first
+          (if (string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" id)
+              (let* ((qr (bug--rpc-rally
+                          `((resource . "artifact")
+                            (operation . "query")
+                            (data . ((query ,(format "(FormattedID = \"%s\")" id))
+                                     (fetch "_refObjectUUID"))))
+                          instance))
+                     (results (cdr (assoc 'Results (cdr (assoc 'QueryResult qr)))))
+                     (obj (when (> (length results) 0) (aref results 0))))
+                (unless obj
+                  (error "Rally artifact %s not found" id))
+                (cdr (assoc '_refObjectUUID obj)))
+            id))
+         (search-response (bug-rpc `((resource . "artifact")
                                      (operation . "read")
-                                     (object-id . ,id)
-                                     (data . ((fetch "Name,Description,Type,FormattedID,_refObjectUUID,_ref,Discussion,Parent.FormattedID,Parent.Name,Feature.FormattedID,Feature.Name,Project.FormattedID,Project.Name,Owner.FormattedID,Owner.UserName,Release.FormattedID,Release.Name,Iteration.FormattedID,Iteration.Name"))))
+                                     (object-id . ,object-id))
                                    instance))
          (return-document-type (caar search-response))
          (return-document (cdr (car search-response))))
