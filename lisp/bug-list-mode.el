@@ -46,32 +46,47 @@
 (require 'bug-vars)
 (require 'bug-rally-subscription-mode)
 
-(defun bug--list-mode-rally-subscription ()
-  "Show Rally subscription info for the current list's instance."
-  (interactive)
-  (bug-rally-subscription bug---instance))
+(defclass bug-list-prefix (transient-prefix)
+  ((current-bug-uuid :initarg :current-bug-uuid :initform nil)
+   (current-bug-id :initarg :current-bug-id :initform nil))
+  "Custom transient class tracking project specific bug attributes.")
 
-(transient-define-prefix bug-list-mode-menu ()
-  "Transient for bug-mode"
-
-  [["Bug"
+(transient-define-prefix bug--list-mode-menu ()
+  "Transient for bug-list-mode"
+  :class 'bug-list-prefix
+  :init-value (lambda (obj)
+                (let ((bug-details (bug-list-mode-bug-near-point)))
+                  (oset obj current-bug-id (alist-get 'bug-id bug-details))
+                  (oset obj current-bug-uuid (alist-get 'bug-uuid bug-details))))
+  [[:description
+    (lambda () (format "Bug%s"
+                       (if-let ((entry (tabulated-list-get-entry)))
+                           (format " %s" (elt entry 0))
+                         "")))
     ("B" "Open in browser" bug--bug-mode-browse-bug)
     ("r" "Remember bug"   bug--bug-mode-remember-bug)]
    ["Interact"
     ("i"  "Info"  bug--bug-mode-info)
-    ("c"  "Create related bug" bug--bug-mode-create-related)
-    ("D"  "Delete this bug" bug--bug-mode-delete-bug)]
+    ;; TODO, we properly need to pass bug data here
+    ("C"  "Create related bug" bug--bug-mode-create-related
+     :if (lambda () (and (bound-and-true-p bug---instance)
+                         (bug--instance-backend-feature bug---instance :create))))
+    ("D"  "Delete this bug" bug--bug-mode-delete-bug
+     :if (lambda () (and (bound-and-true-p bug---instance)
+                         (bug--instance-backend-feature bug---instance :del))))]
    ["Rally"
     :if (lambda () (and (bound-and-true-p bug---instance)
                         (equal 'rally (bug--instance-backend-type bug---instance))))
-    ("s" "Subscription" bug--list-mode-rally-subscription)]])
+    ("s" "Subscription" (lambda ()
+                          (interactive)
+                          (bug-rally-subscription bug---instance)))]])
 
 (declare-function bug-edit-search "bug-search")
 
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
     (define-key keymap (kbd "RET") #'bug--list-mode-select-bug)
-    (define-key keymap bug-menu-key #'bug-list-mode-menu)
+    (define-key keymap bug-menu-key #'bug--list-mode-menu)
     (define-key keymap "e"         #'bug-edit-search)
     (define-key keymap "g"         #'bug--list-mode-update-list)
     (define-key keymap "q"         #'bug--mode-default-quit-window)
