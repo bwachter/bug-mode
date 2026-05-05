@@ -174,5 +174,23 @@ interactive project selection when the backend also supports :projects."
         (bug--do-search params instance)
       (message "No open bugs found for project"))))
 
+;;;###autoload
+(defun bug-project-create (name &optional instance)
+  "Create a new project in the bug tracker.
+
+`name' is the project name. Requires the backend to support the
+:project-create feature and appropriate permissions (e.g. admin). We
+don't check for permissions before trying to create.
+
+With a prefix argument, prompts for which instance to use."
+  (interactive
+   (list (read-string "Project Name: ")
+         (if current-prefix-arg
+             (bug--instance-to-symbolp (bug--query-instance :project-create))
+           (bug--instance-to-symbolp nil))))
+  (unless (bug--instance-backend-feature instance :project-create)
+    (error "Backend does not support project creation"))
+  (bug--instance-backend-function "bug--create-%s-project" name instance))
+
 (provide 'bug-project)
 ;;; bug-project.el ends here

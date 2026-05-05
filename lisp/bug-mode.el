@@ -48,8 +48,8 @@
   "Transient for bug-mode"
 
   [[:description (lambda () (format "Bug %s" bug---uuid))
-    ("B" "Open in browser" bug--bug-mode-browse-bug)
-    ("r" "Remember bug"   bug--bug-mode-remember-bug)]
+                 ("B" "Open in browser" bug--bug-mode-browse-bug)
+                 ("r" "Remember bug"   bug--bug-mode-remember-bug)]
    ["Edit"
     :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-backend-feature bug---instance :write)))
     ("a" "Add new field" bug--bug-mode-add-field)
@@ -286,21 +286,29 @@ defines no filters, this does nothing. Empty filter lists show all fields."
 
 
 ;;;###autoload
-(defun bug-create (&optional instance)
+(defun bug-create (&optional context instance)
   "Create a new artifact in the bug tracker, prompting for required fields.
 
 Required here means needed for preparing the edit buffer - typically that's just
 something like artifact type. Other fields can then be edited in the buffer,
 and the submission check should warn about missing required fields.
 
+`context' is an optional plist passed to the backend.  Rally uses these keys:
+  :bug-data      -- raw bug alist (for parent inference in create-related)
+  :artifact-type -- preset Rally type path (e.g. \"Defect\",
+                    \"HierarchicalRequirement\")
+  :relation      -- :child, :sibling, :duplicate
+  :preset-fields -- alist of pre-filled fields
+Other backends may ignore unknown keys.
+
 With a prefix argument, also prompts for which instance to use."
   (interactive
-   (list (if current-prefix-arg
-             (bug--instance-to-symbolp (bug--query-instance))
-           (bug--instance-to-symbolp nil))))
+   (list nil (if current-prefix-arg
+                 (bug--instance-to-symbolp (bug--query-instance))
+               (bug--instance-to-symbolp nil))))
   (unless (bug--instance-backend-feature instance :create)
     (error "Backend does not support issue creation"))
-  (bug--instance-backend-function "bug--create-%s-bug-interactive" nil instance))
+  (bug--instance-backend-function "bug--create-%s-bug-interactive" context instance))
 
 ;;;###autoload
 (defun bug-new-draft (display-alist create-alist instance)
@@ -315,8 +323,9 @@ completion dispatch) and empty entries for each field the user should fill.
 ref, etc.) and will be pre-populated into bug---changed-data so they are
 included in the create call without requiring the user to edit them.
 
-The buffer uses the normal bug-mode layout.  Edit fields with \\[bug--bug-mode-edit-thing-near-point]
-and press \\[bug--bug-mode-commit] to create the artifact."
+The buffer uses the normal bug-mode layout.  Edit fields with
+\\[bug--bug-mode-edit-thing-near-point] and press \\[bug--bug-mode-commit] to
+create the artifact."
   (bug-show display-alist instance)
   ;; bug-show reset bug---changed-data to nil; restore the pre-filled fields
   ;; (project, parent link) that should be included in the create call.
@@ -333,7 +342,7 @@ the backend and the current artifact type."
   (interactive)
   (unless (bug--instance-backend-feature bug---instance :create)
     (error "Backend does not support issue creation"))
-  (bug--instance-backend-function "bug--create-%s-bug-interactive" bug---data bug---instance))
+  (bug-create `(:bug-data ,bug---data :relation :child) bug---instance))
 
 ;; functions usually called through keybindings in bug-mode
 ;;;###autoload
@@ -448,8 +457,8 @@ If the bug is a new artifact this will create it in the backend."
                     (mapconcat #'identity missing ", "))))
     (message "Creating artifact...")
     (bug--instance-backend-function "bug--create-%s-new-artifact"
-                           (list bug---data bug---changed-data)
-                           bug---instance))
+                                    (list bug---data bug---changed-data)
+                                    bug---instance))
    ;; Existing artifact: normal update
    ((null bug---changed-data)
     (message "No changes available."))

@@ -59,7 +59,7 @@ API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
 ;;;###autoload
 (defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
-  '(:read :write :create :delete :projects :project-bugs))
+  '(:read :write :create :delete :projects :project-bugs :project-create))
 
 ;;;###autoload
 (defun bug--backend-rally-default-url (_args _instance)
@@ -381,7 +381,7 @@ ARTIFACT-UUID is the artifact's ObjectUUID.
 TEXT is the discussion post content.
 INSTANCE is the Rally instance.
 
-Returns the created post data."
+Returns the created post object, or signals an error on failure."
   (let* ((response (bug--rpc-rally
                     `((resource . "conversationpost")
                       (operation . "create")
@@ -389,8 +389,17 @@ Returns the created post data."
                                                  ((Artifact . ,(concat "/artifact/" artifact-uuid))
                                                   (Text . ,text))))))
                     instance))
-         (result (cdr (car response))))
-    result))
+         (create-result (cdr (assoc 'CreateResult response)))
+         (errors (cdr (assoc 'Errors create-result)))
+         (warnings (cdr (assoc 'Warnings create-result)))
+         (object (cdr (assoc 'Object create-result))))
+    (when (and errors (> (length errors) 0))
+      (error "Rally create discussion error: %s" (aref errors 0)))
+    (when (and warnings (> (length warnings) 0))
+      (message "Rally create discussion warnings: %s" (mapconcat 'identity warnings ", ")))
+    (unless object
+      (error "Rally create discussion failed: no object returned"))
+    object))
 
 ;;;###autoload
 (defun bug--backend-rally-show-additional-data (bug instance)
@@ -402,7 +411,9 @@ Returns the created post data."
 ;;;###autoload
 (defun bug--backend-rally-create-comment (_args instance)
   "Open a Rally discussion post composition buffer for the current artifact."
-  (bug-rally-discussion instance))
+  (unless (and (boundp 'bug---uuid) bug---uuid)
+    (error "No bug UUID found; re-open the bug buffer to fetch fresh data"))
+  (bug--rally-create-discussion-buffer bug---uuid bug---id instance))
 
 (defun bug--backend-rally-get-update-id (_args _instance)
   "Return the Rally object UUID for use as the update identifier."
@@ -647,7 +658,7 @@ Property-to-field mapping:
   (let* ((search-response (bug-rpc `((resource . "artifact")
                                      (operation . "read")
                                      (object-id . ,id)
-                                     (data . ((fetch "Name,Description,Type,FormattedID,Parent.FormattedID,Parent.Name,Feature.FormattedID,Feature.Name,Project.FormattedID,Project.Name,Owner.FormattedID,Owner.UserName,Release.FormattedID,Release.Name,Iteration.FormattedID,Iteration.Name"))))
+                                     (data . ((fetch "Name,Description,Type,FormattedID,_refObjectUUID,_ref,Discussion,Parent.FormattedID,Parent.Name,Feature.FormattedID,Feature.Name,Project.FormattedID,Project.Name,Owner.FormattedID,Owner.UserName,Release.FormattedID,Release.Name,Iteration.FormattedID,Iteration.Name"))))
                                    instance))
          (return-document-type (caar search-response))
          (return-document (cdr (car search-response))))
@@ -748,14 +759,12 @@ Returns an alist of (name . oid) pairs."
 
 ;;;###autoload
 ;; TODO, move to project frontend
-(defun bug-rally-create-project (name &optional instance)
+(defun bug--rally-create-project (name instance)
   "Create a new Rally project.
 
 NAME is the project name.
-Requires Workspace Administrator or Subscription Administrator permissions."
-  (interactive
-   (list (read-string "Project Name: ")
-         (bug--query-instance)))
+Requires Workspace Administrator or Subscription Administrator permissions.
+Not for interactive use; called by the generic `bug-project-create' frontend."
   (let* ((workspace-oid (bug--rally-get-workspace-oid instance))
          (workspace-ref (format "/workspace/%s" workspace-oid))
          (created-project
@@ -886,65 +895,22 @@ Returns the created object from Rally's CreateResult."
     object))
 
 ;;;###autoload
-;; TODO, check if we still need the dedicated entry point
 (defun bug-rally-create-defect (&optional instance)
   "Interactively create a new Rally Defect.
 
-Prompts for required fields (Name, Project) and optional fields
-(State, Description, Priority). Returns the created defect."
+Opens a draft buffer with artifact type preset to Defect."
   (interactive
    (list (bug--query-instance)))
-  (let* ((name (read-string "Defect Name: "))
-         (project (bug--rally-get-project-ref instance))
-         (state (completing-read "State (optional): "
-                                 '("Submitted" "Open" "Fixed" "Closed")
-                                 nil nil "Submitted"))
-         (description (read-string "Description (optional): "))
-         (priority (completing-read "Priority (optional): "
-                                    '("Resolve Immediately" "High Attention"
-                                      "Normal" "Low")
-                                    nil nil))
-         (data `((Name . ,name)
-                 (Project . ,project))))
-    ;; Add optional fields if provided
-    (when (and state (not (string-empty-p state)))
-      (push `(State . ,state) data))
-    (when (and description (not (string-empty-p description)))
-      (push `(Description . ,description) data))
-    (when (and priority (not (string-empty-p priority)))
-      (push `(Priority . ,priority) data))
-    (let ((created-defect (bug--create-rally-bug "defect" data instance)))
-      (message "Created defect: %s" (cdr (assoc '_refObjectName created-defect)))
-      ;; Open the newly created defect
-      (bug-open (cdr (assoc '_refObjectUUID created-defect)) instance)
-      created-defect)))
+  (bug-create '(:artifact-type "Defect") instance))
 
 ;;;###autoload
 (defun bug-rally-create-story (&optional instance)
   "Interactively create a new Rally User Story.
 
-Prompts for required fields (Name, Project) and optional fields
-(ScheduleState, Description). Returns the created story."
+Opens a draft buffer with artifact type preset to HierarchicalRequirement."
   (interactive
    (list (bug--query-instance)))
-  (let* ((name (read-string "Story Name: "))
-         (project (bug--rally-get-project-ref instance))
-         (schedule-state (completing-read "Schedule State (optional): "
-                                          '("Defined" "In-Progress" "Completed" "Accepted")
-                                          nil nil "Defined"))
-         (description (read-string "Description (optional): "))
-         (data `((Name . ,name)
-                 (Project . ,project))))
-    ;; Add optional fields if provided
-    (when (and schedule-state (not (string-empty-p schedule-state)))
-      (push `(ScheduleState . ,schedule-state) data))
-    (when (and description (not (string-empty-p description)))
-      (push `(Description . ,description) data))
-    (let ((created-story (bug--create-rally-bug "hierarchicalrequirement" data instance)))
-      (message "Created user story: %s" (cdr (assoc '_refObjectName created-story)))
-      ;; Open the newly created story
-      (bug-open (cdr (assoc '_refObjectUUID created-story)) instance)
-      created-story)))
+  (bug-create '(:artifact-type "HierarchicalRequirement") instance))
 
 ;; TODO, we handle parent relationships when creating a new issue from an
 ;;       existing issue, but curently don't allow reparenting
@@ -1069,32 +1035,46 @@ Falls back to the baseline alone when the TypeDefinition query fails."
 (defun bug--create-rally-bug-interactive (context instance)
   "Open a draft buffer for creating a new Rally artifact.
 
-`context' is nil for standalone creation, or the current bug's data alist (from
-bug---data) when invoked from an existing bug buffer.  The parent link is
-inferred automatically from the two artifact types.
+`context' is an optional plist with keys:
+  :bug-data      -- raw bug alist (for parent inference in create-related)
+  :artifact-type -- preset Rally type path (e.g. \"Defect\",
+                    \"HierarchicalRequirement\")
+  :relation      -- :child, :sibling, :duplicate
+  :preset-fields -- alist of pre-filled fields
 
-Only prompts for artifact type (and project when not derivable from context or
-instance config).  All other fields are edited in the draft buffer using the
-normal \\[bug--bug-mode-edit-thing-near-point] key; press \\[bug--bug-mode-commit] to create."
-  (let* (;; Type selection: core types hardcoded; portfolio items queried per workspace
+The parent link is inferred automatically from the current and new artifact
+types.  All fields are edited in the draft buffer using the normal
+\\[bug--bug-mode-edit-thing-near-point] key; press \\[bug--bug-mode-commit] to create."
+  (let* (;; Parse context plist
+         (bug-data (if (plistp context)
+                       (plist-get context :bug-data)
+                     context))  ; backward compatibility: raw alist
+         (artifact-type (when (plistp context) (plist-get context :artifact-type)))
+         (relation (when (plistp context) (plist-get context :relation)))
+         (preset-fields (when (plistp context) (plist-get context :preset-fields)))
+
+         ;; Type selection: core types hardcoded; portfolio items queried per workspace
          (core-types '(("Defect"      . "Defect")
                        ("User Story"  . "HierarchicalRequirement")
                        ("Task"        . "Task")
                        ("Test Case"   . "TestCase")))
          (portfolio-types (bug--rally-get-portfolio-item-types instance))
          (type-choices (append core-types portfolio-types))
-         (type-display (completing-read "Artifact type: "
-                                        (mapcar #'car type-choices) nil t))
-         (rally-type (cdr (assoc type-display type-choices)))
+         (rally-type
+          (if artifact-type
+              (if (symbolp artifact-type) (symbol-name artifact-type) artifact-type)
+            (cdr (assoc (completing-read "Artifact type: "
+                                         (mapcar #'car type-choices) nil t)
+                        type-choices))))
 
          ;; Context analysis
          (context-type-raw
-          (when context
-            (let ((ot (cdr (assoc 'ObjectType context))))
+          (when bug-data
+            (let ((ot (cdr (assoc 'ObjectType bug-data))))
               (cond ((symbolp ot) (symbol-name ot))
                     ((stringp ot) ot)
                     (t nil)))))
-         (context-ref (when context (cdr (assoc '_ref context))))
+         (context-ref (when bug-data (cdr (assoc '_ref bug-data))))
 
          ;; Parent field from context types
          (parent-info (bug--rally-create-parent-field rally-type context-type-raw context-ref))
@@ -1103,7 +1083,7 @@ normal \\[bug--bug-mode-edit-thing-near-point] key; press \\[bug--bug-mode-commi
 
          ;; Project: inherit from context, or use :project-id from instance config.
          ;; No interactive prompt — user fills it in the draft buffer if needed.
-         (ctx-project (when context (cdr (assoc 'Project context))))
+         (ctx-project (when bug-data (cdr (assoc 'Project bug-data))))
          (project-ref
           (or (when (listp ctx-project) (cdr (assoc '_ref ctx-project)))
               (let ((pid (bug--instance-property :project-id instance)))
@@ -1132,8 +1112,8 @@ normal \\[bug--bug-mode-edit-thing-near-point] key; press \\[bug--bug-mode-commi
     (when (and parent-field parent-ref)
       (push `(,(intern parent-field) . ,parent-ref) create-alist)
       ;; Display the parent as an object reference so it renders as "-> Name"
-      (let ((ctx-name (or (cdr (assoc 'FormattedID context))
-                          (cdr (assoc 'Name context))
+      (let ((ctx-name (or (cdr (assoc 'FormattedID bug-data))
+                          (cdr (assoc 'Name bug-data))
                           "")))
         (push (cons (intern parent-field)
                     `((_ref . ,parent-ref) (_refObjectName . ,ctx-name)))
@@ -1185,6 +1165,15 @@ normal \\[bug--bug-mode-edit-thing-near-point] key; press \\[bug--bug-mode-commi
 
     ;; Description must be in display-alist for bug-show to render it in drafts
     (push (cons 'Description nil) display-alist)
+
+    ;; Merge preset-fields into both alists if provided
+    (when preset-fields
+      (dolist (pf preset-fields)
+        (let ((sym (if (symbolp (car pf)) (car pf) (intern (car pf)))))
+          (unless (assoc sym display-alist)
+            (push pf display-alist))
+          (unless (assoc sym create-alist)
+            (push pf create-alist)))))
 
     (bug-new-draft display-alist create-alist instance)))
 
@@ -1262,62 +1251,34 @@ Returns t on success."
     t))
 
 ;;;###autoload
-(defun bug-rally-delete-bug (&optional id instance)
-  "Interactively delete a Rally bug (moves to Recycle Bin).
+(defun bug--rally-create-discussion-buffer (uuid bug-id instance)
+  "Open a buffer for composing a discussion post on a Rally artifact.
 
-If ID is not provided, uses the bug from the current buffer.
-Prompts for confirmation before deleting."
-  (interactive
-   (list nil (bug--query-instance)))
-  (unless id
-    (when (boundp 'bug---uuid) (setq id bug---uuid)))
-  (unless id
-    (error "No bug ID found. Open a bug first or provide an ID"))
-  (let ((bug-name (cdr (assoc 'Name bug---data))))
-    (when (yes-or-no-p (format "Delete Rally bug '%s'? (moves to Recycle Bin) "
-                               (or bug-name id)))
-      (bug--delete-rally-bug id instance)
-      (message "Deleted bug: %s" (or bug-name id))
-      ;; Close the buffer if we're in a bug buffer
-      (when (eq major-mode 'bug-mode)
-        (kill-buffer))
-      t)))
-
-(defun bug-rally-discussion (&optional instance)
-  "Add a discussion post to the current Rally artifact.
-
-Opens a buffer for composing a discussion post. Use C-c C-c to submit."
-  (interactive (list (bug--query-instance)))
-  (unless (boundp 'bug---uuid)
-    (error "Not in a bug buffer or no bug UUID found"))
-  (unless bug---uuid
-    (error "No bug UUID found"))
-  (let ((uuid bug---uuid)
-        (bug-id bug---id)
-        (inst instance))
-    (pop-to-buffer (format "*rally discussion: %s*" bug-id))
-    (erase-buffer)
-    (text-mode)
-    (insert "# Enter discussion post below. Use C-c C-c to submit.\n")
-    (insert "# Lines starting with # are ignored.\n\n")
-    (local-set-key (kbd "C-c C-c")
-                   (lambda ()
-                     (interactive)
-                     (let ((text (buffer-string))
-                           (post-text ""))
-                       ;; Filter out comment lines
-                       (dolist (line (split-string text "\n"))
-                         (unless (string-match-p "^#" line)
-                           (setq post-text (concat post-text line "\n"))))
-                       (setq post-text (string-trim post-text))
-                       (when (string-empty-p post-text)
-                         (error "Discussion post cannot be empty"))
-                       (message "Posting discussion...")
-                       (bug--create-rally-discussion-post uuid post-text inst)
-                       (message "Discussion post created")
-                       (kill-buffer)
-                       ;; Refresh the bug view
-                       (bug-open bug-id inst))))))
+This is the backend implementation for `bug--bug-mode-create-comment'.
+Not for interactive use."
+  (pop-to-buffer (format "*rally discussion: %s*" bug-id))
+  (erase-buffer)
+  (text-mode)
+  (insert "# Enter discussion post below. Use C-c C-c to submit.\n")
+  (insert "# Lines starting with # are ignored.\n\n")
+  (local-set-key (kbd "C-c C-c")
+                 (lambda ()
+                   (interactive)
+                   (let ((text (buffer-string))
+                         (post-text ""))
+                     ;; Filter out comment lines
+                     (dolist (line (split-string text "\n"))
+                       (unless (string-match-p "^#" line)
+                         (setq post-text (concat post-text line "\n"))))
+                     (setq post-text (string-trim post-text))
+                     (when (string-empty-p post-text)
+                       (error "Discussion post cannot be empty"))
+                     (message "Posting discussion...")
+                     (bug--create-rally-discussion-post uuid post-text instance)
+                     (message "Discussion post created")
+                     (kill-buffer)
+                     ;; Refresh the bug view using UUID to avoid FormattedID lookup issues
+                     (bug-open uuid instance)))))
 
 ;;;;;;
 ;; Field completion for Rally
