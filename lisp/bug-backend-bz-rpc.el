@@ -35,7 +35,7 @@
 (require 'bug-backend-bz-shared)
 (require 'bug-common-functions)
 (require 'bug-rpc)
-(require 'bug-comment-mode)
+(require 'bug-html-edit)
 (require 'bug-debug)
 (require 'url-vars)
 (require 'json)
@@ -375,9 +375,32 @@ Returns the response from Bugzilla's Bug.update call."
   bug---id)
 
 ;;;###autoload
-(defun bug--backend-bz-rpc-create-comment (args _instance)
+(defun bug--backend-bz-rpc-create-comment (_args _instance)
   "Open a Bugzilla comment composition buffer for the current bug."
-  (bug-comment args))
+  (bug--bug-mode-open-html-editor 'comment nil "" 'text #'bug--backend-bz-rpc-commit-comment))
+
+;;;###autoload
+(defun bug--backend-bz-rpc-commit-comment ()
+  "Submit the current buffer content as a Bugzilla comment."
+  (interactive)
+  (let* ((text (string-trim (buffer-string)))
+         (source-buf bug--html-edit-source-buffer))
+    (when (string= text "")
+      (error "Comment is empty"))
+    (let ((id (with-current-buffer source-buf bug---id))
+          (instance (with-current-buffer source-buf bug---instance)))
+      (message "Adding comment...")
+      (bug-rpc `((resource . "Bug")
+                 (operation . "add_comment")
+                 (data . ((id . ,id)
+                          (comment . ,text))))
+               instance)
+      (message "Comment added.")
+      (quit-window t)
+      (when (buffer-live-p source-buf)
+        (with-current-buffer source-buf
+          (when (fboundp 'bug-get-comments)
+            (bug-get-comments id instance)))))))
 
 ;;;;;;
 ;; Comments and attachments

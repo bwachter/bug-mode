@@ -4,7 +4,7 @@ ALL: $(AUTOLOADS_FILE)
 
 .PHONY: clean
 
-SOURCES = bug-auth.el bug-mode.el bug-comment-mode.el
+SOURCES = bug-auth.el bug-mode.el
 SOURCES += bug-list-mode.el bug-rpc.el bug-search.el
 SOURCES += bug-search-common.el bug-search-filter.el bug-common-functions.el
 SOURCES += bug-rally-subscription-mode.el

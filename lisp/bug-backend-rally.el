@@ -409,11 +409,37 @@ Returns the created post object, or signals an error on failure."
       (bug--display-rally-discussion posts))))
 
 ;;;###autoload
-(defun bug--backend-rally-create-comment (_args instance)
+(defun bug--backend-rally-create-comment (_args _instance)
   "Open a Rally discussion post composition buffer for the current artifact."
   (unless (and (boundp 'bug---uuid) bug---uuid)
     (error "No bug UUID found; re-open the bug buffer to fetch fresh data"))
-  (bug--rally-create-discussion-buffer bug---uuid bug---id instance))
+  (bug--bug-mode-open-html-editor
+   'comment nil
+   "# Enter discussion post below. Use C-c C-c to submit.\n# Lines starting with # are ignored.\n\n"
+   'text #'bug--backend-rally-commit-comment))
+
+;;;###autoload
+(defun bug--backend-rally-commit-comment ()
+  "Submit the current buffer content as a Rally discussion post."
+  (interactive)
+  (let* ((text (buffer-string))
+         (source-buf bug--html-edit-source-buffer)
+         (post-text ""))
+    ;; Filter out comment lines (lines starting with #)
+    (dolist (line (split-string text "\n"))
+      (unless (string-match-p "^#" line)
+        (setq post-text (concat post-text line "\n"))))
+    (setq post-text (string-trim post-text))
+    (when (string-empty-p post-text)
+      (error "Discussion post cannot be empty"))
+    (let ((uuid (with-current-buffer source-buf bug---uuid))
+          (instance (with-current-buffer source-buf bug---instance)))
+      (message "Posting discussion...")
+      (bug--create-rally-discussion-post uuid post-text instance)
+      (message "Discussion post created")
+      (quit-window t)
+      ;; Refresh the bug view using UUID to avoid FormattedID lookup issues
+      (bug-open uuid instance))))
 
 (defun bug--backend-rally-get-update-id (_args _instance)
   "Return the Rally object UUID for use as the update identifier."
@@ -1267,36 +1293,6 @@ Returns t on success."
       (message "Rally warnings: %s" (mapconcat 'identity warnings ", ")))
     ;; Error handling is done by bug--rpc-rally-handle-error
     t))
-
-;;;###autoload
-(defun bug--rally-create-discussion-buffer (uuid bug-id instance)
-  "Open a buffer for composing a discussion post on a Rally artifact.
-
-This is the backend implementation for `bug--bug-mode-create-comment'.
-Not for interactive use."
-  (pop-to-buffer (format "*rally discussion: %s*" bug-id))
-  (erase-buffer)
-  (text-mode)
-  (insert "# Enter discussion post below. Use C-c C-c to submit.\n")
-  (insert "# Lines starting with # are ignored.\n\n")
-  (local-set-key (kbd "C-c C-c")
-                 (lambda ()
-                   (interactive)
-                   (let ((text (buffer-string))
-                         (post-text ""))
-                     ;; Filter out comment lines
-                     (dolist (line (split-string text "\n"))
-                       (unless (string-match-p "^#" line)
-                         (setq post-text (concat post-text line "\n"))))
-                     (setq post-text (string-trim post-text))
-                     (when (string-empty-p post-text)
-                       (error "Discussion post cannot be empty"))
-                     (message "Posting discussion...")
-                     (bug--create-rally-discussion-post uuid post-text instance)
-                     (message "Discussion post created")
-                     (kill-buffer)
-                     ;; Refresh the bug view using UUID to avoid FormattedID lookup issues
-                     (bug-open uuid instance)))))
 
 ;;;;;;
 ;; Field completion for Rally
