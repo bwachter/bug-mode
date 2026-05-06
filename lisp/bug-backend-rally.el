@@ -618,6 +618,8 @@ project.  Otherwise all accessible projects are searched."
                           ,@(when project-id
                               `((project ,(format "/project/%s" project-id))
                                 (scopeDown "true"))))))
+      (bug--debug (format "bug--parse-rally-search-query: paren-clause query=%S project-id=%S data-params=%S"
+                          query project-id data-params))
       `((data . ,data-params)
         ,@(when cross-obj
             '((resource . "hierarchicalrequirement"))))))

@@ -42,11 +42,53 @@
     (bug-open bug-id bug-instance)))
 
 (defun org-bug-open-search (bug)
-  "Search for the the specified bug"
-  (let* ((bug (split-string bug "/" t))
-         (bug-id (cadr bug))
-         (bug-instance (car bug)))
-  (bug-search bug-id bug-instance)))
+  "Search for the specified bug.
+
+Link format: instance[/jql][/project-id]/query
+
+The path is parsed as follows:
+  instance/query              → native, unscoped
+  instance//query             → native, default project scope
+  instance/pid/query          → native, project-scoped to pid
+  instance/jql/query          → JQL, unscoped
+  instance/jql//query         → JQL, default project scope
+  instance/jql/pid/query      → JQL, project-scoped to pid
+
+The optional /jql/ segment selects JQL translation.
+A double slash (//) after instance (or after /jql/) means
+project-scoped to the instance's default project.
+A project-id between slashes means project-scoped to that project."
+  (let* ((parts (split-string bug "/" nil))
+         (bug-instance (car parts))
+         (parts (cdr parts))
+         (jql-p (and parts (string= (car parts) "jql")))
+         (parts (if jql-p (cdr parts) parts))
+         (project (cond ((null parts) nil)
+                        ((string= (car parts) "") t)
+                        ((> (length parts) 1) (car parts))
+                        (t nil)))
+         (query (mapconcat #'identity
+                           (if (or (null parts)
+                                   (string= (car parts) "")
+                                   (> (length parts) 1))
+                               (cdr parts)
+                             parts)
+                           "/")))
+    (bug--debug (format "org-bug-open-search: raw=%S parts=%S instance=%S jql=%S project=%S query=%S"
+                        bug parts bug-instance jql-p project query))
+    (if jql-p
+        (if (eq project t)
+            (bug-search-jql-project query bug-instance)
+          (if project
+              (let ((bug---project project))
+                (bug-search-jql-project query bug-instance))
+            (bug-search-jql query bug-instance)))
+      (if (eq project t)
+          (bug-search-project query bug-instance)
+        (if project
+            (let ((bug---project project))
+              (bug-search-project query bug-instance))
+          (bug-search query bug-instance))))))
 
 (defun org-bug-store-link ()
   "Store a link to a bug."

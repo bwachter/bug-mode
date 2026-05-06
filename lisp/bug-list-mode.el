@@ -74,6 +74,10 @@
     ("D"  "Delete this bug" bug--bug-mode-delete-bug
      :if (lambda () (and (bound-and-true-p bug---instance)
                          (bug--instance-feature bug---instance :del))))]
+   ["Search"
+    ("e" "Edit current search" bug-edit-search)
+    ("J" "Edit JQL search" bug-edit-jql-search
+     :if (lambda () (and (boundp 'bug---query-jql) bug---query-jql)))]
    ["Rally"
     :if (lambda () (and (bound-and-true-p bug---instance)
                         (equal 'rally (bug--instance-backend-type bug---instance))))
@@ -82,15 +86,12 @@
                           (bug-rally-subscription bug---instance)))]])
 
 (declare-function bug-edit-search "bug-search")
-(defvar bug--pending-query-string)
-(defvar bug--pending-query-jql)
-(defvar bug--pending-project)
+(declare-function bug-edit-jql-search "bug-search")
 
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
     (define-key keymap (kbd "RET") #'bug--list-mode-select-bug)
     (define-key keymap bug-menu-key #'bug--list-mode-menu)
-    (define-key keymap "e"         #'bug-edit-search)
     (define-key keymap "g"         #'bug--list-mode-update-list)
     (define-key keymap "q"         #'bug--mode-default-quit-window)
     keymap)
@@ -109,12 +110,19 @@
   (bug-list-mode)
   (setq bug---query query)
   (setq bug---instance instance)
-  (setq bug---query-string (or bug--pending-query-string ""))
-  (setq bug---query-jql (or bug--pending-query-jql nil))
-  (setq bug---project (or bug--pending-project nil))
-  (setq bug--pending-query-string nil)
-  (setq bug--pending-query-jql nil)
-  (setq bug--pending-project nil)
+  (setq bug---query-string
+        (or (if (hash-table-p query)
+                (gethash "native-query" query)
+              (cdr (assoc 'native-query query)))
+            ""))
+  (setq bug---query-jql
+        (if (hash-table-p query)
+            (gethash "native-query-jql" query)
+          (cdr (assoc 'native-query-jql query))))
+  (setq bug---project
+        (if (hash-table-p query)
+            (gethash "native-project" query)
+          (cdr (assoc 'native-project query))))
   (setq bug---field-length nil)
   (setq buffer-read-only nil)
 

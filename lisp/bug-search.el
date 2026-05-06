@@ -32,15 +32,6 @@
 (require 'bug-vars)
 (require 'bug-instance)
 
-(defvar bug--pending-query-string nil
-  "Temporarily holds the user-typed query string until bug-list-show stores it.")
-
-(defvar bug--pending-query-jql nil
-  "Temporarily holds the JQL query string until bug-list-show stores it.")
-
-(defvar bug--pending-project nil
-  "Temporarily holds the project scope until bug-list-show stores it.")
-
 ;;;###autoload
 (defun bug-stored-bugs (list-name &optional instance)
   "Display a stored list of bugs"
@@ -75,10 +66,10 @@ backend must support the :search feature."
   (unless instance
     (setq instance (bug--instance-to-symbolp nil :search)))
   (bug--debug-log-time "start")
-  (setq bug--pending-query-string query)
-  (bug--do-search
-   (bug--instance-backend-function "bug--parse-%s-search-query" query instance)
-   instance))
+  (let ((params (bug--instance-backend-function "bug--parse-%s-search-query" query instance)))
+    (bug--do-search
+     (cons `(native-query . ,query) params)
+     instance)))
 
 ;;;###autoload
 (defun bug-search-jql (query &optional instance)
@@ -95,11 +86,15 @@ translation layer from JQL to the backend's native query language."
   (unless instance
     (setq instance (bug--instance-to-symbolp nil :search-jql)))
   (bug--debug-log-time "start")
-  (setq bug--pending-query-string query)
-  (setq bug--pending-query-jql query)
-  (bug--do-search
-   (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)
-   instance))
+  (let ((params (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)))
+    (bug--do-search
+     (append `((native-query-jql . ,query)
+               (native-query .
+                             ,(or (cdr (assoc 'query params))
+                                  (cdr (assoc 'query (cdr (assoc 'data params))))
+                                  query)))
+             params)
+     instance)))
 
 (defun bug--search-candidates (search-str instance)
   "Search for artifacts matching `search-str' and return a candidate alist.
@@ -118,8 +113,11 @@ Returns nil when no results are found or the backend lacks support."
   "Return the project scope for INSTANCE.
 Uses `bug---project' if bound and non-nil, otherwise the instance's
 `:project-id' property.  Returns nil if no project is configured."
-  (or (and (boundp 'bug---project) bug---project)
-      (bug--instance-property :project-id instance)))
+  (let ((result (or (and (boundp 'bug---project) bug---project)
+                    (bug--instance-property :project-id instance))))
+    (bug--debug (format "bug--search-project-scope: instance=%S bug---project=%S result=%S"
+                        instance (and (boundp 'bug---project) bug---project) result))
+    result))
 
 ;;;###autoload
 (defun bug-search-project (query &optional instance)
@@ -140,11 +138,16 @@ The backend must support the :search feature."
     (unless project-scope
       (error "No project configured for instance %s" instance))
     (bug--debug-log-time "start")
-    (setq bug--pending-query-string query)
-    (setq bug--pending-project project-scope)
-    (let ((bug---project project-scope))
+    (bug--debug (format "bug-search-project: instance=%S query=%S project-scope=%S bug---project=%S"
+                        instance query project-scope (and (boundp 'bug---project) bug---project)))
+    (let* ((bug---project project-scope)
+           (params (bug--instance-backend-function "bug--parse-%s-search-query" query instance)))
+      (bug--debug (format "bug-search-project: after let* bug---project=%S params=%S"
+                          bug---project params))
       (bug--do-search
-       (bug--instance-backend-function "bug--parse-%s-search-query" query instance)
+       (append `((native-project . ,project-scope)
+                 (native-query . ,query))
+               params)
        instance))))
 
 ;;;###autoload
@@ -166,21 +169,25 @@ restricted to the current project (`bug---project') or the instance's
     (unless project-scope
       (error "No project configured for instance %s" instance))
     (bug--debug-log-time "start")
-    (setq bug--pending-query-string query)
-    (setq bug--pending-query-jql query)
-    (setq bug--pending-project project-scope)
-    (let ((bug---project project-scope))
+    (let* ((bug---project project-scope)
+           (params (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)))
       (bug--do-search
-       (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)
+       (append `((native-project . ,project-scope)
+                 (native-query-jql . ,query)
+                 (native-query .
+                               ,(or (cdr (assoc 'query params))
+                                    (cdr (assoc 'query (cdr (assoc 'data params))))
+                                    query)))
+               params)
        instance))))
 
 ;;;###autoload
 (defun bug-edit-search ()
-  "Edit and re-run the search query associated with the current buffer.
-If the current buffer was created by a project-scoped search, re-run the
-scoped variant; otherwise re-run the unscoped variant."
+  "Edit and re-run the native search query associated with the current buffer.
+Uses `bug---query-string' as the default.  Project scoping is preserved."
   (interactive)
-  (let* ((current-query (if (boundp 'bug---query-string) bug---query-string ""))
+  (let* ((current-query (if (boundp 'bug---query-string)
+                            bug---query-string ""))
          (instance (if (boundp 'bug---instance) bug---instance nil))
          (scoped (and (boundp 'bug---project) bug---project))
          (new-query (read-string "Search query: " current-query)))
@@ -188,6 +195,21 @@ scoped variant; otherwise re-run the unscoped variant."
       (if scoped
           (bug-search-project new-query instance)
         (bug-search new-query instance)))))
+
+;;;###autoload
+(defun bug-edit-jql-search ()
+  "Edit and re-run the JQL search query associated with the current buffer.
+Uses `bug---query-jql' as the default.  Project scoping is preserved."
+  (interactive)
+  (let* ((current-query (if (boundp 'bug---query-jql)
+                            bug---query-jql ""))
+         (instance (if (boundp 'bug---instance) bug---instance nil))
+         (scoped (and (boundp 'bug---project) bug---project))
+         (new-query (read-string "JQL query: " current-query)))
+    (unless (string-empty-p new-query)
+      (if scoped
+          (bug-search-jql-project new-query instance)
+        (bug-search-jql new-query instance)))))
 
 (provide 'bug-search)
 ;;; bug-search.el ends here
