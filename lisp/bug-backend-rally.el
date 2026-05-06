@@ -414,7 +414,7 @@ Returns the created post object, or signals an error on failure."
   "Open a Rally discussion post composition buffer for the current artifact."
   (unless (and (boundp 'bug---uuid) bug---uuid)
     (error "No bug UUID found; re-open the bug buffer to fetch fresh data"))
-  (bug--bug-mode-open-html-editor
+  (bug--bug-mode-open-rich-editor
    'comment nil
    "# Enter discussion post below. Use C-c C-c to submit.\n# Lines starting with # are ignored.\n\n"
    'text #'bug--backend-rally-commit-comment))
@@ -424,7 +424,7 @@ Returns the created post object, or signals an error on failure."
   "Submit the current buffer content as a Rally discussion post."
   (interactive)
   (let* ((text (buffer-string))
-         (source-buf bug--html-edit-source-buffer)
+         (source-buf bug--rich-edit-source-buffer)
          (post-text ""))
     ;; Filter out comment lines (lines starting with #)
     (dolist (line (split-string text "\n"))

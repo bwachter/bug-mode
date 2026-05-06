@@ -1,4 +1,4 @@
-;;; bug-html-edit.el --- org-mode editing for rich-text fields -*- lexical-binding: t; -*-
+;;; bug-rich-edit.el --- org-mode editing for rich-text fields -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;
@@ -139,33 +139,33 @@ Uses pandoc if available, otherwise falls back to ox-md."
 ;;;;;;
 ;; Edit buffer
 
-(defvar-local bug--html-edit-field-name nil)
-(defvar-local bug--html-edit-source-buffer nil)
-(defvar-local bug--html-edit-field-pos nil)
-(defvar-local bug--html-edit-raw-value nil
+(defvar-local bug--rich-edit-field-name nil)
+(defvar-local bug--rich-edit-source-buffer nil)
+(defvar-local bug--rich-edit-field-pos nil)
+(defvar-local bug--rich-edit-raw-value nil
   "The immutable original raw field value (HTML or markdown).
 Used by revert and as the old-value baseline for commit.")
-(defvar-local bug--html-edit-source-format nil
+(defvar-local bug--rich-edit-source-format nil
   "Source markup format: `html' or `markdown'.")
-(defvar-local bug--html-edit-current-mode nil
+(defvar-local bug--rich-edit-current-mode nil
   "Current editing view: `org' or `raw'.")
-(defvar-local bug--html-edit-cached-org nil
+(defvar-local bug--rich-edit-cached-org nil
   "Last known org content.  Updated whenever the org view is left (toggle)
 or refreshed (revert/derive).")
-(defvar-local bug--html-edit-cached-raw nil
+(defvar-local bug--rich-edit-cached-raw nil
   "Last known raw content.  Updated whenever the raw view is left (toggle)
 or refreshed (revert/derive).")
 
-(defvar-local bug--html-edit-commit-function #'bug--html-edit-commit
+(defvar-local bug--rich-edit-commit-function #'bug--rich-edit-commit
   "Function to call on C-c C-c in the edit buffer.
-Defaults to `bug--html-edit-commit' for field edits.
-Can be set to `bug--html-edit-commit-comment' for comment composition.")
+Defaults to `bug--rich-edit-commit' for field edits.
+Can be set to `bug--rich-edit-commit-comment' for comment composition.")
 
 ;; TODO, entry into the transient with b obviously won't work in this
 ;;       edit buffer, but we'd need to figure out a better way to guid
 ;;       the user
-(defun bug--html-edit-set-keys ()
-  "Bind bug-html-edit keys in the current buffer after a mode change."
+(defun bug--rich-edit-set-keys ()
+  "Bind bug-rich-edit keys in the current buffer after a mode change."
   ;; After a major-mode change the local map is often a shared symbol
   ;; (e.g. `org-mode-map').  `local-set-key' on a symbol mutates the
   ;; global map, so we must install a private copy first.
@@ -173,31 +173,31 @@ Can be set to `bug--html-edit-commit-comment' for comment composition.")
     (use-local-map (make-sparse-keymap)))
   (when (symbolp (current-local-map))
     (use-local-map (copy-keymap (current-local-map))))
-  (local-set-key (kbd "C-c C-c") bug--html-edit-commit-function)
-  (local-set-key (kbd "C-c C-k") #'bug--html-edit-abort)
-  (local-set-key (kbd "C-c C-t") #'bug--html-edit-toggle-mode)
-  (local-set-key (kbd "C-c C-r") #'bug--html-edit-revert)
-  (local-set-key (kbd "C-c C-d") #'bug--html-edit-derive))
+  (local-set-key (kbd "C-c C-c") bug--rich-edit-commit-function)
+  (local-set-key (kbd "C-c C-k") #'bug--rich-edit-abort)
+  (local-set-key (kbd "C-c C-t") #'bug--rich-edit-toggle-mode)
+  (local-set-key (kbd "C-c C-r") #'bug--rich-edit-revert)
+  (local-set-key (kbd "C-c C-d") #'bug--rich-edit-derive))
 
-(defun bug--html-edit-restore-locals (field-name source-buf field-pos
+(defun bug--rich-edit-restore-locals (field-name source-buf field-pos
                                                  raw-value fmt cur-mode
                                                  cached-org cached-raw
                                                  &optional commit-fn)
   "Restore all edit-buffer locals after a major-mode change wipes them."
-  (setq-local bug--html-edit-field-name    field-name)
-  (setq-local bug--html-edit-source-buffer source-buf)
-  (setq-local bug--html-edit-field-pos     field-pos)
-  (setq-local bug--html-edit-raw-value     raw-value)
-  (setq-local bug--html-edit-source-format fmt)
-  (setq-local bug--html-edit-current-mode  cur-mode)
-  (setq-local bug--html-edit-cached-org    cached-org)
-  (setq-local bug--html-edit-cached-raw    cached-raw)
-  (setq-local bug--html-edit-commit-function (or commit-fn #'bug--html-edit-commit)))
+  (setq-local bug--rich-edit-field-name    field-name)
+  (setq-local bug--rich-edit-source-buffer source-buf)
+  (setq-local bug--rich-edit-field-pos     field-pos)
+  (setq-local bug--rich-edit-raw-value     raw-value)
+  (setq-local bug--rich-edit-source-format fmt)
+  (setq-local bug--rich-edit-current-mode  cur-mode)
+  (setq-local bug--rich-edit-cached-org    cached-org)
+  (setq-local bug--rich-edit-cached-raw    cached-raw)
+  (setq-local bug--rich-edit-commit-function (or commit-fn #'bug--rich-edit-commit)))
 
 ;;;;;;
 ;; Editor entry point
 
-(defun bug--bug-mode-open-html-editor (field-name field-pos old-value
+(defun bug--bug-mode-open-rich-editor (field-name field-pos old-value
                                                   &optional source-format
                                                   commit-fn)
   "Open a split buffer to edit the rich-text field FIELD-NAME.
@@ -206,7 +206,7 @@ FIELD-POS is the field value position in the current bug buffer.
 OLD-VALUE is the raw value currently stored for the field.
 SOURCE-FORMAT is the markup format of OLD-VALUE: `html' (default),
 `markdown', or `text'.
-COMMIT-FN, if non-nil, is used instead of `bug--html-edit-commit' for C-c C-c.
+COMMIT-FN, if non-nil, is used instead of `bug--rich-edit-commit' for C-c C-c.
 
 The buffer opens in org-mode converted from the raw value.
 For `text' format no conversion is performed and the buffer
@@ -230,11 +230,11 @@ Key bindings:
       (erase-buffer)
       (insert org-content "\n")
       (org-mode)
-      (bug--html-edit-restore-locals field-name source-buf field-pos
+      (bug--rich-edit-restore-locals field-name source-buf field-pos
                                      old-value fmt 'org
                                      org-content old-value
-                                     (or commit-fn #'bug--html-edit-commit))
-      (bug--html-edit-set-keys)
+                                     (or commit-fn #'bug--rich-edit-commit))
+      (bug--rich-edit-set-keys)
       (message
        "Edit (%s→org) — C-c C-c commit, C-c C-k abort, C-c C-t toggle, C-c C-r revert, C-c C-d derive"
        (symbol-name fmt)))
@@ -243,19 +243,19 @@ Key bindings:
 ;;;;;;
 ;; Toggle
 
-(defun bug--html-edit-toggle-mode ()
+(defun bug--rich-edit-toggle-mode ()
   "Toggle between org-mode and raw (HTML/markdown) editing.
 
 Before switching, the current buffer content is saved into the cache for
 the active view.  The new view is then generated from that cache.  The
 two views are never kept in live sync; each toggle is a one-shot conversion."
   (interactive)
-  (let ((field-name bug--html-edit-field-name)
-        (source-buf bug--html-edit-source-buffer)
-        (field-pos  bug--html-edit-field-pos)
-        (raw-value  bug--html-edit-raw-value)
-        (fmt        bug--html-edit-source-format)
-        (cur-mode   bug--html-edit-current-mode))
+  (let ((field-name bug--rich-edit-field-name)
+        (source-buf bug--rich-edit-source-buffer)
+        (field-pos  bug--rich-edit-field-pos)
+        (raw-value  bug--rich-edit-raw-value)
+        (fmt        bug--rich-edit-source-format)
+        (cur-mode   bug--rich-edit-current-mode))
     (cond
      ((eq cur-mode 'org)
       (let* ((new-cached-org (string-trim (buffer-string)))
@@ -269,11 +269,11 @@ two views are never kept in live sync; each toggle is a one-shot conversion."
          ((eq fmt 'text)     (text-mode))
          ((eq fmt 'markdown) (if (fboundp 'markdown-mode) (markdown-mode) (html-mode)))
          (t                  (html-mode)))
-        (bug--html-edit-restore-locals field-name source-buf field-pos
+        (bug--rich-edit-restore-locals field-name source-buf field-pos
                                        raw-value fmt 'raw
                                        new-cached-org new-raw
-                                       bug--html-edit-commit-function)
-        (bug--html-edit-set-keys)
+                                       bug--rich-edit-commit-function)
+        (bug--rich-edit-set-keys)
         (message "Raw %s editing — C-c C-t org, C-c C-r revert, C-c C-d derive, C-c C-c commit"
                  (symbol-name fmt))))
      (t
@@ -285,32 +285,32 @@ two views are never kept in live sync; each toggle is a one-shot conversion."
         (erase-buffer)
         (insert new-org)
         (org-mode)
-        (bug--html-edit-restore-locals field-name source-buf field-pos
+        (bug--rich-edit-restore-locals field-name source-buf field-pos
                                        raw-value fmt 'org
                                        new-org new-cached-raw
-                                       bug--html-edit-commit-function)
-        (bug--html-edit-set-keys)
+                                       bug--rich-edit-commit-function)
+        (bug--rich-edit-set-keys)
         (message "Org editing — C-c C-t raw %s, C-c C-r revert, C-c C-d derive, C-c C-c commit"
                  (symbol-name fmt)))))))
 
 ;;;;;;
 ;; Revert and Derive
 
-(defun bug--html-edit-revert ()
+(defun bug--rich-edit-revert ()
   "Revert the active view to the original field content.
 
 In org mode: re-derives org from the original raw value and updates
 the org cache.  In raw mode: restores the original raw value directly
 and updates the raw cache."
   (interactive)
-  (let ((field-name bug--html-edit-field-name)
-        (source-buf bug--html-edit-source-buffer)
-        (field-pos  bug--html-edit-field-pos)
-        (raw-value  bug--html-edit-raw-value)
-        (fmt        bug--html-edit-source-format)
-        (cur-mode   bug--html-edit-current-mode)
-        (cached-org bug--html-edit-cached-org)
-        (cached-raw bug--html-edit-cached-raw))
+  (let ((field-name bug--rich-edit-field-name)
+        (source-buf bug--rich-edit-source-buffer)
+        (field-pos  bug--rich-edit-field-pos)
+        (raw-value  bug--rich-edit-raw-value)
+        (fmt        bug--rich-edit-source-format)
+        (cur-mode   bug--rich-edit-current-mode)
+        (cached-org bug--rich-edit-cached-org)
+        (cached-raw bug--rich-edit-cached-raw))
     (cond
      ((eq cur-mode 'org)
       (let ((new-org (cond
@@ -319,23 +319,23 @@ and updates the raw cache."
                       (t                  (or (bug--html-to-org raw-value) "")))))
         (erase-buffer)
         (insert new-org "\n")
-        (bug--html-edit-restore-locals field-name source-buf field-pos
+        (bug--rich-edit-restore-locals field-name source-buf field-pos
                                        raw-value fmt 'org
                                        new-org cached-raw
-                                       bug--html-edit-commit-function)
-        (bug--html-edit-set-keys)
+                                       bug--rich-edit-commit-function)
+        (bug--rich-edit-set-keys)
         (message "Reverted org view from original %s" (symbol-name fmt))))
      (t
       (erase-buffer)
       (insert (or raw-value ""))
-      (bug--html-edit-restore-locals field-name source-buf field-pos
+      (bug--rich-edit-restore-locals field-name source-buf field-pos
                                      raw-value fmt 'raw
                                      cached-org raw-value
-                                     bug--html-edit-commit-function)
-      (bug--html-edit-set-keys)
+                                     bug--rich-edit-commit-function)
+      (bug--rich-edit-set-keys)
       (message "Reverted to original %s" (symbol-name fmt))))))
 
-(defun bug--html-edit-derive ()
+(defun bug--rich-edit-derive ()
   "Derive the active view from the other view's cached content.
 
 In org mode: re-converts the cached raw content to org, replacing the
@@ -346,14 +346,14 @@ In raw mode: exports the cached org content to HTML/markdown, replacing
 the current buffer.  Useful to inspect the output of the org exporter
 before committing."
   (interactive)
-  (let ((field-name bug--html-edit-field-name)
-        (source-buf bug--html-edit-source-buffer)
-        (field-pos  bug--html-edit-field-pos)
-        (raw-value  bug--html-edit-raw-value)
-        (fmt        bug--html-edit-source-format)
-        (cur-mode   bug--html-edit-current-mode)
-        (cached-org bug--html-edit-cached-org)
-        (cached-raw bug--html-edit-cached-raw))
+  (let ((field-name bug--rich-edit-field-name)
+        (source-buf bug--rich-edit-source-buffer)
+        (field-pos  bug--rich-edit-field-pos)
+        (raw-value  bug--rich-edit-raw-value)
+        (fmt        bug--rich-edit-source-format)
+        (cur-mode   bug--rich-edit-current-mode)
+        (cached-org bug--rich-edit-cached-org)
+        (cached-raw bug--rich-edit-cached-raw))
     (cond
      ((eq cur-mode 'org)
       (let ((new-org (cond
@@ -362,11 +362,11 @@ before committing."
                       (t                  (or (bug--html-to-org cached-raw) "")))))
         (erase-buffer)
         (insert new-org "\n")
-        (bug--html-edit-restore-locals field-name source-buf field-pos
+        (bug--rich-edit-restore-locals field-name source-buf field-pos
                                        raw-value fmt 'org
                                        new-org cached-raw
-                                       bug--html-edit-commit-function)
-        (bug--html-edit-set-keys)
+                                       bug--rich-edit-commit-function)
+        (bug--rich-edit-set-keys)
         (message "Derived org from cached %s" (symbol-name fmt))))
      (t
       (let ((new-raw (cond
@@ -375,86 +375,86 @@ before committing."
                       (t                  (bug--org-to-html cached-org)))))
         (erase-buffer)
         (insert new-raw)
-        (bug--html-edit-restore-locals field-name source-buf field-pos
+        (bug--rich-edit-restore-locals field-name source-buf field-pos
                                        raw-value fmt 'raw
                                        cached-org new-raw
-                                       bug--html-edit-commit-function)
-        (bug--html-edit-set-keys)
+                                       bug--rich-edit-commit-function)
+        (bug--rich-edit-set-keys)
         (message "Derived %s from cached org" (symbol-name fmt)))))))
 
 ;;;;;;
 ;; Commit and Abort
 
-(defun bug--html-edit-commit ()
+(defun bug--rich-edit-commit ()
   "Convert the current buffer view to the source format and apply it.
 
 If the active view is org-mode, it is converted to HTML or markdown as
 appropriate.  If the active view is raw, its content is used as-is."
   (interactive)
-  (let* ((fmt       bug--html-edit-source-format)
-         (cur-mode  bug--html-edit-current-mode)
+  (let* ((fmt       bug--rich-edit-source-format)
+         (cur-mode  bug--rich-edit-current-mode)
          (new-value
           (string-trim
            (cond
             ((eq cur-mode 'raw)    (buffer-string))
             ((eq fmt 'text)        (buffer-string))
             ((eq fmt 'markdown)    (bug--org-to-markdown (buffer-string)))
-            (t                     (or (bug--org-to-html (buffer-string)) ""))))))
-    (field-name bug--html-edit-field-name)
-    (field-pos  bug--html-edit-field-pos)
-    (old-value  bug--html-edit-raw-value)
-    (source-buf bug--html-edit-source-buffer))
-  (quit-window t)
-  (when (and (buffer-live-p source-buf) (not (string= new-value old-value)))
-    (with-current-buffer source-buf
-      (setq buffer-read-only nil)
-      (let* ((fpos (text-property-any (point-min) (point-max) 'field field-name))
-             (fend (when fpos
-                     (or (text-property-not-all fpos (point-max) 'field field-name)
-                         (point-max)))))
-        (when fpos
-          (delete-region fpos fend))
-        (goto-char (or fpos field-pos))
-        (cond
-         ((and (eq bug-update-mode 'immediate) (not bug---is-new))
-          (condition-case err
-              (let ((update-id (bug--get-update-id bug---instance)))
-                (message "Updating field %s..." field-name)
-                (bug-update update-id `((,field-name . ,new-value)) bug---instance)
-                (if (assoc field-name bug---data)
-                    (setf (cdr (assoc field-name bug---data)) new-value)
-                  (push (cons field-name new-value) bug---data))
-                (insert (propertize (bug--format-field-value
-                                     (cons field-name new-value) bug---instance t)
-                                    'field field-name))
-                (message "Field %s updated." field-name))
-            (error
-             (if (assoc field-name bug---data)
-                 (setf (cdr (assoc field-name bug---data)) old-value)
-               (push (cons field-name old-value) bug---data))
-             (insert (propertize (bug--format-field-value
-                                  (cons field-name old-value) bug---instance t)
-                                 'field field-name))
-             (message "Update failed: %s" (error-message-string err)))))
-         (t
-          (if (assoc field-name bug---changed-data)
-              (setf (cdr (assoc field-name bug---changed-data)) new-value)
-            (push (cons field-name new-value) bug---changed-data))
-          (if (assoc field-name bug---data)
-              (setf (cdr (assoc field-name bug---data)) new-value)
-            (push (cons field-name new-value) bug---data))
-          (insert (propertize (bug--format-field-value
-                               (cons field-name new-value) bug---instance t)
-                              'field field-name))
-          (message "Field %s changed (C-c C-c to commit)" field-name)))
-        (when (fboundp 'bug--bug-mode-update-header)
-          (bug--bug-mode-update-header)))
-      (setq buffer-read-only t))))
+            (t                     (or (bug--org-to-html (buffer-string)) "")))))
+         (field-name bug--rich-edit-field-name)
+         (field-pos  bug--rich-edit-field-pos)
+         (old-value  bug--rich-edit-raw-value)
+         (source-buf bug--rich-edit-source-buffer))
+    (quit-window t)
+    (when (and (buffer-live-p source-buf) (not (string= new-value old-value)))
+      (with-current-buffer source-buf
+        (setq buffer-read-only nil)
+        (let* ((fpos (text-property-any (point-min) (point-max) 'field field-name))
+               (fend (when fpos
+                       (or (text-property-not-all fpos (point-max) 'field field-name)
+                           (point-max)))))
+          (when fpos
+            (delete-region fpos fend))
+          (goto-char (or fpos field-pos))
+          (cond
+           ((and (eq bug-update-mode 'immediate) (not bug---is-new))
+            (condition-case err
+                (let ((update-id (bug--get-update-id bug---instance)))
+                  (message "Updating field %s..." field-name)
+                  (bug-update update-id `((,field-name . ,new-value)) bug---instance)
+                  (if (assoc field-name bug---data)
+                      (setf (cdr (assoc field-name bug---data)) new-value)
+                    (push (cons field-name new-value) bug---data))
+                  (insert (propertize (bug--format-field-value
+                                       (cons field-name new-value) bug---instance t)
+                                      'field field-name))
+                  (message "Field %s updated." field-name))
+              (error
+               (if (assoc field-name bug---data)
+                   (setf (cdr (assoc field-name bug---data)) old-value)
+                 (push (cons field-name old-value) bug---data))
+               (insert (propertize (bug--format-field-value
+                                    (cons field-name old-value) bug---instance t)
+                                   'field field-name))
+               (message "Update failed: %s" (error-message-string err)))))
+           (t
+            (if (assoc field-name bug---changed-data)
+                (setf (cdr (assoc field-name bug---changed-data)) new-value)
+              (push (cons field-name new-value) bug---changed-data))
+            (if (assoc field-name bug---data)
+                (setf (cdr (assoc field-name bug---data)) new-value)
+              (push (cons field-name new-value) bug---data))
+            (insert (propertize (bug--format-field-value
+                                 (cons field-name new-value) bug---instance t)
+                                'field field-name))
+            (message "Field %s changed (C-c C-c to commit)" field-name)))
+          (when (fboundp 'bug--bug-mode-update-header)
+            (bug--bug-mode-update-header)))
+        (setq buffer-read-only t)))))
 
-(defun bug--html-edit-abort ()
+(defun bug--rich-edit-abort ()
   "Abort the rich-text field edit and close the edit buffer."
   (interactive)
   (quit-window t))
 
-(provide 'bug-html-edit)
-;;; bug-html-edit.el ends here
+(provide 'bug-rich-edit)
+;;; bug-richxs-edit.el ends here

@@ -35,7 +35,7 @@
 (require 'bug-backend-bz-shared)
 (require 'bug-common-functions)
 (require 'bug-rpc)
-(require 'bug-html-edit)
+(require 'bug-rich-edit)
 (require 'bug-debug)
 (require 'url-vars)
 (require 'json)
@@ -272,14 +272,14 @@ INSTANCE is the Bugzilla instance."
 ;;;###autoload
 (defun bug--backend-bz-rest-create-comment (_args _instance)
   "Open a Bugzilla comment composition buffer for the current bug."
-  (bug--bug-mode-open-html-editor 'comment nil "" 'text #'bug--backend-bz-rest-commit-comment))
+  (bug--bug-mode-open-rich-editor 'comment nil "" 'text #'bug--backend-bz-rest-commit-comment))
 
 ;;;###autoload
 (defun bug--backend-bz-rest-commit-comment ()
   "Submit the current buffer content as a Bugzilla comment via REST."
   (interactive)
   (let* ((text (string-trim (buffer-string)))
-         (source-buf bug--html-edit-source-buffer))
+         (source-buf bug--rich-edit-source-buffer))
     (when (string= text "")
       (error "Comment is empty"))
     (let ((id (with-current-buffer source-buf bug---id))

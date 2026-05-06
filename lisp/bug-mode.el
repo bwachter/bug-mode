@@ -39,7 +39,7 @@
 (require 'bug-debug)
 (require 'bug-persistent-data)
 (require 'bug-custom)
-(require 'bug-html-edit)
+(require 'bug-rich-edit)
 (require 'bug-search)
 (require 'bug-project)
 (require 'bug-instance)
@@ -434,7 +434,7 @@ be edited immediately with \\[bug--bug-mode-edit-thing-near-point]."
             (let ((value-pos (text-property-any (point-min) (point-max) 'field field-sym)))
               (when value-pos
                 (if (memql field-type '(99 100))
-                    (bug--bug-mode-open-html-editor
+                    (bug--bug-mode-open-rich-editor
                      field-sym value-pos ""
                      (if (equal field-type 100) 'markdown 'html))
                   (goto-char value-pos)
@@ -567,7 +567,7 @@ Tries backend-provided completion first; falls back to type-specific input."
                                                 field-pos t))
             (if (memql field-type '(99 100))
                 ;; Rich-text field: open editor asynchronously
-                (bug--bug-mode-open-html-editor
+                (bug--bug-mode-open-rich-editor
                  field-name field-pos
                  (or (cdr (assoc field-name bug---data)) "")
                  (if (equal field-type 100) 'markdown 'html))
