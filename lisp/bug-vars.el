@@ -44,6 +44,13 @@
 (make-variable-buffer-local 'bug---query)
 (defvar bug---query-string nil)
 (make-variable-buffer-local 'bug---query-string)
+(defvar bug---query-jql nil)
+(make-variable-buffer-local 'bug---query-jql)
+(defvar bug---project nil
+  "Project scope for project-scoped searches.
+When non-nil, search commands restrict results to this project.
+Set buffer-locally in search result buffers.")
+(make-variable-buffer-local 'bug---project)
 (defvar bug---field-length)
 (make-variable-buffer-local 'bug---field-length)
 

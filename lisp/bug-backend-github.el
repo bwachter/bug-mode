@@ -48,7 +48,7 @@
 ;;;###autoload
 (defun bug--backend-github-features (_arg _instance)
   "Features supported by the GitHub backend."
-  '(:read :projects :project-bugs))
+  '(:read :search :projects :project-bugs))
 
 ;;;###autoload
 (defun bug--backend-github-default-url (_args _instance)
@@ -160,7 +160,24 @@ GitHub error responses are alists with a `message' key."
   "Resolve abstract field names for GitHub issues."
   (cond ((equal :bug-uuid field-name)        '_resource_path)
         ((equal :bug-friendly-id field-name) '_display_id)
-        ((equal :bug-summary field-name)     'title)))
+        ((equal :bug-summary field-name)     'title)
+        ;; JQL generic field mappings
+        ((equal :jql-text field-name)       'title)
+        ((equal :jql-summary field-name)     'title)
+        ((equal :jql-status field-name)      'state)
+        ((equal :jql-assignee field-name)    'assignee)
+        ((equal :jql-reporter field-name)    'user)
+        ((equal :jql-priority field-name)    nil)
+        ((equal :jql-type field-name)        nil)
+        ((equal :jql-project field-name)      nil)
+        ((equal :jql-created field-name)      'created_at)
+        ((equal :jql-updated field-name)      'updated_at)
+        ((equal :jql-description field-name)   'body)
+        ((equal :jql-labels field-name)       'labels)
+        ((equal :jql-key field-name)         'number)
+        ((equal :jql-id field-name)          'id)
+        ((equal :jql-component field-name)   nil)
+        ((equal :jql-resolution field-name)  nil)))
 
 ;;;###autoload
 (defun bug--github-list-columns (_object _instance)

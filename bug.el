@@ -1,4 +1,4 @@
-;;; bug.el --- work with bug trackers from within emacs
+;;; bug.el --- work with bug trackers from within emacs  -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;
@@ -65,8 +65,8 @@
 ;; bug-login/bug-logout
 (transient-define-prefix bug-menu ()
   "Top level bug mode menu"
-
-  [["Instances"
+  [:pad-keys t
+   ["Instances"
     ("l" "List instances" bug-list-instances)
     ("a" "Switch active instance" bug-instance-switch)
     ("d" "Deactivate current active instance" bug-instance-deactivate)]
@@ -74,12 +74,12 @@
     ("c" "Create by prompting for instance" bug-create)
     ("o" "Open by prompting ID and instance" bug-open)]
    ["Search"
-    ("s" "Prompt for search string and instance" bug-search)
-    ("f" "Prompt for filter properties and instance" bug-search-filter)
-    ("m" "Prompt for multiple search strings and instance" bug-search-multiple)]
+    ("s" "Search string" bug-search)
+    ("j" "JQL search" bug-search-jql)
+    ("S" "Project-scoped search" bug-search-project)
+    ("J" "Project-scoped JQL search" bug-search-jql-project)]
    ["Misc"
-    ("R" "Clear metadata cache" bug-cache-clear)]
-   ])
+    ("R" "Clear metadata cache" bug-cache-clear)]])
 
 (provide 'bug)
 ;;; bug.el ends here

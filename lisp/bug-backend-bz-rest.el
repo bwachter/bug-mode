@@ -43,7 +43,7 @@
 ;;;###autoload
 (defun bug--backend-bz-rest-features (_arg _instance)
   "Features supported by Bugzilla REST backend"
-  '(:read :write))
+  '(:read :search :search-jql))
 
 ;;;;;;
 ;; REST transport
@@ -216,9 +216,12 @@ available, log in transparently and retry the request once."
   "Delegate to shared query parser."
   (bug--bz-shared-parse-search-query query instance))
 
-(defun bug--search-filter-bz-rest-query (properties instance)
-  "Delegate to shared filter translator."
-  (bug--bz-shared-search-filter-to-query properties instance))
+;;;###autoload
+(defun bug--parse-bz-rest-jql-query (query instance)
+  "Parse a JQL query string into Bugzilla REST search params.
+
+Delegates to the shared JQL parser in `bug-backend-bz-shared.el'."
+  (bug--bz-shared-parse-jql-query query instance))
 
 ;;;;;;
 ;; bug-mode functions

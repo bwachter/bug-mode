@@ -82,6 +82,9 @@
                           (bug-rally-subscription bug---instance)))]])
 
 (declare-function bug-edit-search "bug-search")
+(defvar bug--pending-query-string)
+(defvar bug--pending-query-jql)
+(defvar bug--pending-project)
 
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -107,7 +110,11 @@
   (setq bug---query query)
   (setq bug---instance instance)
   (setq bug---query-string (or bug--pending-query-string ""))
+  (setq bug---query-jql (or bug--pending-query-jql nil))
+  (setq bug---project (or bug--pending-project nil))
   (setq bug--pending-query-string nil)
+  (setq bug--pending-query-jql nil)
+  (setq bug--pending-project nil)
   (setq bug---field-length nil)
   (setq buffer-read-only nil)
 

@@ -35,6 +35,12 @@
 (defvar bug--pending-query-string nil
   "Temporarily holds the user-typed query string until bug-list-show stores it.")
 
+(defvar bug--pending-query-jql nil
+  "Temporarily holds the JQL query string until bug-list-show stores it.")
+
+(defvar bug--pending-project nil
+  "Temporarily holds the project scope until bug-list-show stores it.")
+
 ;;;###autoload
 (defun bug-stored-bugs (list-name &optional instance)
   "Display a stored list of bugs"
@@ -56,13 +62,18 @@
 
 ;;;###autoload
 (defun bug-search (query &optional instance)
-  "Take a search query from the minibuffer and execute it"
+  "Take a search query from the minibuffer and execute it.
+
+The query is interpreted in the backend's native search language.  The
+backend must support the :search feature."
   (interactive
    (if current-prefix-arg
        (nreverse (list
-                  (bug--instance-query)
+                  (bug--instance-query :search)
                   (read-string "Search query: " nil nil t)))
      (list (read-string "Search query: " nil nil t))))
+  (unless instance
+    (setq instance (bug--instance-to-symbolp nil :search)))
   (bug--debug-log-time "start")
   (setq bug--pending-query-string query)
   (bug--do-search
@@ -70,28 +81,25 @@
    instance))
 
 ;;;###autoload
-(defun bug-search-multiple (&optional instance)
-  "Take multiple details for a search query from the minibuffer in several
-prompts and execute them"
+(defun bug-search-jql (query &optional instance)
+  "Search using JQL (Jira Query Language) syntax.
+
+The backend must support the :search-jql feature, which provides a
+translation layer from JQL to the backend's native query language."
   (interactive
    (if current-prefix-arg
-       (list (bug--instance-query))))
-  (let ((terms (make-hash-table :test 'equal))
-        (term nil))
-    (while (not (string= term ""))
-      (setq term (read-from-minibuffer "query term: "))
-      (if (not (string= term ""))
-          (let* ((parsed (bug--instance-backend-function "bug--parse-%s-search-query"
-                                                term instance))
-                 (key (car parsed))
-                 (value (cdr parsed))
-                 (current (gethash key terms)))
-            (if current
-                (if (vectorp current)
-                    (puthash key (vconcat current (vector value)) terms)
-                  (puthash key (vector current value) terms))
-              (puthash key value terms)))))
-    (bug--do-search terms instance)))
+       (nreverse (list
+                  (bug--instance-query :search-jql)
+                  (read-string "JQL query: " nil nil t)))
+     (list (read-string "JQL query: " nil nil "text ~ \"sample search\""))))
+  (unless instance
+    (setq instance (bug--instance-to-symbolp nil :search-jql)))
+  (bug--debug-log-time "start")
+  (setq bug--pending-query-string query)
+  (setq bug--pending-query-jql query)
+  (bug--do-search
+   (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)
+   instance))
 
 (defun bug--search-candidates (search-str instance)
   "Search for artifacts matching `search-str' and return a candidate alist.
@@ -106,15 +114,80 @@ Returns nil when no results are found or the backend lacks support."
       (bug--instance-backend-function-optional
        "bug--format-%s-search-candidates" (car results) instance))))
 
+(defun bug--search-project-scope (instance)
+  "Return the project scope for INSTANCE.
+Uses `bug---project' if bound and non-nil, otherwise the instance's
+`:project-id' property.  Returns nil if no project is configured."
+  (or (and (boundp 'bug---project) bug---project)
+      (bug--instance-property :project-id instance)))
+
+;;;###autoload
+(defun bug-search-project (query &optional instance)
+  "Execute a project-scoped native search.
+
+The query is interpreted in the backend's native search language, restricted
+to the current project (`bug---project') or the instance's `:project-id'.
+The backend must support the :search feature."
+  (interactive
+   (if current-prefix-arg
+       (nreverse (list
+                  (bug--instance-query :search)
+                  (read-string "Project-scoped search query: " nil nil t)))
+     (list (read-string "Project-scoped search query: " nil nil t))))
+  (unless instance
+    (setq instance (bug--instance-to-symbolp nil :search)))
+  (let ((project-scope (bug--search-project-scope instance)))
+    (unless project-scope
+      (error "No project configured for instance %s" instance))
+    (bug--debug-log-time "start")
+    (setq bug--pending-query-string query)
+    (setq bug--pending-project project-scope)
+    (let ((bug---project project-scope))
+      (bug--do-search
+       (bug--instance-backend-function "bug--parse-%s-search-query" query instance)
+       instance))))
+
+;;;###autoload
+(defun bug-search-jql-project (query &optional instance)
+  "Execute a project-scoped JQL search.
+
+The query is translated from JQL to the backend's native language and
+restricted to the current project (`bug---project') or the instance's
+`:project-id'.  The backend must support the :search-jql feature."
+  (interactive
+   (if current-prefix-arg
+       (nreverse (list
+                  (bug--instance-query :search-jql)
+                  (read-string "Project-scoped JQL query: " nil nil "text ~ \"sample search\"")))
+     (list (read-string "Project-scoped JQL query: " nil nil t))))
+  (unless instance
+    (setq instance (bug--instance-to-symbolp nil :search-jql)))
+  (let ((project-scope (bug--search-project-scope instance)))
+    (unless project-scope
+      (error "No project configured for instance %s" instance))
+    (bug--debug-log-time "start")
+    (setq bug--pending-query-string query)
+    (setq bug--pending-query-jql query)
+    (setq bug--pending-project project-scope)
+    (let ((bug---project project-scope))
+      (bug--do-search
+       (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)
+       instance))))
+
 ;;;###autoload
 (defun bug-edit-search ()
-  "Edit and re-run the search query associated with the current buffer."
+  "Edit and re-run the search query associated with the current buffer.
+If the current buffer was created by a project-scoped search, re-run the
+scoped variant; otherwise re-run the unscoped variant."
   (interactive)
   (let* ((current-query (if (boundp 'bug---query-string) bug---query-string ""))
          (instance (if (boundp 'bug---instance) bug---instance nil))
+         (scoped (and (boundp 'bug---project) bug---project))
          (new-query (read-string "Search query: " current-query)))
     (unless (string-empty-p new-query)
-      (bug-search new-query instance))))
+      (if scoped
+          (bug-search-project new-query instance)
+        (bug-search new-query instance)))))
 
 (provide 'bug-search)
 ;;; bug-search.el ends here

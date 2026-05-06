@@ -1,6 +1,6 @@
 ;; bug-backend-rally.el --- backend implementation for Bugzilla JSON-RPC -*- lexical-binding: t; -*-
 ;;
-;; Copyright (c) 2010-2015 bug-mode developers
+;; Copyright (c) 2010-2026 bug-mode developers
 ;;
 ;; See the AUTHORS.md file for a full list:
 ;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
@@ -40,6 +40,7 @@
 (require 'bug-custom)
 (require 'bug-debug)
 (require 'bug-format)
+(require 'bug-jql)
 
 (require 'json)
 (require 'url-cookie)
@@ -59,7 +60,7 @@ API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
 ;;;###autoload
 (defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
-  '(:read :write :comment :create :delete :projects :project-bugs :project-create))
+  '(:read :search :search-jql :write :comment :create :delete :projects :project-bugs :project-create))
 
 ;;;###autoload
 (defun bug--backend-rally-default-url (_args _instance)
@@ -453,7 +454,24 @@ Returns the created post object, or signals an error on failure."
         ((equal :bug-friendly-id field-name)
          'FormattedID)
         ((equal :bug-summary field-name)
-         'Name)))
+         'Name)
+        ;; JQL generic field mappings
+        ((equal :jql-text field-name)       'Name)
+        ((equal :jql-summary field-name)     'Name)
+        ((equal :jql-status field-name)      'ScheduleState)
+        ((equal :jql-assignee field-name)    'Owner)
+        ((equal :jql-reporter field-name)    'SubmittedBy)
+        ((equal :jql-priority field-name)    'Priority)
+        ((equal :jql-type field-name)        'Type)
+        ((equal :jql-project field-name)      'Project)
+        ((equal :jql-created field-name)      'CreationDate)
+        ((equal :jql-updated field-name)      'LastUpdateDate)
+        ((equal :jql-description field-name)   'Description)
+        ((equal :jql-labels field-name)       'Tags)
+        ((equal :jql-key field-name)         'FormattedID)
+        ((equal :jql-id field-name)          '_refObjectUUID)
+        ((equal :jql-component field-name)   nil)
+        ((equal :jql-resolution field-name)  'Resolution)))
 
 ;;;;;;
 ;; search functions
@@ -571,29 +589,30 @@ _refObjectUUID. Does not mutate `params'."
           (append results nil)))
 
 ;;;###autoload
-(defun bug--parse-rally-search-query (query instance)
-  "Parse search query from minibuffer for rally"
+(defun bug--parse-rally-search-query (query _instance)
+  "Parse search query from minibuffer for rally.
+
+When `bug---project' is bound and non-nil, the search is restricted to that
+project.  Otherwise all accessible projects are searched."
   (cond
    ;; Handle empty search (when user just presses Enter)
-   ;; Lists all items in the default/selected project
    ((or (eq query t) (and (stringp query) (string-empty-p query)))
-    (let ((project-ref (bug--rally-get-project-ref instance)))
-      (if project-ref
+    (if (and (boundp 'bug---project) bug---project)
+        (let ((project-ref (format "/project/%s" bug---project)))
           `((data . ((project ,project-ref)
                      (order "FormattedID DESC")
-                     (fetch "FormattedID,Name,State,ScheduleState,Owner"))))
-        (error "No project specified"))))
+                     (fetch "FormattedID,Name,State,ScheduleState,Owner")))))
+      `((data . ((order "FormattedID DESC")
+                 (fetch "FormattedID,Name,State,ScheduleState,Owner"))))))
 
    ;; for userfriendly rally IDs, open bug directly
    ((string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" query)
     `((data . ((query ,(format "( FormattedID = \"%s\" )" query))))))
 
    ;; string contains parentheses -> assume it's a complex rally expression.
-   ;; Cross-object queries (e.g. Iteration.StartDate) require both project scope and
-   ;; a concrete resource type -- the 'artifact' virtual resource cannot handle them.
+   ;; Cross-object queries require a concrete resource type.
    ((string-match "\\((\\|)\\)" query)
-    (let* ((project-id (bug--instance-property :project-id instance))
-           ;; Detect cross-object references like "Iteration.StartDate"
+    (let* ((project-id (and (boundp 'bug---project) bug---project))
            (cross-obj (string-match "[A-Za-z][A-Za-z0-9]*\\.[A-Za-z]" query))
            (data-params `((query ,query)
                           ,@(when project-id
@@ -606,73 +625,23 @@ _refObjectUUID. Does not mutate `params'."
    ;; search Name, Notes, Description
    ;; TODO: searching discussion seems to be problematic
    (t
-    `((data . ((query
-                ,(format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
-                         query query query))))))))
-
+    (let* ((qstring (format "(((Name contains \"%s\") OR (Notes contains \"%s\")) OR (Description contains \"%s\"))"
+                            query query query))
+           (data-params `((query ,(if (and (boundp 'bug---project) bug---project)
+                                      (format "((Project = \"/project/%s\") AND %s)"
+                                              bug---project qstring)
+                                    qstring)))))
+      `((data . ,data-params))))))
 
 ;;;###autoload
-(defun bug--search-filter-rally-query (properties instance)
-  "Translate generic search `properties' to a Rally WSAPI query.
+(defun bug--parse-rally-jql-query (query instance)
+  "Parse a JQL query string and return Rally WSAPI params.
 
-Dispatched from `bug--search-filter-to-query' by the frontend.
-
-Property-to-field mapping:
-- title       -- Name contains
-- status      -- ScheduleState = (exact; use `state' for Defect/Task State)
-- state       -- State = (exact; for Defect and Task items)
-- owner       -- Owner.Name contains (cross-object; forces
-                 hierarchicalrequirement)
-- type        -- resource type: story, defect, task, testcase, feature
-- iteration   -- Iteration.Name contains (cross-object; forces
-                 hierarchicalrequirement)
-- priority    -- Priority = (exact)
-- description -- (Notes contains OR Description contains)
-- tag         -- Tags.Name contains (cross-object; forces
-                  hierarchicalrequirement)"
-  (let* ((parts '())
-         (cross-object nil)
-         (explicit-type (cdr (assoc 'type properties)))
-         (project-id (bug--instance-property :project-id instance)))
-    (dolist (prop properties)
-      (pcase (car prop)
-        ('title
-         (push (format "(Name contains \"%s\")" (cdr prop)) parts))
-        ('status
-         (push (format "(ScheduleState = \"%s\")" (cdr prop)) parts))
-        ('state
-         (push (format "(State = \"%s\")" (cdr prop)) parts))
-        ('owner
-         (push (format "(Owner.Name contains \"%s\")" (cdr prop)) parts)
-         (setq cross-object t))
-        ('iteration
-         (push (format "(Iteration.Name contains \"%s\")" (cdr prop)) parts)
-         (setq cross-object t))
-        ('priority
-         (push (format "(Priority = \"%s\")" (cdr prop)) parts))
-        ('description
-         (let ((val (cdr prop)))
-           (push (format "((Notes contains \"%s\") OR (Description contains \"%s\"))"
-                         val val)
-                 parts)))
-        ('tag
-         (push (format "(Tags.Name contains \"%s\")" (cdr prop)) parts)
-         (setq cross-object t))))
-    (let* ((resource (cond
-                      ((string= explicit-type "story")    "hierarchicalrequirement")
-                      ((string= explicit-type "defect")   "defect")
-                      ((string= explicit-type "task")     "task")
-                      ((string= explicit-type "testcase") "testcase")
-                      ((string= explicit-type "feature")  "portfolioitem/feature")
-                      (cross-object                       "hierarchicalrequirement")
-                      (t                                  "artifact")))
-           (query-string (mapconcat #'identity (reverse parts) " AND "))
-           (data-params `((query ,query-string)
-                          ,@(when project-id
-                              `((project ,(format "/project/%s" project-id))
-                                (scopeDown "true"))))))
-      `((data . ,data-params)
-        (resource . ,resource)))))
+Delegates to the generic JQL parser and translator in `bug-jql.el',
+then formats the result as Rally WSAPI query parameters."
+  (require 'bug-jql)
+  (let ((ast (bug--jql-translate-query (bug--parse-jql-query query) instance)))
+    (bug--jql-format-rally-query ast)))
 
 
 ;;;;;;

@@ -32,6 +32,7 @@
 (require 'bug-common-functions)
 (require 'bug-format)
 (require 'bug-custom)
+(require 'bug-jql)
 
 ;;;;;;
 ;; Field metadata
@@ -115,7 +116,24 @@ no mapping is needed.
         ((equal :bug-friendly-id field-name)
          'id)
         ((equal :bug-summary field-name)
-         'summary)))
+         'summary)
+        ;; JQL generic field mappings
+        ((equal :jql-text field-name)       'summary)
+        ((equal :jql-summary field-name)     'summary)
+        ((equal :jql-status field-name)      'status)
+        ((equal :jql-assignee field-name)    'assigned_to)
+        ((equal :jql-reporter field-name)    'reporter)
+        ((equal :jql-priority field-name)    'priority)
+        ((equal :jql-type field-name)        'component)
+        ((equal :jql-project field-name)      'product)
+        ((equal :jql-created field-name)      'creation_time)
+        ((equal :jql-updated field-name)      'last_change_time)
+        ((equal :jql-description field-name)   'description)
+        ((equal :jql-labels field-name)       'keywords)
+        ((equal :jql-key field-name)         'id)
+        ((equal :jql-id field-name)          'id)
+        ((equal :jql-component field-name)   'component)
+        ((equal :jql-resolution field-name)  'resolution)))
 
 ;;;;;;
 ;; Bug normalization
@@ -196,30 +214,32 @@ no mapping is needed.
         `((id . ,(string-to-number query)))
       `((summary . ,query)))))
 
-(defun bug--bz-shared-search-filter-to-query (properties _instance)
-  "Translate generic search `properties'  to Bugzilla search parameters.
+(defun bug--bz-shared-parse-jql-query (query instance)
+  "Parse a JQL query string and return Bugzilla search params.
 
-Dispatched from `bug--search-filter-to-query' by the frontend.
+Basic implementation: translates simple field=value AND chains to
+Bugzilla search alists.  OR and complex nesting are not yet supported."
+  (require 'bug-jql)
+  (let ((ast (bug--jql-translate-query (bug--parse-jql-query query) instance)))
+    (bug--bz-shared-format-jql-clauses (cdr (assoc :clauses ast)) instance)))
 
-Property-to-field mapping:
-- `title'    -- summary (contains)
-- `status'   -- status (exact)
-- `owner'    -- assigned_to (contains)
-- `type'     -- component
-- `priority' -- priority (exact)
-- `tag'      -- keywords (contains)
-
-`iteration' and `description' have no Bugzilla equivalent and are ignored."
-  (let ((result '()))
-    (dolist (prop properties)
-      (pcase (car prop)
-        ('title    (push (cons 'summary     (cdr prop)) result))
-        ('status   (push (cons 'status      (cdr prop)) result))
-        ('owner    (push (cons 'assigned_to (cdr prop)) result))
-        ('type     (push (cons 'component   (cdr prop)) result))
-        ('priority (push (cons 'priority    (cdr prop)) result))
-        ('tag      (push (cons 'keywords    (cdr prop)) result))))
-    (nreverse result)))
+(defun bug--bz-shared-format-jql-clauses (clause instance)
+  "Recursively format JQL CLAUSE as Bugzilla search params."
+  (pcase (car clause)
+    (:clause
+     (let ((field (nth 1 clause))
+           (op (nth 2 clause))
+           (value (nth 3 clause)))
+       (unless (member op '("=" "~"))
+         (error "Bugzilla JQL translator only supports = and ~ operators (got %s)" op))
+       `((,(intern field) . ,value))))
+    (:and
+     (append (bug--bz-shared-format-jql-clauses (nth 1 clause) instance)
+             (bug--bz-shared-format-jql-clauses (nth 2 clause) instance)))
+    (:group
+     (bug--bz-shared-format-jql-clauses (nth 1 clause) instance))
+    (_
+     (error "Bugzilla JQL translator does not support %s clauses" (car clause)))))
 
 ;;;;;;
 ;; Comments and attachments

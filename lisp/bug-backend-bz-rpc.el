@@ -43,7 +43,7 @@
 ;;;###autoload
 (defun bug--backend-bz-rpc-features (_arg _instance)
   "Features supported by Bugzilla JSON-RPC backend"
-  '(:read :write))
+  '(:read :search :search-jql))
 
 ;;;###autoload
 (defun bug--rpc-bz-rpc--send (args instance)
@@ -173,10 +173,12 @@ are available, log in transparently and retry the request once."
   "Delegate to shared query parser."
   (bug--bz-shared-parse-search-query query instance))
 
-(defun bug--search-filter-bz-rpc-query (properties instance)
-  "Delegate to shared filter translator."
-  (bug--bz-shared-search-filter-to-query properties instance))
+;;;###autoload
+(defun bug--parse-bz-rpc-jql-query (query instance)
+  "Parse a JQL query string into Bugzilla RPC search params.
 
+Delegates to the shared JQL parser in `bug-backend-bz-shared.el'."
+  (bug--bz-shared-parse-jql-query query instance))
 
 ;;;;;;
 ;; bug-mode functions
