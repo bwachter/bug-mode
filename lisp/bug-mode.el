@@ -143,8 +143,13 @@
          (not (string= name "Description"))
          (not (string= name "internals")))))
 
-(defun bug-show (bug instance)
-  "Display an existing bug buffer in bug-mode"
+(defun bug-show (bug instance &optional no-additional-data)
+  "Display an existing bug buffer in bug-mode.
+
+When NO-ADDITIONAL-DATA is non-nil, skip calling the backend's
+`show-additional-data' hook.  This is used for redisplay operations
+like toggling field filters where comments/attachments/discussion
+data is already present in the buffer and should not be re-fetched."
   (bug--debug-log-time "bug-show")
   ;; we need to save variables we want to keep over redisplay here in the let
   (let ((tmp-bug-id (cdr (assoc (bug--field-name :bug-friendly-id instance) bug)))
@@ -228,12 +233,21 @@
                               'bug-field-type (bug--get-field-property (car description-prop) 'type instance)
                               'bug-field-name (car description-prop))))))
 
-    (bug--instance-backend-function-optional "bug--backend-%s-show-additional-data" bug instance)
+    (unless no-additional-data
+      (bug--instance-backend-function-optional "bug--backend-%s-show-additional-data" bug instance))
     (goto-char 0)
     (setq buffer-read-only t)
     (bug--bug-mode-update-header)
     (buffer-enable-undo)
     (bug--debug-log-time "stop")))
+
+(defun bug--redisplay-bug (bug instance)
+  "Redisplay BUG in the current buffer without fetching additional data.
+
+This is a thin wrapper around `bug-show' that skips the
+`show-additional-data' hook, so it is safe to call when refreshing
+the view (e.g. after toggling field filters)."
+  (bug-show bug instance t))
 
 (defun bug--bug-mode-update-header ()
   "Update the buffers headerline with bug modified status and name,
@@ -282,8 +296,8 @@ defines no filters, this does nothing. Empty filter lists show all fields."
                    (format "%d fields" (length current-filter)))
                  (1+ bug---field-filter-index)
                  (length field-filters)))
-      ;; Refresh the bug display
-      (bug-show bug---data instance))))
+      ;; Refresh the bug display without re-fetching comments/attachments/discussion
+      (bug--redisplay-bug bug---data instance))))
 
 
 ;;;###autoload
@@ -327,7 +341,7 @@ included in the create call without requiring the user to edit them.
 The buffer uses the normal bug-mode layout.  Edit fields with
 \\[bug--bug-mode-edit-thing-near-point] and press \\[bug--bug-mode-commit] to
 create the artifact."
-  (bug-show display-alist instance)
+  (bug-show display-alist instance t)
   ;; bug-show reset bug---changed-data to nil; restore the pre-filled fields
   ;; (project, parent link) that should be included in the create call.
   (setq bug---changed-data create-alist)
