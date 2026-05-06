@@ -59,7 +59,7 @@ API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
 ;;;###autoload
 (defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
-  '(:read :write :create :delete :projects :project-bugs :project-create))
+  '(:read :write :comment :create :delete :projects :project-bugs :project-create))
 
 ;;;###autoload
 (defun bug--backend-rally-default-url (_args _instance)

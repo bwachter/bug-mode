@@ -79,7 +79,7 @@
                          (bug-create bug---instance))
      :if (lambda () (and
                      (bound-and-true-p bug---instance)
-                     (bug--instance-backend-feature bug---instance :create))))]
+                     (bug--instance-feature bug---instance :create))))]
    ["Rally"
     :if (lambda () (and (bound-and-true-p bug---instance)
                         (equal 'rally (bug--instance-backend-type bug---instance))))
@@ -159,12 +159,12 @@ Requires the backend to support the :project-bugs feature.  Uses
 :project-id from instance config; if not set, falls back to an
 interactive project selection when the backend also supports :projects."
   (interactive (list (bug--instance-query :project-bugs)))
-  (unless (bug--instance-backend-feature instance :project-bugs)
+  (unless (bug--instance-feature instance :project-bugs)
     (error "Backend does not support project bug listing"))
   (let* ((project-id
           (or project-id
               (bug--instance-property :project-id instance)
-              (when (bug--instance-backend-feature instance :projects)
+              (when (bug--instance-feature instance :projects)
                 (bug-select-project instance))))
          (params (bug--instance-backend-function
                   "bug--list-%s-project-bugs" project-id instance)))
@@ -188,7 +188,7 @@ With a prefix argument, prompts for which instance to use."
          (if current-prefix-arg
              (bug--instance-to-symbolp (bug--instance-query :project-create))
            (bug--instance-to-symbolp nil))))
-  (unless (bug--instance-backend-feature instance :project-create)
+  (unless (bug--instance-feature instance :project-create)
     (error "Backend does not support project creation"))
   (bug--instance-backend-function "bug--create-%s-project" name instance))
 

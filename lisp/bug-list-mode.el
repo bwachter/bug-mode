@@ -70,10 +70,10 @@
     ;; TODO, we properly need to pass bug data here
     ("C"  "Create related bug" bug--bug-mode-create-related
      :if (lambda () (and (bound-and-true-p bug---instance)
-                         (bug--instance-backend-feature bug---instance :create))))
+                         (bug--instance-feature bug---instance :create))))
     ("D"  "Delete this bug" bug--bug-mode-delete-bug
      :if (lambda () (and (bound-and-true-p bug---instance)
-                         (bug--instance-backend-feature bug---instance :del))))]
+                         (bug--instance-feature bug---instance :del))))]
    ["Rally"
     :if (lambda () (and (bound-and-true-p bug---instance)
                         (equal 'rally (bug--instance-backend-type bug---instance))))

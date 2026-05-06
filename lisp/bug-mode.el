@@ -51,12 +51,12 @@
                  ("B" "Open in browser" bug--bug-mode-browse-bug)
                  ("r" "Remember bug"   bug--bug-mode-remember-bug)]
    ["Edit"
-    :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-backend-feature bug---instance :write)))
+    :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-feature bug---instance :write)))
     ("a" "Add new field" bug--bug-mode-add-field)
     ("c" "Add new comment" bug--bug-mode-create-comment)
     ("e" "Edit field" bug--bug-mode-edit-thing-near-point)]
    ["Create"
-    :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-backend-feature bug---instance :create)))
+    :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-feature bug---instance :create)))
     ("C"  "Create related bug" bug--bug-mode-create-related)]
    ["View"
     ("v"  "Toggle field filter" bug--bug-mode-toggle-field-filter)]
@@ -65,7 +65,7 @@
     ("d"  "Download attachment" bug--bug-mode-download-attachment)
     ("D"  "Delete this bug" bug--bug-mode-delete-bug
      :if (lambda () (and (bound-and-true-p bug---instance)
-                         (bug--instance-backend-feature bug---instance :del))))]])
+                         (bug--instance-feature bug---instance :del))))]])
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -307,7 +307,7 @@ With a prefix argument, also prompts for which instance to use."
    (list nil (if current-prefix-arg
                  (bug--instance-to-symbolp (bug--instance-query :create))
                (bug--instance-to-symbolp nil :create))))
-  (unless (bug--instance-backend-feature instance :create)
+  (unless (bug--instance-feature instance :create)
     (error "Backend does not support issue creation"))
   (bug--instance-backend-function "bug--create-%s-bug-interactive" context instance))
 
@@ -341,7 +341,7 @@ Passes the current bug's data to the backend so it can prefill the parent
 link and select a sensible default type. The exact relationship depends on
 the backend and the current artifact type."
   (interactive)
-  (unless (bug--instance-backend-feature bug---instance :create)
+  (unless (bug--instance-feature bug---instance :create)
     (error "Backend does not support issue creation"))
   (bug-create `(:bug-data ,bug---data :relation :child) bug---instance))
 
@@ -500,7 +500,7 @@ If no (valid) field was found `nil' is returned."
 value if nothing has changed or editing is unsupported for the field type.
 
 Tries backend-provided completion first; falls back to type-specific input."
-  (unless (bug--instance-backend-feature bug---instance :write)
+  (unless (bug--instance-feature bug---instance :write)
     (error "Backend does not support editing"))
   (or (bug--completing-read-field field-name field-value bug---instance)
       (cond
@@ -542,7 +542,7 @@ Tries backend-provided completion first; falls back to type-specific input."
   "Edit the bug field at or near point"
   ;; TODO: when called with prefix argument, prompt for which field to edit
   (interactive)
-  (unless (bug--instance-backend-feature bug---instance :write)
+  (unless (bug--instance-feature bug---instance :write)
     (error "Backend does not support editing"))
   (let ((field-name (or (get-text-property (point) 'bug-field-name)
                         (save-excursion
@@ -793,7 +793,7 @@ This is mostly useful for debugging text properties"
 The buffer is closed on success. Backends that use a soft-delete (e.g.
 Rally's Recycle Bin) note this in their confirmation prompt."
   (interactive)
-  (unless (bug--instance-backend-feature bug---instance :delete)
+  (unless (bug--instance-feature bug---instance :delete)
     (error "Backend does not support deleting bugs"))
   (when (yes-or-no-p (format "Delete bug '%s'? " (or bug---id "this bug")))
     (bug--instance-backend-function "bug--delete-%s-bug" bug---uuid bug---instance)

@@ -102,6 +102,30 @@ checks with `memq' if `feature' is present"
                                               (substring (symbol-name f) 1))))
                       features)))))
 
+(defun bug--instance-feature (instance &optional feature)
+  "Return effective features for `instance', optionally checking `feature'.
+
+Takes into account instance-specific overrides such as `:read-only',
+which disables all mutating features regardless of what the backend
+declares.  Read-only instances retain only save features:
+
+- read
+- projects
+- project-bugs
+- search
+- search-jql
+
+Use this instead of `bug--instance-backend-feature' when checking
+whether an operation should be offered to the user."
+  (let ((effective (bug--instance-backend-feature instance)))
+    ;; Apply instance-level overrides
+    (when (bug--instance-property :read-only instance)
+      (setq effective
+            (cl-intersection effective '(:read :projects :project-bugs :search :search-jql))))
+    (if feature
+        (memq feature effective)
+      effective)))
+
 (defclass bug-instance-prefix (transient-prefix)
   ((current-instance-name :initarg :current-instance-name :initform nil)
    (current-instance-type :initarg :current-instance-type :initform nil))
