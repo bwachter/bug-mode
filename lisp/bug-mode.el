@@ -117,31 +117,48 @@
                  (string= f field))
                current-filter))))
 
-(defun bug--visible-field-p (prop instance)
-  "Return non-nil if PROP should be included for INSTANCE."
+(defun bug--visible-field-p (prop instance &optional backend-visible-fields)
+  "Return non-nil if PROP should be included for `instance'.
+
+`backend-visible-fields' is an optional list of field names the
+backend considers displayable for this specific bug (e.g. after
+stripping empty collections).  If non-nil, field names not in the
+list are hidden regardless of other checks."
 
   (let ((name (car prop))
-        (value (cdr prop)))
-    (and (not (equal :json-false (bug--get-field-property name 'is_visible instance)))
-         ;; referenced objects are included as a list. If there's
-         ;; a `Count' property with value `0' it's safe to assume
-         ;; we don't need to retrieve it (might be rally only)
-         (not (and (listp value)
-                   (equal 0 (cdr (assoc 'Count value)))))
-         ;; In new-artifact draft buffers show fields even when empty/nil,
-         ;; so the user can see and fill them in before committing.
-         (or (and (boundp 'bug---is-new) bug---is-new)
-             (and (not (equal value nil))
-                  (not (string-match "^[[:space:]]*$" (prin1-to-string value t)))))
-         (bug--field-filtered-p instance name)
-         ;; Apply field filter if defined and not empty
-         ;;(or (null current-filter)
-         ;;    (null field-filters)
-         ;;    (member (car prop) current-filter))
-         ;; Don't display Discussion/Description fields inline - handle separately
-         (not (string= name "Discussion"))
-         (not (string= name "Description"))
-         (not (string= name "internals")))))
+        (value (cdr prop))
+        (visible t))
+    ;; Backend-specific dynamic filtering (e.g. Rally empty collections)
+    (when (and backend-visible-fields
+               (not (member (if (symbolp name) (symbol-name name) name)
+                            backend-visible-fields)))
+      (setq visible nil)
+      (bug--debug (format "  field %S: hidden (backend filter)" name) '(fields . 2)))
+    ;; Static field metadata: fields marked invisible in the type definition
+    (let ((cell (assoc 'visible (gethash (if (symbolp name) (symbol-name name) (format "%s" name))
+                                         (bug--get-fields instance)))))
+      (when (and cell (equal nil (cdr cell)))
+        (setq visible nil)
+        (bug--debug (format "  field %S: hidden (field metadata)" name) '(fields . 2))))
+    ;; In new-artifact draft buffers show fields even when empty/nil,
+    ;; so the user can see and fill them in before committing.
+    (unless (or (and (boundp 'bug---is-new) bug---is-new)
+                (and (not (equal value nil))
+                     (not (string-match-p "\\`[[:space:]]*\\'"
+                                          (format "%s" value)))))
+      (setq visible nil)
+      (bug--debug (format "  field %S: hidden (nil/empty value)" name) '(fields . 2)))
+    (unless (bug--field-filtered-p instance name)
+      (setq visible nil)
+      (bug--debug (format "  field %S: hidden (field filter)" name) '(fields . 2)))
+    ;; Don't display Discussion/Description fields inline - handle separately
+    (when (or (string= name "Discussion")
+              (string= name "Description")
+              (string= name "internals"))
+      (setq visible nil)
+      (bug--debug (format "  field %S: hidden (special field)" name) '(fields . 2)))
+    (bug--debug (format "  field %S: %s" name (if visible "VISIBLE" "hidden")) '(fields . 3))
+    visible))
 
 (defun bug-show (bug instance &optional no-additional-data)
   "Display an existing bug buffer in bug-mode.
@@ -202,18 +219,22 @@ data is already present in the buffer and should not be re-fetched."
     (buffer-disable-undo)
     (erase-buffer)
 
-    (insert
-     (mapconcat
-      (lambda (prop)
-        (concat
-         (bug--format-field-name prop instance)
-         (let ((fv (bug--format-field-value prop instance t)))
-           (propertize (if (string-empty-p fv) " " fv)
-                       'field (car prop)
-                       'bug-field-type (bug--get-field-property (car prop) 'type instance)
-                       'bug-field-name (car prop)))))
-      (filter (lambda (prop) (bug--visible-field-p prop instance)) bug)
-      "\n"))
+    (bug--debug (format "bug-show: %d fields in raw data" (length bug)) '(fields . 1))
+    (let* ((backend-visible-fields (bug--instance-backend-function-optional "bug--%s-visible-fields" bug (bug--instance-to-symbolp instance)))
+           (visible-fields (filter (lambda (prop) (bug--visible-field-p prop instance backend-visible-fields)) bug)))
+      (bug--debug (format "bug-show: %d fields visible after filtering" (length visible-fields)) '(fields . 1))
+      (insert
+       (mapconcat
+        (lambda (prop)
+          (concat
+           (bug--format-field-name prop instance)
+           (let ((fv (bug--format-field-value prop instance t)))
+             (propertize (if (string-empty-p fv) " " fv)
+                         'field (car prop)
+                         'bug-field-type (bug--get-field-property (car prop) 'type instance)
+                         'bug-field-name (car prop)))))
+        visible-fields
+        "\n")))
 
     ;; Display Description separately after other fields.
     ;; For new-artifact drafts, show it even when empty so the user can fill it in.

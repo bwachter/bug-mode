@@ -325,6 +325,28 @@ Returns: ((all fields) (minimal fields) (normal fields) (detailed fields))"
     ()))
 
 ;;;###autoload
+(defun bug--rally-visibility-info (_bug _instance)
+  "Return the visibility metadata mapping for Rally fields.
+
+Rally's TypeDefinition API uses (Hidden . t) to mark fields
+that should not be displayed."
+  '(Hidden . t))
+
+;;;###autoload
+(defun bug--rally-visible-fields (bug _instance)
+  "Return a list of field names from `bug' that should be displayed.
+
+Fields whose value is an empty collection (Count = 0) are excluded."
+  (let ((result '()))
+    (dolist (prop bug)
+      (let ((name (car prop))
+            (value (cdr prop)))
+        (unless (and (listp value)
+                     (equal 0 (cdr (assoc 'Count value))))
+          (push (if (symbolp name) (symbol-name name) (format "%s" name)) result))))
+    result))
+
+;;;###autoload
 (defun bug--fetch-rally-discussion (bug-data instance)
   "Fetch discussion posts for a Rally artifact.
 
@@ -673,7 +695,8 @@ query before the read."
             id))
          (search-response (bug-rpc `((resource . "artifact")
                                      (operation . "read")
-                                     (object-id . ,object-id))
+                                     (object-id . ,object-id)
+                                     (data . ((fetch "true"))))
                                    instance))
          (return-document-type (caar search-response))
          (return-document (cdr (car search-response))))

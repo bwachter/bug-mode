@@ -156,6 +156,15 @@ GitHub error responses are alists with a `message' key."
   `((result . ((fields . ,bug--github-issue-fields)))))
 
 ;;;###autoload
+(defun bug--github-visibility-info (_args _instance)
+  "Return the visibility metadata mapping for GitHub fields.
+
+Returns (property-name . hidden-value), where `property-name' is the
+key in the field alist and `hidden-value' is the value that means
+the field should not be displayed."
+  '(is_visible . :json-false))
+
+;;;###autoload
 (defun bug--github-field-name (field-name _instance)
   "Resolve abstract field names for GitHub issues."
   (cond ((equal :bug-uuid field-name)        '_resource_path)

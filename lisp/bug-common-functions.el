@@ -158,12 +158,20 @@ With prefix argument, also prompts for the instance."
          (instance (bug--instance-to-symbolp instance))
          (fields (if (bug--cache-get cache-key instance) nil
                    (bug--instance-backend-function "bug--rpc-%s-get-fields" object instance)))
+         (vis-info (bug--instance-backend-function-optional "bug--%s-visibility-info" nil instance))
          (field-hash (make-hash-table :test 'equal)))
     (if fields
         (progn
           (mapc (lambda (field)
                   (let* ((key (cdr (assoc 'name field)))
-                         (mapped-field (bug--instance-backend-function-optional "bug--rpc-%s-map-field" key instance)))
+                         (mapped-field (bug--instance-backend-function-optional "bug--rpc-%s-map-field" key instance))
+                         (visible (if vis-info
+                                      (let* ((prop (car vis-info))
+                                            (hidden-val (cdr vis-info))
+                                            (val (cdr (assoc prop field))))
+                                        (not (equal val hidden-val)))
+                                    t))
+                         (field (cons `(visible . ,visible) field)))
                     ;; workaround for missing or oddly named fields in
                     ;; Bugzillas field list
                     (if (and mapped-field

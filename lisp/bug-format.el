@@ -28,6 +28,7 @@
 
 (require 'bug-common-functions)
 (require 'bug-custom)
+(require 'bug-debug)
 
 (defvar shr-width)      ; dynamic var from shr.el; declare here so let-binding works under lexical-binding
 (defvar shr-use-fonts)  ; ditto
@@ -111,25 +112,37 @@ is formatted to take more space"
        (propertize (bug--format-time-date (cdr field) long)
                    'face 'bug-field-type-5))
       ((equal content-type 6)
-       (propertize (prin1-to-string (cdr field) t)
+       (propertize (format "%s" (cdr field))
                    'face 'bug-field-type-6))
       ((equal content-type 98)
-       (propertize (prin1-to-string (cdr field) t)))
+       (propertize (format "%s" (cdr field))))
       ((equal content-type 99)
-       (let ((html-string (bug--format-html (cdr field))))
+       (let* ((raw (cdr field))
+              (html-string (bug--format-html raw)))
+         (bug--debug (format "  format %S (HTML): raw len=%d result len=%d"
+                             (car field)
+                             (length (prin1-to-string raw t))
+                             (length html-string))
+                     '(fields . 2))
          (if (fboundp 'add-face-text-property)
              (add-face-text-property 0 (length html-string)
                                      'bug-field-type-99 t html-string))
          html-string))
       ((equal content-type 100)
-       (let ((md-string (bug--format-markdown (cdr field))))
+       (let* ((raw (cdr field))
+              (md-string (bug--format-markdown raw)))
+         (bug--debug (format "  format %S (MD): raw len=%d result len=%d"
+                             (car field)
+                             (length (prin1-to-string raw t))
+                             (length md-string))
+                     '(fields . 2))
          (if (fboundp 'add-face-text-property)
              (add-face-text-property 0 (length md-string)
                                      'bug-field-type-100 t md-string))
          md-string))
       (t
-       (let ((s (prin1-to-string (cdr field) t)))
-         (if (string= s "nil") "" s))))
+       (let ((s (format "%s" (cdr field))))
+         (if (string= s "nil") "" (string-trim s)))))
      'bug-field-type content-type
      'bug-field-id field-id
      'bug-field-name (car field))))
@@ -137,16 +150,28 @@ is formatted to take more space"
 (defun bug--format-html (html &optional base-url)
   "Parse an HTML string and return it formatted suitable for inserting
 into the buffer. If HTML parsing is not possible the unparsed HTML is
-returned as string."
+returned as string.
+
+Catches errors from `shr-insert-document' and falls back to the raw
+HTML string, and detects when `shr' produces empty output for
+non-empty input."
   (unless html (setq html ""))
   (if (fboundp 'libxml-parse-html-region)
-      (with-temp-buffer
-        (insert html)
-        (let ((parsed-html
-               (libxml-parse-html-region (point-min) (point-max) base-url)))
+      (condition-case nil
           (with-temp-buffer
-            (shr-insert-document parsed-html)
-            (buffer-string))))
+            (insert html)
+            (let ((parsed-html
+                   (libxml-parse-html-region (point-min) (point-max) base-url)))
+              (with-temp-buffer
+                (shr-insert-document parsed-html)
+                (let ((result (buffer-string)))
+                  ;; If shr produced empty/whitespace output but the raw HTML
+                  ;; has visible content, fall back to raw HTML.
+                  (if (and (string-match-p "\\`[[:space:]]*\\'" result)
+                           (not (string-match-p "\\`[[:space:]]*\\'" html)))
+                      html
+                    result)))))
+        (error html))
     html))
 
 (defun bug--format-markdown (markdown &optional base-url)
