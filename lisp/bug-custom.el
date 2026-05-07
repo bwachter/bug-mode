@@ -189,6 +189,15 @@ When nil, the field is inserted empty and must be edited manually."
   :type 'sexp
   :group 'bug)
 
+(defcustom bug-jql-show-usage-hints t
+  "If non-nil, display read-only JQL usage hints in the query edit buffer.
+
+The hints are shown above the editable query area in temporary buffers
+opened by `bug-edit-jql-search' and related commands.  Set to nil to
+suppress the hints and show only the editable query area."
+  :type 'boolean
+  :group 'bug)
+
 (defcustom bug-data-directory (locate-user-emacs-file "bug-mode/")
   "The directory containing data files for the bug-mode package"
   :type 'string

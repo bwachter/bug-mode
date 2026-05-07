@@ -29,6 +29,12 @@
 (require 'cl-lib)
 (require 'bug-instance)
 
+(defvar bug-jql-font-lock-keywords
+  `((,(regexp-opt '("AND" "OR" "NOT" "ORDER BY" "ASC" "DESC" "IN") 'words) . font-lock-keyword-face)
+    (,(regexp-opt '("=" "!=" "~" "!~" ">" ">=" "<" "<=") t) . font-lock-function-name-face)
+    ("\".*?\"" . font-lock-string-face)
+    ("^\\(Examples:\\|Operators:\\|JQL Syntax:\\)" 1 'bold)))
+
 ;;;;; Tokenizer
 
 (defun bug--jql-tokenize (query)
@@ -494,6 +500,59 @@ project by prepending a Project clause."
               data-params))
       `((data . ,data-params)
         (resource . "artifact")))))
+
+(defun bug--jql-usage-hints ()
+  "Return read-only hint text for the JQL query minibuffer."
+  (concat
+   "JQL Syntax:  field operator value [AND|OR ...] [ORDER BY field ASC|DESC]\n"
+   "Operators: =  !=  ~  !~  >  >=  <  <=  IN  NOT IN\n"
+   "Keywords: AND  OR  NOT  ORDER BY  ASC  DESC\n"
+   "Generic fields: text  summary  status  assignee  reporter  priority\n"
+   "                 issuetype  project  created  updated  description\n"
+   "                 labels  key  id  component  resolution\n"
+   "Examples:\n"
+   "  status = \"Open\" AND assignee = \"alice\"\n"
+   "  text ~ \"crash\" ORDER BY updated DESC\n"
+   "  project = \"MyProject\" AND issuetype = \"Bug\"\n"
+   "Values can be quoted strings, numbers, or lists: IN (\"a\", \"b\")\n"))
+
+(defun bug--jql-read-with-hints (prompt &optional initial default-value)
+  "Read a JQL query from the minibuffer, showing usage hints above it.
+
+When `bug-jql-show-usage-hints' is non-nil, a temporary buffer with
+JQL syntax help is displayed at the bottom of the frame while the
+minibuffer is active.  The previous window configuration is restored
+automatically when the minibuffer exits.
+
+`initial' is inserted directly into the minibuffer (e.g. the current
+query when editing).  `default-value' is available via M-n but not
+inserted (e.g. the sample query for a new search)."
+  (let ((hints-buf nil)
+        (win-config nil))
+    (minibuffer-with-setup-hook
+        (lambda ()
+          (when bug-jql-show-usage-hints
+            (setq win-config (current-window-configuration))
+            (setq hints-buf (get-buffer-create " *JQL hints*"))
+            (with-current-buffer hints-buf
+              (erase-buffer)
+              (insert (bug--jql-usage-hints))
+              (setq-local font-lock-defaults '(bug-jql-font-lock-keywords t))
+              (font-lock-ensure)
+              (goto-char (point-min)))
+            (display-buffer hints-buf '(display-buffer-in-side-window
+                                        (side . bottom)
+                                        (slot . -1)
+                                        (window-height . fit-window-to-buffer)
+                                        (preserve-size . (nil . t))))
+            (add-hook 'minibuffer-exit-hook
+                      (lambda ()
+                        (when (buffer-live-p hints-buf)
+                          (kill-buffer hints-buf))
+                        (when win-config
+                          (set-window-configuration win-config)))
+                      nil t)))
+      (read-string prompt initial nil default-value))))
 
 (provide 'bug-jql)
 ;;; bug-jql.el ends here

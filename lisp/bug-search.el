@@ -31,6 +31,8 @@
 (require 'bug-persistent-data)
 (require 'bug-vars)
 (require 'bug-instance)
+(require 'bug-custom)
+(require 'bug-jql)
 
 ;;;###autoload
 (defun bug-stored-bugs (list-name &optional instance)
@@ -81,8 +83,8 @@ translation layer from JQL to the backend's native query language."
    (if current-prefix-arg
        (nreverse (list
                   (bug--instance-query :search-jql)
-                  (read-string "JQL query: " nil nil t)))
-     (list (read-string "JQL query: " nil nil "text ~ \"sample search\""))))
+                  (bug--jql-read-with-hints "JQL query: " nil)))
+     (list (bug--jql-read-with-hints "JQL query: " nil "text ~ \"sample search\""))))
   (unless instance
     (setq instance (bug--instance-to-symbolp nil :search-jql)))
   (bug--debug-log-time "start")
@@ -161,8 +163,8 @@ restricted to the current project (`bug---project') or the instance's
    (if current-prefix-arg
        (nreverse (list
                   (bug--instance-query :search-jql)
-                  (read-string "Project-scoped JQL query: " nil nil "text ~ \"sample search\"")))
-     (list (read-string "Project-scoped JQL query: " nil nil t))))
+                  (bug--jql-read-with-hints "Project-scoped JQL query: " nil "text ~ \"sample search\"")))
+     (list (bug--jql-read-with-hints "Project-scoped JQL query: " nil))))
   (unless instance
     (setq instance (bug--instance-to-symbolp nil :search-jql)))
   (let ((project-scope (bug--search-project-scope instance)))
@@ -196,6 +198,7 @@ Uses `bug---query-string' as the default.  Project scoping is preserved."
           (bug-search-project new-query instance)
         (bug-search new-query instance)))))
 
+
 ;;;###autoload
 (defun bug-edit-jql-search ()
   "Edit and re-run the JQL search query associated with the current buffer.
@@ -205,7 +208,7 @@ Uses `bug---query-jql' as the default.  Project scoping is preserved."
                             bug---query-jql ""))
          (instance (if (boundp 'bug---instance) bug---instance nil))
          (scoped (and (boundp 'bug---project) bug---project))
-         (new-query (read-string "JQL query: " current-query)))
+         (new-query (bug--jql-read-with-hints "JQL query: " current-query)))
     (unless (string-empty-p new-query)
       (if scoped
           (bug-search-jql-project new-query instance)

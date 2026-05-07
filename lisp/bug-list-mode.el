@@ -77,7 +77,9 @@
    ["Search"
     ("e" "Edit current search" bug-edit-search)
     ("J" "Edit JQL search" bug-edit-jql-search
-     :if (lambda () (and (boundp 'bug---query-jql) bug---query-jql)))]
+     :if (lambda () (and (boundp 'bug---query-jql)
+                         bug---query-jql
+                         (not (string-empty-p bug---query-jql)))))]
    ["Rally"
     :if (lambda () (and (bound-and-true-p bug---instance)
                         (equal 'rally (bug--instance-backend-type bug---instance))))
