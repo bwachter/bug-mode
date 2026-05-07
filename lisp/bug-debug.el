@@ -31,13 +31,33 @@
 (defvar bug-debug-last-timestamp)
 (defvar bug-debug-timestamp)
 
-(defmacro bug--debug (body)
-  `(if (and (boundp 'bug-debug) bug-debug)
-       (let ((str ,body))
-         (with-current-buffer (get-buffer-create "*bug-debug*")
-           (goto-char (point-max))
-           (insert str)
-           (insert "\n")))))
+(defun bug--debug-allowed-p (subsystem-level)
+  "Return non-nil if a debug message for `subsystem-level' should be printed.
+
+`subsystem-level' may be nil (always allowed when `bug-debug' is set),
+a symbol `subsystem' (allowed if `subsystem' is in `bug-debug-subsystems'),
+or a cons cell (subsystem . level) (allowed if `subsystem' is in
+`bug-debug-subsystems' with a configured level >= `level')."
+  (and (boundp 'bug-debug) bug-debug
+       (or (null subsystem-level)
+           (let* ((sub (if (consp subsystem-level) (car subsystem-level) subsystem-level))
+                  (lvl (if (consp subsystem-level) (cdr subsystem-level) 1))
+                  (cfg (assoc sub bug-debug-subsystems)))
+             (and cfg (integerp (cdr cfg)) (<= lvl (cdr cfg)))))))
+
+(defmacro bug--debug (body &optional subsystem-level)
+  "Log `body' to the *bug-debug* buffer when debugging is enabled.
+
+Optional `subsystem-level' controls filtering:
+- nil          – print if `bug-debug' is non-nil (backward compatible)
+- symbol       – print if subsystem is in `bug-debug-subsystems'
+- (SYMBOL . N) – print if subsystem is active at level >= N"
+  `(when (bug--debug-allowed-p ,subsystem-level)
+     (let ((str ,body))
+       (with-current-buffer (get-buffer-create "*bug-debug*")
+         (goto-char (point-max))
+         (insert str)
+         (insert "\n")))))
 
 (defun bug--debug-log-time (stamp)
   "Log timestamps to debug buffer if debugging is enabled
@@ -81,8 +101,8 @@ descriptive string"
                                     (time-to-seconds
                                      (time-subtract (current-time)
                                                     bug-debug-timestamp))))))
-                         (bug--debug format-string))
-                     (bug--debug "No measurement started"))
+                     (bug--debug format-string))
+                 (bug--debug "No measurement started"))
                (setq bug-debug-last-timestamp (current-time))))))
 
 (provide 'bug-debug)

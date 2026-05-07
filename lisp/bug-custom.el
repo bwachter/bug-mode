@@ -40,6 +40,25 @@
   :type 'string
   :group 'bug)
 
+(defcustom bug-debug-subsystems nil
+  "Alist controlling which debug subsystems are active and their verbosity.
+Each element is a cons cell (subsystem . level) where `subsystem' is a
+symbol (e.g. `fields', `rpc', `search') and `level' is a positive
+integer.  Higher `level' means more verbose output for that subsystem.
+
+When `bug--debug' is called with a `subsystem-level' argument, the
+message is printed only if the subsystem is present in this list
+and the requested level is <= the configured level.
+
+Example:
+  ((fields . 2) (rpc . 1))
+
+If this variable is nil but `bug-debug' is non-nil, all messages
+without an explicit subsystem are still printed (backward
+compatible behaviour)."
+  :type '(repeat (cons symbol integer))
+  :group 'bug)
+
 (defcustom bug-experimental nil
   "If non-nil, turn on experimental features"
   :type 'sexp
