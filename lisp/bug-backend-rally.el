@@ -238,7 +238,7 @@ object-id for read (or any other call requiring an object-id):
     (bug--debug-log-time "RPC init")
     (with-current-buffer (url-retrieve-synchronously url)
       (bug--debug (format "url: %s\ndata: %s\nheaders: %s\n" url url-request-data url-request-extra-headers))
-      (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug--rpc-log-response 'rpc-rally)
       (bug--rpc-response-store-cookies instance)
       (bug--parse-rpc-response instance))))
 
@@ -251,7 +251,9 @@ object-id for read (or any other call requiring an object-id):
          (return-document (cdr (car response)))
          (error-messages (assoc 'Errors return-document)))
     (if (>= (length (cdr error-messages)) 1)
-        (error (aref (cdr error-messages) 0)))
+        (let ((msg (aref (cdr error-messages) 0)))
+          (bug--debug (format "Rally error: %s" msg) '(rpc-rally . 1))
+          (error msg)))
     response))
 
 ;;;###autoload
@@ -675,6 +677,105 @@ project.  Otherwise all accessible projects are searched."
                                     qstring)))))
       `((data . ,data-params))))))
 
+;;;;;;
+;; JQL -> Rally WSAPI formatter
+
+(defun bug--rally-format-jql-value (value)
+  "Format `value' for Rally WSAPI query syntax.
+
+JQL functions like TODAY() are translated to Rally keywords (today,
+currentUser) without parentheses, since Rally does not use function-call
+syntax."
+  (cond
+   ((stringp value)
+    (format "\"%s\"" value))
+   ((numberp value)
+    (format "%s" value))
+   ((and (consp value) (eq (car value) :function))
+    (let ((name (downcase (cadr value))))
+      (pcase name
+        ("today" "today")
+        ("currentuser" "currentUser")
+        ;; Rally query syntax uses bare keywords, not function calls.
+        ;; Pass everything else through unchanged and hope the backend
+        ;; knows it.
+        (_ (cadr value)))))
+   (t
+    (format "\"%s\"" value))))
+
+(defun bug--rally-jql-operator (op)
+  "Map JQL operator `op' to Rally WSAPI operator."
+  (pcase op
+    ("=" "=")
+    ("!=" "!=")
+    ("~" "contains")
+    ("!~" "!contains")
+    ("IN" "in")
+    ("NOT IN" "!in")
+    (_ op)))
+
+(defun bug--rally-format-jql-clause (clause)
+  "Format a translated JQL clause as Rally WSAPI query string."
+  (pcase (car clause)
+    (:clause
+     (let ((field (nth 1 clause))
+           (op (bug--rally-jql-operator (nth 2 clause)))
+           (value (nth 3 clause)))
+       (if (member op '("in" "!in"))
+           ;; IN value list
+           (format "(%s %s (%s))"
+                   field op
+                   (mapconcat #'bug--rally-format-jql-value
+                              (if (listp value) value (list value)) ", "))
+         (format "(%s %s %s)"
+                 field op (bug--rally-format-jql-value value)))))
+    (:and
+     (format "(%s AND %s)"
+             (bug--rally-format-jql-clause (nth 1 clause))
+             (bug--rally-format-jql-clause (nth 2 clause))))
+    (:or
+     (format "(%s OR %s)"
+             (bug--rally-format-jql-clause (nth 1 clause))
+             (bug--rally-format-jql-clause (nth 2 clause))))
+    (:not
+     (format "(NOT %s)"
+             (bug--rally-format-jql-clause (nth 1 clause))))
+    (:group
+     (bug--rally-format-jql-clause (nth 1 clause)))
+    (_ (format "%s" clause))))
+
+;;;###autoload
+(defun bug--rally-format-jql-query (jql-ast)
+  "Format a translated JQL AST as Rally WSAPI query parameters.
+Returns a query structure alist.
+
+When `bug---project' is bound and non-nil, the query is restricted to that
+project by prepending a Project clause."
+  (let* ((clauses (cdr (assoc :clauses jql-ast)))
+         (order-by (cdr (assoc :order-by jql-ast)))
+         (query-string (bug--rally-format-jql-clause clauses))
+         (project-id (and (boundp 'bug---project) bug---project)))
+    (when project-id
+      (setq query-string (format "((Project = \"/project/%s\") AND %s)"
+                                 project-id query-string)))
+    ;; Add ORDER BY as Rally order parameter
+    (let ((data-params `((query ,query-string))))
+      (when order-by
+        (push (cons 'order
+                    (mapconcat (lambda (o)
+                                 (format "%s %s" (car o) (cdr o)))
+                               order-by ", "))
+              data-params))
+      ;; Default to hierarchicalrequirement instead of artifact.  Artifact is
+      ;; polymorphic and includes types (e.g. PortfolioItem) that lack fields
+      ;; commonly queried via JQL (Iteration, Release, etc.).  Most JQL queries
+      ;; are for work items with those fields, so hierarchicalrequirement is
+      ;; the safer default.  TODO: support issuetype to select the resource.
+      (let ((result `((data . ,data-params)
+                      (resource . "hierarchicalrequirement"))))
+        (bug--debug (format "JQL Rally query: %S" result) '(search . 2))
+        result))))
+
 ;;;###autoload
 (defun bug--parse-rally-jql-query (query instance)
   "Parse a JQL query string and return Rally WSAPI params.
@@ -683,7 +784,7 @@ Delegates to the generic JQL parser and translator in `bug-jql.el',
 then formats the result as Rally WSAPI query parameters."
   (require 'bug-jql)
   (let ((ast (bug--jql-translate-query (bug--parse-jql-query query) instance)))
-    (bug--jql-format-rally-query ast)))
+    (bug--rally-format-jql-query ast)))
 
 
 ;;;;;;
@@ -697,8 +798,11 @@ then formats the result as Rally WSAPI query parameters."
 \"DE456\").  When a FormattedID is given it is resolved to a UUID via a
 query before the read."
   (let* ((object-id
-          ;; If id looks like a FormattedID, resolve it first
-          (if (string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" id)
+          ;; If id looks like a FormattedID, resolve it first.
+          ;; Bind case-fold-search to nil so UUIDs starting with f/u/d/t
+          ;; are not mistaken for FormattedIDs.
+          (if (let ((case-fold-search nil))
+                (string-match "^\\(F\\|DE\\|TA\\|US\\)[0-9]+" id))
               (let* ((qr (bug--rpc-rally
                           `((resource . "artifact")
                             (operation . "query")

@@ -53,11 +53,11 @@ to be added.
 Backends may define additional keys, check the documentation of their RPC
 functions for details.
 "
-   (bug--instance-backend-function "bug--rpc-%s" args instance))
+  (bug--instance-backend-function "bug--rpc-%s" args instance))
 
 (defun bug--rpc-response-store-cookies (instance)
   "Try to extract cookies from an RPC response, and store them in the cache"
-  (bug--debug (concat "saving cookies for instance: " (prin1-to-string instance t) "\n"))
+  (bug--debug (concat "saving cookies for instance: " (prin1-to-string instance t) "\n") '(rpc . 1))
   (save-match-data
     (let ((cookies))
       (goto-char 0)
@@ -70,6 +70,19 @@ functions for details.
           (set-text-properties 0 (length cookie) nil cookie)
           (push cookie cookies)))
       (bug--cache-put 'cookies cookies instance))))
+
+(defun bug--rpc-log-response (subsystem)
+  "Log the HTTP response in the current buffer at split verbosity.
+
+Headers are logged at `subsystem' level 2; the full message
+(headers + body) at `subsystem' level 3."
+  (let* ((full (decode-coding-string (buffer-string) 'utf-8))
+         (header-end (string-match "\n\n" full))
+         (headers (if header-end
+                      (substring full 0 (+ header-end 2))
+                    full)))
+    (bug--debug (concat "response headers:\n" headers) `(,subsystem . 2))
+    (bug--debug (concat "response:\n" full) `(,subsystem . 3))))
 
 (defun bug--parse-rpc-response (instance)
   "Parse a JSON response from buffer and return it as alist"

@@ -66,7 +66,7 @@ no mapping is needed.
 
 `_instance' is ignored but required by the backend function dispatcher."
   (cond
-   ;; Bug.fields → Bug.get
+   ;; Bug.fields -> Bug.get
    ((string= field-name "bug_id")           "id")
    ((string= field-name "short_desc")       "summary")
    ((string= field-name "creation_ts")      "creation_time")
@@ -83,7 +83,7 @@ no mapping is needed.
    ((string= field-name "everconfirmed")    "is_confirmed")
    ((string= field-name "status_whiteboard")   "whiteboard")
    ((string= field-name "bug_group")        "groups")
-   ;; Bug.get → Bug.fields (reverse, for updates etc.)
+   ;; Bug.get -> Bug.fields (reverse, for updates etc.)
    ((string= field-name "id")                "bug_id")
    ((string= field-name "summary")           "short_desc")
    ((string= field-name "creation_time")     "creation_ts")
@@ -220,8 +220,10 @@ no mapping is needed.
 Basic implementation: translates simple field=value AND chains to
 Bugzilla search alists.  OR and complex nesting are not yet supported."
   (require 'bug-jql)
-  (let ((ast (bug--jql-translate-query (bug--parse-jql-query query) instance)))
-    (bug--bz-shared-format-jql-clauses (cdr (assoc :clauses ast)) instance)))
+  (let* ((ast (bug--jql-translate-query (bug--parse-jql-query query) instance))
+         (params (bug--bz-shared-format-jql-clauses (cdr (assoc :clauses ast)) instance)))
+    (bug--debug (format "JQL BZ params: %S" params) '(search . 2))
+    params))
 
 (defun bug--bz-shared-format-jql-clauses (clause instance)
   "Recursively format JQL CLAUSE as Bugzilla search params."

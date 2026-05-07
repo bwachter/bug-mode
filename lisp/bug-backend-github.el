@@ -96,7 +96,7 @@
             (json-encode data))))
     (bug--debug (concat "request " url "\n"))
     (with-current-buffer (url-retrieve-synchronously url)
-      (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug--rpc-log-response 'rpc-github)
       (bug--parse-rpc-response instance))))
 
 ;;;###autoload
@@ -105,7 +105,9 @@
 
 GitHub error responses are alists with a `message' key."
   (when (and (listp response) (assoc 'message response))
-    (error "%s" (cdr (assoc 'message response))))
+    (let ((msg (cdr (assoc 'message response))))
+      (bug--debug (format "GitHub error: %s" msg) '(rpc-github . 1))
+      (error "%s" msg)))
   response)
 
 ;;;;;;
@@ -413,14 +415,14 @@ is set to an owner/repo.  Everything else becomes a full-text search
 constrained by the :project-id scope."
   (let ((project-id (bug--instance-property :project-id instance)))
     (cond
-     ;; bare number with a repo-scoped project → direct issue fetch
+     ;; bare number with a repo-scoped project -> direct issue fetch
      ((and (stringp query)
            (string-match "^[0-9]+$" query)
            project-id
            (string-match-p "/" project-id))
       `((resource . ,(format "repos/%s/issues/%s" project-id query))
         (operation . "get")))
-     ;; everything else → search/issues
+     ;; everything else -> search/issues
      (t
       (let* ((scope (bug--github-project-scope instance))
              (q (if scope (concat scope " " query) query)))

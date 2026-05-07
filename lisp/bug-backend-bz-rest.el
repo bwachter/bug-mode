@@ -106,7 +106,7 @@ Parses the response, stores cookies, and returns the alist."
                         (or url-request-data "") "\n"))
     (with-current-buffer (url-retrieve-synchronously url)
       (bug--rpc-response-store-cookies instance)
-      (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug--rpc-log-response 'rpc-bz-rest)
       (let ((parsed (bug--parse-rpc-response instance)))
         ;; REST responses wrap data differently than RPC.
         ;; Normalise to the RPC shape so shared code works unchanged.
@@ -156,7 +156,9 @@ available, log in transparently and retry the request once."
 (defun bug--rpc-bz-rest-handle-error (response _instance)
   "Check data returned from Bugzilla REST for errors."
   (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
-      (error (cdr (assoc 'message (assoc 'error response)))))
+      (let ((msg (cdr (assoc 'message (assoc 'error response)))))
+        (bug--debug (format "Bugzilla REST error: %s" msg) '(rpc-bz-rest . 1))
+        (error msg)))
   response)
 
 ;;;###autoload

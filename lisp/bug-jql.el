@@ -28,6 +28,7 @@
 
 (require 'cl-lib)
 (require 'bug-instance)
+(require 'bug-debug)
 
 (defvar bug-jql-font-lock-keywords
   `((,(regexp-opt '("AND" "OR" "NOT" "ORDER BY" "ASC" "DESC" "IN") 'words) . font-lock-keyword-face)
@@ -125,7 +126,7 @@ Each token is a cons cell (TYPE . VALUE) where TYPE is one of:
                     (progn
                       (setq pos (+ next-pos (length "in")))
                       (push (cons 'OP "NOT IN") tokens))
-                  ;; NOT not followed by IN → keyword
+                  ;; NOT not followed by IN -> keyword
                   (push (cons 'KEYWORD (upcase word)) tokens))))
 
              ;; IN operator (check before keywords)
@@ -344,7 +345,9 @@ ORDER-BY is a list of (FIELD . DIRECTION) cons cells."
          (result (bug--jql-parse-query tokens)))
     (unless (equal (caar (cdr result)) 'EOF)
       (error "JQL parse error: unexpected tokens after query"))
-    (car result)))
+    (let ((ast (car result)))
+      (bug--debug (format "JQL AST: %S" ast) '(search . 2))
+      ast)))
 
 ;;;;; Field name translation
 
@@ -371,18 +374,22 @@ Generic field names follow the Jira standard field names:
   component   -- product/component
   resolution  -- resolution state
 
-If FIELD-NAME is not a known generic field, it is returned as-is,
-allowing native field names in JQL queries."
-  (let* ((normalized (pcase (downcase field-name)
-                       ("issuetype" "type")
-                       ("creator" "reporter")
-                       (_ field-name)))
-         (generic (intern (concat ":jql-" normalized)))
-         (backend-name (bug--instance-backend-function-optional
-                        "bug--%s-field-name" generic instance)))
-    (if backend-name
-        (symbol-name backend-name)
-      field-name)))
+Native (backend-specific) field names are supported via the `native.'
+prefix.  For example, `native.Iteration' passes `Iteration' through
+unchanged without translation or validation."
+  (if (string-prefix-p "native." field-name)
+      (substring field-name (length "native."))
+    (let* ((normalized (pcase (downcase field-name)
+                         ("issuetype" "type")
+                         ("creator" "reporter")
+                         (_ field-name)))
+           (generic (intern (concat ":jql-" normalized)))
+           (backend-name (bug--instance-backend-function-optional
+                          "bug--%s-field-name" generic instance)))
+      (if backend-name
+          (symbol-name backend-name)
+        (error "Unknown JQL field '%s'. Use native.FIELD for backend-specific fields."
+               field-name)))))
 
 ;;;;; AST translation (replace generic field names)
 
@@ -411,95 +418,17 @@ INSTANCE selects the backend."
 (defun bug--jql-translate-query (jql-ast instance)
   "Translate generic field names in JQL-AST to backend-specific names.
 Returns a new AST with field names translated for INSTANCE."
-  (let ((clauses (cdr (assoc :clauses jql-ast)))
-        (order-by (cdr (assoc :order-by jql-ast))))
-    (list (cons :clauses (bug--jql-translate-clause clauses instance))
-          (cons :order-by
-                (mapcar (lambda (o)
-                          (cons (bug--jql-field-name (car o) instance)
-                                (cdr o)))
-                        order-by)))))
-
-;;;;; Rally WSAPI formatter (example backend formatter)
-
-(defun bug--jql-format-rally-value (value)
-  "Format VALUE for Rally WSAPI query syntax."
-  (cond
-   ((stringp value)
-    (format "\"%s\"" value))
-   ((numberp value)
-    (format "%s" value))
-   ((and (consp value) (eq (car value) :function))
-    ;; Function call: (currentUser) → currentUser()
-    (format "%s()" (cadr value)))
-   (t
-    (format "\"%s\"" value))))
-
-(defun bug--jql-rally-operator (op)
-  "Map JQL operator OP to Rally WSAPI operator."
-  (pcase op
-    ("=" "=")
-    ("!=" "!=")
-    ("~" "contains")
-    ("!~" "!contains")
-    ("IN" "in")
-    ("NOT IN" "!in")
-    (_ op)))
-
-(defun bug--jql-format-rally-clause (clause)
-  "Format a translated JQL clause as Rally WSAPI query string."
-  (pcase (car clause)
-    (:clause
-     (let ((field (nth 1 clause))
-           (op (bug--jql-rally-operator (nth 2 clause)))
-           (value (nth 3 clause)))
-       (if (member op '("in" "!in"))
-           ;; IN value list
-           (format "(%s %s (%s))"
-                   field op
-                   (mapconcat #'bug--jql-format-rally-value
-                              (if (listp value) value (list value)) ", "))
-         (format "(%s %s %s)"
-                 field op (bug--jql-format-rally-value value)))))
-    (:and
-     (format "(%s AND %s)"
-             (bug--jql-format-rally-clause (nth 1 clause))
-             (bug--jql-format-rally-clause (nth 2 clause))))
-    (:or
-     (format "(%s OR %s)"
-             (bug--jql-format-rally-clause (nth 1 clause))
-             (bug--jql-format-rally-clause (nth 2 clause))))
-    (:not
-     (format "(NOT %s)"
-             (bug--jql-format-rally-clause (nth 1 clause))))
-    (:group
-     (bug--jql-format-rally-clause (nth 1 clause)))
-    (_ (format "%s" clause))))
-
-;;;###autoload
-(defun bug--jql-format-rally-query (jql-ast)
-  "Format a translated JQL AST as Rally WSAPI query parameters.
-Returns a query structure alist.
-
-When `bug---project' is bound and non-nil, the query is restricted to that
-project by prepending a Project clause."
   (let* ((clauses (cdr (assoc :clauses jql-ast)))
          (order-by (cdr (assoc :order-by jql-ast)))
-         (query-string (bug--jql-format-rally-clause clauses))
-         (project-id (and (boundp 'bug---project) bug---project)))
-    (when project-id
-      (setq query-string (format "((Project = \"/project/%s\") AND %s)"
-                                 project-id query-string)))
-    ;; Add ORDER BY as Rally order parameter
-    (let ((data-params `((query ,query-string))))
-      (when order-by
-        (push (cons 'order
-                    (mapconcat (lambda (o)
-                                 (format "%s %s" (car o) (cdr o)))
-                               order-by ", "))
-              data-params))
-      `((data . ,data-params)
-        (resource . "artifact")))))
+         (translated (list (cons :clauses (bug--jql-translate-clause clauses instance))
+                           (cons :order-by
+                                 (mapcar (lambda (o)
+                                           (cons (bug--jql-field-name (car o) instance)
+                                                 (cdr o)))
+                                         order-by)))))
+    (bug--debug (format "JQL translated AST: %S" translated) '(search . 2))
+    translated))
+
 
 (defun bug--jql-usage-hints ()
   "Return read-only hint text for the JQL query minibuffer."
@@ -510,10 +439,13 @@ project by prepending a Project clause."
    "Generic fields: text  summary  status  assignee  reporter  priority\n"
    "                 issuetype  project  created  updated  description\n"
    "                 labels  key  id  component  resolution\n"
+   "Native fields:  native.FIELD passes FIELD through unchanged\n"
+   "Functions: JQL functions are transformed to native keywords\n"
    "Examples:\n"
    "  status = \"Open\" AND assignee = \"alice\"\n"
    "  text ~ \"crash\" ORDER BY updated DESC\n"
    "  project = \"MyProject\" AND issuetype = \"Bug\"\n"
+   "  native.Iteration = \"Sprint 1\"\n"
    "Values can be quoted strings, numbers, or lists: IN (\"a\", \"b\")\n"))
 
 (defun bug--jql-read-with-hints (prompt &optional initial default-value)

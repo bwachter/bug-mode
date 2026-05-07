@@ -237,7 +237,7 @@ Key bindings:
                                      (or commit-fn #'bug--rich-edit-commit))
       (bug--rich-edit-set-keys)
       (message
-       "Edit (%s→org) — C-c C-c commit, C-c C-k abort, C-c C-t toggle, C-c C-r revert, C-c C-d derive"
+       "Edit (%s->org) — C-c C-c commit, C-c C-k abort, C-c C-t toggle, C-c C-r revert, C-c C-d derive"
        (symbol-name fmt)))
     (pop-to-buffer buf)))
 

@@ -68,7 +68,9 @@ backend must support the :search feature."
   (unless instance
     (setq instance (bug--instance-to-symbolp nil :search)))
   (bug--debug-log-time "start")
+  (bug--debug (format "search native: %S instance=%S" query instance) '(search . 1))
   (let ((params (bug--instance-backend-function "bug--parse-%s-search-query" query instance)))
+    (bug--debug (format "search native params: %S" params) '(search . 2))
     (bug--do-search
      (cons `(native-query . ,query) params)
      instance)))
@@ -88,7 +90,9 @@ translation layer from JQL to the backend's native query language."
   (unless instance
     (setq instance (bug--instance-to-symbolp nil :search-jql)))
   (bug--debug-log-time "start")
+  (bug--debug (format "search jql: %S instance=%S" query instance) '(search . 1))
   (let ((params (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)))
+    (bug--debug (format "search jql params: %S" params) '(search . 2))
     (bug--do-search
      (append `((native-query-jql . ,query)
                (native-query .
@@ -171,8 +175,11 @@ restricted to the current project (`bug---project') or the instance's
     (unless project-scope
       (error "No project configured for instance %s" instance))
     (bug--debug-log-time "start")
+    (bug--debug (format "search jql-project: %S instance=%S project=%S"
+                        query instance project-scope) '(search . 1))
     (let* ((bug---project project-scope)
            (params (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)))
+      (bug--debug (format "search jql-project params: %S" params) '(search . 2))
       (bug--do-search
        (append `((native-project . ,project-scope)
                  (native-query-jql . ,query)

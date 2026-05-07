@@ -67,7 +67,7 @@ Parses the response, stores cookies, and returns the alist."
     (bug--debug (concat "request " url "\n" json-str "\n"))
     (with-current-buffer (url-retrieve-synchronously url)
       (bug--rpc-response-store-cookies instance)
-      (bug--debug (concat "response: \n" (decode-coding-string (buffer-string) 'utf-8)))
+      (bug--rpc-log-response 'rpc-bz-rpc)
       (bug--parse-rpc-response instance))))
 
 (defun bug--rpc-bz-rpc-login (instance)
@@ -112,7 +112,9 @@ are available, log in transparently and retry the request once."
 (defun bug--rpc-bz-rpc-handle-error (response _instance)
   "Check data returned from Bugzilla for errors"
   (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
-      (error (cdr (assoc 'message (assoc 'error response)))))
+      (let ((msg (cdr (assoc 'message (assoc 'error response)))))
+        (bug--debug (format "Bugzilla RPC error: %s" msg) '(rpc-bz-rpc . 1))
+        (error msg)))
   response)
 
 ;;;###autoload
