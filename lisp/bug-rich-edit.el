@@ -171,8 +171,9 @@ Can be set to `bug--rich-edit-commit-comment' for comment composition.")
   ;; global map, so we must install a private copy first.
   (unless (keymapp (current-local-map))
     (use-local-map (make-sparse-keymap)))
-  (when (symbolp (current-local-map))
-    (use-local-map (copy-keymap (current-local-map))))
+
+  ;; always use  local map to prevent contaminating global org-map
+  (use-local-map (copy-keymap (current-local-map)))
   (local-set-key (kbd "C-c C-c") bug--rich-edit-commit-function)
   (local-set-key (kbd "C-c C-k") #'bug--rich-edit-abort)
   (local-set-key (kbd "C-c C-t") #'bug--rich-edit-toggle-mode)
