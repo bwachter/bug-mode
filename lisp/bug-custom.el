@@ -40,6 +40,11 @@
   :type 'string
   :group 'bug)
 
+(defcustom bug-debug-max-size 100000
+  "Maximum number of characters allowed in *bug-debug* buffer before compacting"
+  :type 'int
+  :group 'bug)
+
 (defcustom bug-debug-subsystems nil
   "Alist controlling which debug subsystems are active and their verbosity.
 Each element is a cons cell (subsystem . level) where `subsystem' is a

@@ -57,7 +57,16 @@ Optional `subsystem-level' controls filtering:
        (with-current-buffer (get-buffer-create "*bug-debug*")
          (goto-char (point-max))
          (insert str)
-         (insert "\n")))))
+         (insert "\n")
+         (bug--trim-debug-buffer)))))
+
+(defun bug--trim-debug-buffer ()
+  "Trim *bug-debug* to `bug-debug-max-size' by removing lines from the top."
+  (when (> (buffer-size) bug-debug-max-size)
+    (save-excursion
+      (goto-char (- (point-max) (truncate (* bug-debug-max-size 0.9))))
+      (forward-line 1)
+      (delete-region (point-min) (point)))))
 
 (defun bug--debug-log-time (stamp)
   "Log timestamps to debug buffer if debugging is enabled
