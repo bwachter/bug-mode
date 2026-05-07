@@ -406,6 +406,22 @@ bug-data-directory if you don't like the storage location")
   "The URL to use for rally. This should only be changed if a different port is
 required for proxy circumvention")
 
+(defcustom bug-repo-detect-from-remotes t
+  "When non-nil, derive bug tracker scope from git remotes.
+
+If the current buffer is inside a git repository, bug-mode tries to
+match the remote URL against the active backend and automatically
+sets the scope (e.g. owner/repo for GitHub).  This is a fallback:
+explicit :project-id in the instance configuration and
+`bug-repo-override' always take precedence."
+  :type 'boolean
+  :group 'bug)
+
+(defcustom bug-repo-default-remote "origin"
+  "Default git remote name to use for scope detection."
+  :type 'string
+  :group 'bug)
+
 ;;;;;;
 ;; Constants
 

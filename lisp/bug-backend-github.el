@@ -389,6 +389,20 @@ Returns the modified issue list."
               issue)
             issues)))
 
+;;;###autoload
+(defun bug--backend-github-repo-scope (parsed-remote _instance)
+  "Convert `parsed-remote' to a GitHub scope string (owner/repo).
+
+`parsed-remote' is a plist with :host, :owner and :repo keys as
+returned by `bug--repo-parse-url'.  Returns nil if the host is not
+recognised as GitHub."
+  (when (member (plist-get parsed-remote :host)
+                '("github.com" "www.github.com" "gist.github.com"))
+    (let ((owner (plist-get parsed-remote :owner))
+          (repo (plist-get parsed-remote :repo)))
+      (when (and owner repo)
+        (format "%s/%s" owner repo)))))
+
 ;;;;;;
 ;; Search functions
 

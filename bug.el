@@ -56,6 +56,7 @@
 (require 'bug-autoloads)
 (require 'bug-custom)
 (require 'bug-persistent-data)
+(require 'bug-repo)
 
 ;;;;;;
 ;; startup code to read persistent data
@@ -66,20 +67,32 @@
 (transient-define-prefix bug-menu ()
   "Top level bug mode menu"
   [:pad-keys t
-   ["Instances"
-    ("l" "List instances" bug-list-instances)
-    ("a" "Switch active instance" bug-instance-switch)
-    ("d" "Deactivate current active instance" bug-instance-deactivate)]
-   ["Bug"
-    ("c" "Create by prompting for instance" bug-create)
-    ("o" "Open by prompting ID and instance" bug-open)]
-   ["Search"
-    ("s" "Search string" bug-search)
-    ("j" "JQL search" bug-search-jql)
-    ("S" "Project-scoped search" bug-search-project)
-    ("J" "Project-scoped JQL search" bug-search-jql-project)]
-   ["Misc"
-    ("R" "Clear metadata cache" bug-cache-clear)]])
+             ["Instances"
+              ("l" "List instances" bug-list-instances)
+              ("a" "Switch active instance" bug-instance-switch)
+              ("d" "Deactivate current active instance" bug-instance-deactivate)]
+             ["Bug"
+              ("c" "Create by prompting for instance" bug-create)
+              ("o" "Open by prompting ID and instance" bug-open)]
+             ["Search"
+              ("s" "Search string" bug-search)
+              ("j" "JQL search" bug-search-jql)
+              ("S" "Project-scoped search" bug-search-project)
+              ("J" "Project-scoped JQL search" bug-search-jql-project)]
+             ["Repository"
+              :if (lambda () (bug--repo-matching-instances))
+              ("r" "Repo issues" (lambda ()
+                                   (interactive)
+                                   (let* ((matches (bug--repo-matching-instances))
+                                          (single (and (= 1 (length matches))
+                                                       (car matches)))
+                                          (instance (or (car single)
+                                                        (bug--instance-to-symbolp nil :project-bugs)))
+                                          (scope (or (cdr single)
+                                                     (bug--repo-scope instance))))
+                                     (bug-list-project-bugs scope instance))))]
+             ["Misc"
+              ("R" "Clear metadata cache" bug-cache-clear)]])
 
 (provide 'bug)
 ;;; bug.el ends here

@@ -32,6 +32,7 @@
 (require 'bug-vars)
 (require 'bug-instance)
 (require 'bug-custom)
+(require 'bug-repo)
 (require 'bug-jql)
 
 ;;;###autoload
@@ -118,9 +119,10 @@ Returns nil when no results are found or the backend lacks support."
 (defun bug--search-project-scope (instance)
   "Return the project scope for INSTANCE.
 Uses `bug---project' if bound and non-nil, otherwise the instance's
-`:project-id' property.  Returns nil if no project is configured."
+`:project-id' property or a value auto-detected from git remotes via
+`bug--repo-scope'.  Returns nil if no project is configured."
   (let ((result (or (and (boundp 'bug---project) bug---project)
-                    (bug--instance-property :project-id instance))))
+                    (bug--repo-scope instance))))
     (bug--debug (format "bug--search-project-scope: instance=%S bug---project=%S result=%S"
                         instance (and (boundp 'bug---project) bug---project) result))
     result))
