@@ -229,9 +229,17 @@ Returns the response from Bugzilla's Bug.update call."
   bug---id)
 
 ;;;###autoload
-(defun bug--backend-bz-rpc-create-comment (_args _instance)
+(defun bug--bz-rpc-comment-source-format (_args _instance)
+  "Return the source format for Bugzilla comments.
+
+Bugzilla comments are plain text."
+  'text)
+
+;;;###autoload
+(defun bug--backend-bz-rpc-create-comment (_args instance)
   "Open a Bugzilla comment composition buffer for the current bug."
-  (bug--bug-mode-open-rich-editor 'comment nil "" 'text #'bug--backend-bz-rpc-commit-comment))
+  (let ((fmt (bug--instance-backend-function "bug--%s-comment-source-format" nil instance)))
+    (bug--bug-mode-open-rich-editor 'comment nil "" fmt #'bug--backend-bz-rpc-commit-comment)))
 
 ;;;###autoload
 (defun bug--backend-bz-rpc-commit-comment ()

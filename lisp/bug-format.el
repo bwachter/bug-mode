@@ -216,16 +216,25 @@ SUFFIX is optional additional text appended after the colon."
      (propertize date-str 'face 'bug-date)
      (propertize (format ":%s" suffix-str) 'face 'bug-comment))))
 
-(defun bug--format-comment-entry (label number user date body &optional suffix)
+(defun bug--format-comment-entry (label number user date body &optional suffix format)
   "Return a fully propertized comment entry (header and body).
 
 The header is produced by `bug--format-comment-header'.  The `bug-comment'
 face is applied as a base to the entire entry so that the background extends
 across both header and body; specific header faces take priority via face
-merging.  A `bug-comment-index' text property set to NUMBER is added when
-NUMBER is non-nil, enabling navigation to a specific comment by property."
+merging.  A `bug-comment-index' text property set to `number' is added when
+`number' is non-nil, enabling navigation to a specific comment by property.
+
+If `format' is `html' the body is passed through `bug--format-html'
+before insertion so tags are rendered rather than shown literally."
   (let* ((header (bug--format-comment-header label number user date suffix))
-         (entry  (concat header "\n" (or body ""))))
+         (formatted-body (cond
+                          ((eq format 'html)
+                           (or (bug--format-html body) ""))
+                          ((eq format 'markdown)
+                           (or (bug--format-markdown body) ""))
+                          (t (or body ""))))
+         (entry  (concat header "\n" formatted-body)))
     (add-face-text-property 0 (length entry) 'bug-comment t entry)
     (when number
       (put-text-property 0 (length entry) 'bug-comment-index number entry))

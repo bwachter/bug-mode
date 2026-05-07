@@ -165,6 +165,13 @@ the field should not be displayed."
   '(is_visible . :json-false))
 
 ;;;###autoload
+(defun bug--github-comment-source-format (_args _instance)
+  "Return the source format for GitHub issue comments.
+
+GitHub issue bodies and comments are written in Markdown."
+  'markdown)
+
+;;;###autoload
 (defun bug--github-field-name (field-name _instance)
   "Resolve abstract field names for GitHub issues."
   (cond ((equal :bug-uuid field-name)        '_resource_path)
@@ -628,14 +635,15 @@ When `issue' is provided, its body is shown as the first entry."
       (with-current-buffer (bug--buffer-string id instance)
         (setq buffer-read-only nil)
         (save-excursion
-          (let ((cstart (bug--find-section-content-start 'comments)))
+          (let ((cstart (bug--find-section-content-start 'comments))
+                (fmt (bug--instance-backend-function "bug--%s-comment-source-format" nil instance)))
             (if cstart
                 (let ((count 0))
                   (delete-region cstart (point-max))
                   (insert "\n")
                   (when (and issue-body (not (string-empty-p issue-body)))
                     (insert (bug--format-comment-entry
-                             "Issue" nil issue-user issue-created issue-body))
+                             "Issue" nil issue-user issue-created issue-body nil fmt))
                     (when (and (vectorp response) (> (length response) 0))
                       (insert "\n\n")))
                   (when (vectorp response)
@@ -650,7 +658,7 @@ When `issue' is provided, its body is shown as the first entry."
                                       (created  (or (cdr (assoc 'created_at comment)) ""))
                                       (body     (or (cdr (assoc 'body comment)) "")))
                                  (bug--format-comment-entry
-                                  "Comment" count login created body)))
+                                  "Comment" count login created body nil fmt)))
                              (append response nil)
                              "\n\n"))))
               (error "Could not find comments section in buffer"))))

@@ -388,13 +388,14 @@ fields."
   (when posts
     (bug--insert-section-header 'discussion)
     (insert "\n")
-    (dolist (post posts)
-      (let* ((post-num (cdr (assoc 'PostNumber post)))
-             (user     (cdr (assoc '_refObjectName (cdr (assoc 'User post)))))
-             (date     (cdr (assoc 'CreationDate post)))
-             (text     (cdr (assoc 'Text post))))
-        (insert (bug--format-comment-entry "Post" post-num (or user "Unknown") date text))
-        (insert "\n\n")))))
+    (let ((fmt (bug--instance-backend-function "bug--%s-comment-source-format" nil bug---instance)))
+      (dolist (post posts)
+        (let* ((post-num (cdr (assoc 'PostNumber post)))
+               (user     (cdr (assoc '_refObjectName (cdr (assoc 'User post)))))
+               (date     (cdr (assoc 'CreationDate post)))
+               (text     (cdr (assoc 'Text post))))
+          (insert (bug--format-comment-entry "Post" post-num (or user "Unknown") date text nil fmt))
+          (insert "\n\n"))))))
 
 ;;;###autoload
 (defun bug--create-rally-discussion-post (artifact-uuid text instance)
@@ -432,27 +433,44 @@ Returns the created post object, or signals an error on failure."
       (bug--display-rally-discussion posts))))
 
 ;;;###autoload
-(defun bug--backend-rally-create-comment (_args _instance)
+(defun bug--rally-comment-source-format (_args _instance)
+  "Return the source format for Rally discussion posts.
+
+Rally accepts both plain text and HTML in discussion posts;
+HTML is preferred for richer formatting."
+  'html)
+
+;;;###autoload
+(defun bug--backend-rally-create-comment (_args instance)
   "Open a Rally discussion post composition buffer for the current artifact."
   (unless (and (boundp 'bug---uuid) bug---uuid)
     (error "No bug UUID found; re-open the bug buffer to fetch fresh data"))
-  (bug--bug-mode-open-rich-editor
-   'comment nil
-   "# Enter discussion post below. Use C-c C-c to submit.\n# Lines starting with # are ignored.\n\n"
-   'text #'bug--backend-rally-commit-comment))
+  (let ((fmt (bug--instance-backend-function "bug--%s-comment-source-format" nil instance)))
+    (bug--bug-mode-open-rich-editor
+     'comment nil ""
+     fmt #'bug--backend-rally-commit-comment)))
 
 ;;;###autoload
 (defun bug--backend-rally-commit-comment ()
-  "Submit the current buffer content as a Rally discussion post."
+  "Submit the current buffer content as a Rally discussion post.
+
+If `bug--rich-edit-source-format' is `html' the org-mode buffer is
+converted to HTML before posting; otherwise the raw text is used."
   (interactive)
-  (let* ((text (buffer-string))
+  (let* ((fmt bug--rich-edit-source-format)
+         (text (cond
+                ((eq fmt 'text)    (buffer-string))
+                ((eq fmt 'markdown) (buffer-string))
+                (t                 (or (bug--org-to-html (buffer-string)) ""))))
          (source-buf bug--rich-edit-source-buffer)
          (post-text ""))
-    ;; Filter out comment lines (lines starting with #)
-    (dolist (line (split-string text "\n"))
-      (unless (string-match-p "^#" line)
-        (setq post-text (concat post-text line "\n"))))
-    (setq post-text (string-trim post-text))
+    ;; Filter out comment lines (lines starting with #) for plain text only;
+    ;; HTML output from ox-html does not retain org comment lines.
+    (when (eq fmt 'text)
+      (dolist (line (split-string text "\n"))
+        (unless (string-match-p "^#" line)
+          (setq post-text (concat post-text line "\n")))))
+    (setq post-text (if (eq fmt 'text) (string-trim post-text) (string-trim text)))
     (when (string-empty-p post-text)
       (error "Discussion post cannot be empty"))
     (let ((uuid (with-current-buffer source-buf bug---uuid))

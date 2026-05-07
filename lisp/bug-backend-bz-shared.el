@@ -261,7 +261,8 @@ Bugzilla search alists.  OR and complex nesting are not yet supported."
         (with-current-buffer (bug--buffer-string id bug---instance)
           (setq buffer-read-only nil)
           (save-excursion
-            (let ((cstart (bug--find-section-content-start 'comments)))
+            (let ((cstart (bug--find-section-content-start 'comments))
+                  (fmt (bug--instance-backend-function "bug--%s-comment-source-format" nil bug---instance)))
               (if cstart
                   (progn
                     (delete-region cstart (point-max))
@@ -272,7 +273,8 @@ Bugzilla search alists.  OR and complex nesting are not yet supported."
                                           (cdr (assoc 'count comment))
                                           (cdr (assoc 'creator comment))
                                           (cdr (assoc 'time comment))
-                                          (cdr (assoc 'text comment))))
+                                          (cdr (assoc 'text comment))
+                                          nil fmt))
                                        comments "\n\n")))
                 (error "Could not find comments section in buffer"))))
           (setq buffer-read-only t)))))
