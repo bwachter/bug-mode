@@ -177,7 +177,8 @@ non-empty input."
 (defun bug--format-markdown (markdown &optional base-url)
   "Render a Markdown string for display in a buffer.
 
-Uses pandoc to convert to HTML and then shr when pandoc is available.
+When pandoc is available it is used to convert to HTML and then shr.
+Pandoc stderr is discarded so warnings do not contaminate the output.
 Falls back to rendering the raw markdown text."
   (unless markdown (setq markdown ""))
   (if (executable-find "pandoc")
@@ -185,8 +186,9 @@ Falls back to rendering the raw markdown text."
              (with-temp-buffer
                (insert markdown)
                (when (zerop (call-process-region (point-min) (point-max)
-                                                 "pandoc" t t nil
-                                                 "-f" "markdown" "-t" "html"))
+                                                 "pandoc" t '(t "/dev/null") nil
+                                                 "-f" "markdown" "-t" "html"
+                                                 "--quiet" "--wrap=none"))
                  (buffer-string)))))
         (if html
             (bug--format-html html base-url)
