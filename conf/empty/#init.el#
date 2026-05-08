@@ -1,0 +1,21 @@
+;; init.el --- minimal debug config for bug-mode  -*- lexical-binding: t; -*-
+;;
+;; Use this to start a clean Emacs instance for debugging bug-mode.
+;;
+;;   emacs --init-directory=conf/empty
+;;
+;;; Code:
+
+(add-to-list 'load-path
+             (expand-file-name "../.."
+                               (file-name-directory
+                                (or load-file-name default-directory))))
+
+(require 'bug)
+
+(global-set-key "\C-cb" 'bug-menu)
+
+(message "bug-mode loaded with empty configuration")
+
+(provide 'bug-empty-init)
+;;; init.el ends here

@@ -22,3 +22,27 @@ lisp:
 
 test: lisp
 	@$(MAKE) -C t
+
+# ---------------------------------------------------------------------------
+# Interactive Emacs debugging targets
+# ---------------------------------------------------------------------------
+
+.PHONY: test-emacs test-emacs-gui test-emacs-preconfigured test-emacs-preconfigured-gui tep tepg
+
+EMACS_PRECONFIG := --init-directory=conf/preconfigured
+EMACS_EMPTY     := --init-directory=conf/empty
+
+test-emacs:
+	@emacs -nw $(EMACS_EMPTY)
+
+test-emacs-gui:
+	@emacs $(EMACS_EMPTY)
+
+test-emacs-preconfigured:
+	@emacs -nw $(EMACS_PRECONFIG)
+
+test-emacs-preconfigured-gui:
+	@emacs $(EMACS_PRECONFIG)
+
+tep: test-emacs-preconfigured
+tepg: test-emacs-preconfigured-gui
