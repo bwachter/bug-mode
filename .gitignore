@@ -1,2 +1,4 @@
 /lisp/bug-autoloads.el
 *.elc
+eln-cache/
+transient/

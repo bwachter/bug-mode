@@ -1,98 +1,134 @@
 * Developers guide to working on bug-mode                             :TOC_4:
- - [[#introduction][Introduction]]
- - [[#naming-conventions][Naming conventions]]
-   - [[#backend-identifiers][Backend identifiers]]
-   - [[#public-interactive-functions][Public (interactive) functions]]
-   - [[#non-public-interactive-functions][Non-public (interactive) functions]]
-   - [[#backend-implementation-details][Backend implementation details]]
-   - [[#functions-only-available-on-a-single-backend][Functions only available on a single backend]]
-   - [[#buffer-local-variables][Buffer local variables]]
- - [[#use-of-autoloads][Use of autoloads]]
-   - [[#interactive-functions][Interactive functions]]
-   - [[#backend-implementation-details-1][Backend implementation details]]
-   - [[#backend-specific-modes][Backend specific modes]]
- - [[#passing-the-instance-identifier][Passing the instance identifier]]
-   - [[#interactive-functions-1][Interactive functions]]
-   - [[#non-interactive-functions][Non-interactive functions]]
-   - [[#backend-implementation-details-2][Backend implementation details]]
- - [[#writing-backends][Writing backends]]
-   - [[#mandatory-functions-for-read-support-read][Mandatory functions for read support (:read)]]
-     - [[#bug--s-field-name-field-name-instance][bug--%s-field-name (field-name instance)]]
-     - [[#bug--s-list-columns-object-instance][bug--%s-list-columns (object instance)]]
-     - [[#bug--browse-s-bug-id-instance][bug--browse-%s-bug (id instance)]]
-     - [[#bug--do-s-search-params-instance][bug--do-%s-search (params instance)]]
-     - [[#bug--fetch-s-bug-id-instance][bug--fetch-%s-bug (id instance)]]
-     - [[#bug--parse-s-search-query-query-instance][bug--parse-%s-search-query (query instance)]]
-     - [[#bug--rpc-s-args-instance][bug--rpc-%s (args instance)]]
-     - [[#bug--rpc-s-get-fields-object-instance][bug--rpc-%s-get-fields (object instance)]]
-     - [[#bug--rpc-s-handle-error-response-instance][bug--rpc-%s-handle-error (response instance)]]
-   - [[#mandatory-functions-for-write-support-write][Mandatory functions for write support (:write)]]
- - [[#data-structures][Data structures]]
-   - [[#bug-list-structure][Bug list structure]]
-   - [[#bug-structure][Bug structure]]
-   - [[#field-name-structure][Field name structure]]
-   - [[#query-structure][Query structure]]
+- [[#introduction][Introduction]]
+- [[#naming-conventions][Naming conventions]]
+  - [[#backend-identifiers][Backend identifiers]]
+  - [[#public-interactive-functions][Public (interactive) functions]]
+  - [[#non-public-interactive-functions][Non-public (interactive) functions]]
+  - [[#backend-implementation-details][Backend implementation details]]
+  - [[#functions-only-available-on-a-single-backend][Functions only available on a single backend]]
+  - [[#buffer-local-variables][Buffer local variables]]
+- [[#use-of-autoloads][Use of autoloads]]
+  - [[#interactive-functions][Interactive functions]]
+  - [[#backend-implementation-details-1][Backend implementation details]]
+  - [[#backend-specific-modes][Backend specific modes]]
+- [[#passing-the-instance-identifier][Passing the instance identifier]]
+  - [[#interactive-functions-1][Interactive functions]]
+  - [[#non-interactive-functions][Non-interactive functions]]
+  - [[#backend-implementation-details-2][Backend implementation details]]
+- [[#writing-backends][Writing backends]]
+  - [[#mandatory-functions-for-read-support-read][Mandatory functions for read support (:read)]]
+    - [[#bug--backend-s-features-arg-instance][bug--backend-%s-features (arg instance)]]
+    - [[#bug--s-field-name-field-name-instance][bug--%s-field-name (field-name instance)]]
+    - [[#bug--s-list-columns-object-instance][bug--%s-list-columns (object instance)]]
+    - [[#bug--browse-s-bug-id-instance][bug--browse-%s-bug (id instance)]]
+    - [[#bug--do-s-search-params-instance][bug--do-%s-search (params instance)]]
+    - [[#bug--fetch-s-bug-id-instance][bug--fetch-%s-bug (id instance)]]
+    - [[#bug--parse-s-search-query-query-instance][bug--parse-%s-search-query (query instance)]]
+    - [[#bug--rpc-s-args-instance][bug--rpc-%s (args instance)]]
+    - [[#bug--rpc-s-get-fields-object-instance][bug--rpc-%s-get-fields (object instance)]]
+    - [[#bug--rpc-s-handle-error-response-instance][bug--rpc-%s-handle-error (response instance)]]
+  - [[#optional-functions-for-read-support][Optional functions for read support]]
+    - [[#bug--backend-s-default-url-args-instance][bug--backend-%s-default-url (args instance)]]
+    - [[#bug--rpc-s-map-field-key-instance][bug--rpc-%s-map-field (key instance)]]
+    - [[#bug--s-field-filters-args-instance][bug--%s-field-filters (args instance)]]
+    - [[#bug--backend-s-show-additional-data-bug-instance][bug--backend-%s-show-additional-data (bug instance)]]
+    - [[#bug--execute-s-search-params-instance][bug--execute-%s-search (params instance)]]
+    - [[#bug--format-s-search-candidates-results][bug--format-%s-search-candidates (results)]]
+  - [[#mandatory-functions-for-write-support-write][Mandatory functions for write support (:write)]]
+    - [[#bug--backend-s-get-update-id-args-instance][bug--backend-%s-get-update-id (args instance)]]
+    - [[#bug--update-s-bug-args-instance][bug--update-%s-bug (args instance)]]
+  - [[#optional-functions-for-write-support][Optional functions for write support]]
+    - [[#bug--field-completion-s-field-name-instance][bug--field-completion-%s (field-name instance)]]
+    - [[#bug--field-edit-blocked-s-field-name-instance][bug--field-edit-blocked-%s (field-name instance)]]
+    - [[#bug--linked-field-changes-s-args-instance][bug--linked-field-changes-%s (args instance)]]
+  - [[#mandatory-functions-for-create-support-create][Mandatory functions for create support (:create)]]
+    - [[#bug--create-s-bug-interactive-context-instance][bug--create-%s-bug-interactive (context instance)]]
+    - [[#bug--create-s-new-artifact-args-instance][bug--create-%s-new-artifact (args instance)]]
+  - [[#optional-functions-for-create-support][Optional functions for create support]]
+    - [[#bug--validate-draft-s-args-instance][bug--validate-draft-%s (args instance)]]
+    - [[#bug--available-field-names-s-args-instance][bug--available-field-names-%s (args instance)]]
+  - [[#mandatory-functions-for-delete-support-delete][Mandatory functions for delete support (:delete)]]
+    - [[#bug--delete-s-bug-object-id-instance][bug--delete-%s-bug (object-id instance)]]
+  - [[#mandatory-functions-for-project-support-projects][Mandatory functions for project support (:projects)]]
+    - [[#bug--list-s-projects-args-instance][bug--list-%s-projects (args instance)]]
+  - [[#optional-functions-for-any-feature][Optional functions for any feature]]
+    - [[#bug--backend-s-create-comment-args-instance][bug--backend-%s-create-comment (args instance)]]
+    - [[#bug--backend-s-find-attachment-url-args-instance][bug--backend-%s-find-attachment-url (args instance)]]
+    - [[#bug--backend-s-download-attachment-args-instance][bug--backend-%s-download-attachment (args instance)]]
+    - [[#bug--backend-s-open-thing-args-instance][bug--backend-%s-open-thing (args instance)]]
+- [[#search-infrastructure][Search infrastructure]]
+  - [[#call-chain][Call chain]]
+  - [[#extending-search-for-a-new-backend][Extending search for a new backend]]
+- [[#data-structures][Data structures]]
+  - [[#bug-list-structure][Bug list structure]]
+  - [[#bug-structure][Bug structure]]
+  - [[#field-definition-structure][Field definition structure]]
+    - [[#field-type-codes][Field type codes]]
+  - [[#query-structure][Query structure]]
+    - [[#rally-query-structure][Rally query structure]]
 
 * Introduction
-Currently bug-mode is an organically grown dung heap. This document tries to
-assist in fixing this, and keep it clean in the future.
+Currently bug-mode is an organically grown dung heap. This document tries to assist in fixing this, and keep it clean in the future.
+
+We include documentation generated from upstream sources for easy reference:
+
+- [[./rally-wsapi-documentation.org][Rally WSAPI documentation]]
 
 * Naming conventions
 ** Backend identifiers
-Functions, names and documentation sometimes needs to include references to a
-specific bug tracking engine. The following identifiers are currently used in
-bug-mode:
+Functions, names and documentation sometimes needs to include references to a specific bug tracking engine. The following identifiers are currently used in bug-mode:
 
-- bz (Bugzilla)
+- bz-rest (Bugzilla, REST API)
 - bz-rpc (Bugzilla, old RPC API)
-- rally (Rally)
+- [[./rally-wsapi-documentation.org][rally (Rally WSAPI)]]
+- [[./github-rest-api-documentation.org][github (GitHub REST API)]]
+- gitlab (GitLab REST API v4)
+- jira (Jira REST API v2)
 
-An identifier should be relatively short (ideally 5-6 characters). If the name
-of the bug tracker is longer, try to use an abbreviation. Only use longer
-identifiers if there's no established abbreviation for a name, or abbreviation
-does not make sense.
+An identifier should be relatively short (ideally 5-6 characters). If the name of the bug tracker is longer, try to use an abbreviation. Only use longer identifiers if there's no established abbreviation for a name, or abbreviation does not make sense.
+
 ** Public (interactive) functions
-Public functions, both interactive or supposed to be called from 3rd party code,
-should be prefixed with =bug-=.
-** Non-public (interactive) functions
-Internal functions, which includes functions not supposed to be called from 3rd
-party code as well as interactive functions only useful when called in one of
-the modes provided by bug-mode should be prefixed with =bug--=.
-** Backend implementation details
-For a backend specific implementation detail add a backend identifier suffix
-to the function. For example, search details for Rally would be implemented
-in =bug-search-rally=, and the function =bug-search= would check which
-backend handles the current request, and calls the correct function.
-** Functions only available on a single backend
-Some features are only provided by a single supported backend. In this case
-instead of providing a generic function and implementing backend details
-for it a function name with a backend infix should be chosen instead.
+Public functions, both interactive or supposed to be called from 3rd party code, should be prefixed with =bug-=. Those should be kept to a minimum - we should have as few as possible, but well defined entry points.
 
-One example is the function to display details about a Rally subscription,
-=bug-rally-subscription=.
+** Non-public (interactive) functions
+Internal functions, which includes functions not supposed to be called from 3rd party code as well as interactive functions only useful when called in one of the modes provided by bug-mode should be prefixed with =bug--=.
+
+** Backend implementation details
+For a backend specific implementation detail add a backend identifier suffix to the function. For example, search details for Rally would be implemented in =bug-search-rally=, and the function =bug-search= would check which backend handles the current request, and calls the correct function.
+
+*** Strict naming convention
+Every function defined in a backend file must include the backend identifier in its name. A function defined in =bug-backend-github.el= must contain =github= in its name; a function in =bug-backend-jira.el= must contain =jira=. The only exception is helper functions defined in a shared file like =bug-backend-bz-shared.el=, which should use the =bz-shared= prefix.
+
+This rule applies even to helper functions that are not called through the dispatcher. Functions like =bug--available-field-names= (without a backend infix) belong in shared files (e.g., =bug-common-functions.el=), not in backend-specific files. If a shared function needs backend-specific behaviour, the backend should define a thin wrapper with the correct infix (e.g., =bug--available-field-names-rally=) that calls the shared helper with backend-specific arguments.
+
+** Functions only available on a single backend
+Some features are only provided by a single supported backend. In this case instead of providing a generic function and implementing backend details for it a function name with a backend infix should be chosen instead.
+
+One example is the function to display details about a Rally subscription, =bug-rally-subscription=.
+
+TODO: old suggestion, new approach would be "still do it properly"
+
 ** Buffer local variables
-If buffer local variables are required to store state (=make-local-variable=)
-the name should be prefixed with =bug---=.
+If buffer local variables are required to store state (=make-local-variable=) the name should be prefixed with =bug---=.
+
+Some common buffer local variables are defined in =bug-vars.el=. Quite often functions gather details like the current instance from those buffer local variables - so if a new one is introduced check if it indeed is local to a specific module only, otherwise it should go to =bug-vars.el=.
+
 * Use of autoloads
-Functions described in the following sections (and only those) should define
-autoloads.
+Functions described in the following sections (and only those) should define autoloads. The autoloads file is created with =make autoloads=, and not part of the repository.
 
 ** Interactive functions
 All interactive functions (including the ones only suitable for being called via key bindings) should be marked for autoloading.
+
 ** Backend implementation details
-The implementations of mandatory backend functions should be marked for
-autoloading. Implementation details only called by those functions, but not
-mandated by the framework don't require autoloading.
+The implementations of mandatory backend functions should be marked for autoloading. Implementation details only called by those functions, but not mandated by the framework don't require autoloading.
+
 ** Backend specific modes
 The entry functions to backend specific modes should be marked for autoloading.
-* Passing the instance identifier
-Most functions need to know which bug tracker instance they need to operate on.
-For this functions may define an instance argument, containing an identifier
-to one configuration in =bug-instance-plist=. This allows looking up both
-configuration details and backend specific functionality.
 
-As an example, the following configuration would make =:rally-1= and =:rally-2=
-valid instances, both using the Rally backend:
+* Passing the instance identifier
+Most functions need to know which bug tracker instance they need to operate on. For this functions may define an instance argument, containing an identifier to one configuration in =bug-instance-plist=. This allows looking up both configuration details and backend specific functionality.
+
+As an example, the following configuration would make =:rally-1= and =:rally-2= valid instances, both using the Rally backend:
 
 #+BEGIN_SRC emacs-lisp
 (setq bug-instance-plist
@@ -103,10 +139,7 @@ valid instances, both using the Rally backend:
 (setq bug-default-instance :rally-1)
 #+END_SRC
 
-As minibuffer prompts return a string sometimes type conversion before lookup
-is necessary. The function =bug--instance-to-symbolp= takes care of that, and
-should be called by any function doing more than just passing the instance
-identifier through, before trying to use it.
+As minibuffer prompts return a string sometimes type conversion before lookup is necessary. The function =bug--instance-to-symbolp= takes care of that, and should be called by any function doing more than just passing the instance identifier through, before trying to use it.
 
 #+BEGIN_SRC emacs-lisp
 (bug--instance-to-symbolp :rally-1)
@@ -116,22 +149,14 @@ identifier through, before trying to use it.
 (bug--instance-to-symbolp nil)
 #+END_SRC
 
-The first three expressions will evaluate to =:rally-1=, and therefore are valid
-ways to specify an instance. The second to last one will evaluate to =rally-1=
--- without the colon, making it invalid. =bug--instance-to-symbolp= will not try
-to sanitize input already passed in as symbol.
+The first three expressions will evaluate to =:rally-1=, and therefore are valid ways to specify an instance. The second to last one will evaluate to =rally-1= -- without the colon, making it invalid. =bug--instance-to-symbolp= will not try to sanitize input already passed in as symbol.
 
-The last expression evaluates to =:rally-1= as well -- if =nil= is passed as
-value a lookup for the default instance is performed.
+The last expression evaluates to =:rally-1= as well -- if =nil= is passed as value a lookup for the default instance is performed.
 
 ** Interactive functions
-Interactive functions should accept an instance identifier as optional argument
-if they either need to operate on a specific instance, or need to pass it on.
+Interactive functions should accept an instance identifier as optional argument if they either need to operate on a specific instance, or need to pass it on.
 
-When called with a prefix argument the function should query for an instance,
-otherwise the default instance is used. The instance prompt should come before
-any additional prompts a function may require. A completing function for
-querying instances is provided with =bug--query-instance=.
+When called with a prefix argument the function should query for an instance, otherwise the default instance is used. The instance prompt should come before any additional prompts a function may require. A completing function for querying instances is provided with =bug--query-instance=.
 
 A typical interactive function starts like this:
 
@@ -148,53 +173,28 @@ A typical interactive function starts like this:
     ...))
 #+END_SRC
 
-Note that the arguments are read in reverse order compared to the function
-definition, and therefore need to be reversed.
+Note that the arguments are read in reverse order compared to the function definition, and therefore need to be reversed.
 
 ** Non-interactive functions
-Non-interactive functions only should take an instance argument if they either
-need to operate on a specific instance, or need to pass it on. In that case it
-must be a mandatory argument.
+Non-interactive functions only should take an instance argument if they either need to operate on a specific instance, or need to pass it on. In that case it must be a mandatory argument.
+
 ** Backend implementation details
-Backend functions expected by the framework are defined as =(func args instance)=,
-so even if the function itself does not require knowledge about the current
-instance it must define a mandatory instance argument.
+Backend functions expected by the framework are defined as =(func args instance)=, so even if the function itself does not require knowledge about the current instance it must define a mandatory instance argument.
+
 * Writing backends
-The main bankend code should be implemented in a file called bug-backend-<backend-identifier>.el in the lisp subdirectory. This file should contain the mandatory methods for implementing read support. Helper functions may be loaded from additional files, for bug tracker specific modes it's encouraged to put them to individual files.
+The main backend code should be implemented in a file called =bug-backend-<backend-identifier>.el= in the =lisp= subdirectory. This file should contain the mandatory methods for implementing read support. Helper functions may be loaded from additional files; for bug tracker specific modes it's encouraged to put them in individual files.
 
 A minimalistic backend file not doing anything would look like this:
 
 #+BEGIN_SRC emacs-lisp
 ;; bug-backend-<identifier>.el --- backend implementation for <identifier>
 ;;
-;; Copyright (c) 2010-2015 bug-mode developers
-;;
-;; See the AUTHORS.md file for a full list:
-;; https://raw.githubusercontent.com/bwachter/bug-mode/master/AUTHORS.md
-;;
-;; Keywords: tools
-;;
-;; COPYRIGHT NOTICE
-;;
-;; This program is free software; you can redistribute it and/or modify it
-;; under the terms of the GNU General Public License as published by the Free
-;; Software Foundation; either version 2 of the License, or (at your option)
-;; any later version.
-;;
-;; This program is distributed in the hope that it will be useful, but
-;; WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-;; or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-;; for more details. http://www.gnu.org/copyleft/gpl.html
-;;
-;;; History:
-;;
-;; This file is maintained at https://github.com/bwachter/bug-mode/
-;; Check the git history for details.
+;; ...license header...
 ;;
 ;;; Code:
 
 ;;;###autoload
-(defun bug--backend-<identifier>-features (arg instance)
+(defun bug--backend-<identifier>-features (_arg _instance)
   "Features supported by <identifier> backend"
   '())
 
@@ -202,41 +202,108 @@ A minimalistic backend file not doing anything would look like this:
 ;;; bug-backend-<identifier>.el ends here
 #+END_SRC
 
-The =bug--backend-<identifier>-features= function defines what is implemented by this backend. It is expected to return a list with all supported feature identifiers (e.g. '(:read :write)). The possible features and mandatory functions for each feature are explained in the following sections. A test checking if available backends define all functions mandated by the features they claim to implement exists, and is executed by running =make test=.
+The =bug--backend-<identifier>-features= function defines what is implemented by this backend. It is expected to return a list with all supported feature identifiers (e.g. ='(:read :write)=). The possible features and mandatory functions for each feature are explained in the following sections. A test checking if available backends define all functions mandated by the features they claim to implement exists, and is executed by running =make test=.
 
-A backend may mark features as experimental by prefixing them with "experimental" (e.g. :experimental-write). A bug-mode with default configuration will behave as if those features are not implemented, and will offer them if =bug-experimental= is set to non-nil.
+A backend may mark features as experimental by prefixing them with "experimental" (e.g. =:experimental-write=). A bug-mode with default configuration will behave as if those features are not implemented, and will offer them if =bug-experimental= is set to non-nil.
+
+The framework dispatches backend-specific calls through =bug--backend-function= and =bug--backend-function-optional=. Mandatory functions use the former (an error is raised if not defined); optional functions use the latter (returns nil if not defined). Backend functions all take the signature =(args instance)= — even if args is unused, the argument must be accepted.
+
+** Comment conventions
+Each function in a backend file should carry a brief leading comment classifying it as either a /frontend dispatch target/ or an /internal helper/. This makes it immediately obvious to someone reading the code whether a function is part of the public backend contract or just a local implementation detail.
+
+For functions called from the frontend, include a comment showing the dispatch path:
+
+#+BEGIN_SRC emacs-lisp
+;; Frontend dispatch: bug--backend-function "bug--rpc-%s" (bug--do-search)
+(defun bug--do-rally-search (params instance)
+  ...)
+#+END_SRC
+
+For optional functions, mention =bug--backend-function-optional= and the frontend caller:
+
+#+BEGIN_SRC emacs-lisp
+;; Frontend dispatch: bug--backend-function-optional "bug--field-completion-%s" (bug--completing-read-field)
+(defun bug--field-completion-rally (field-name instance)
+  ...)
+#+END_SRC
+
+For functions that are pure backend internals (RPC helpers, data transformers, URL builders, etc.), use:
+
+#+BEGIN_SRC emacs-lisp
+;; Internal helper: build Rally WSAPI URL for a given resource
+(defun bug--rally-build-url (resource instance)
+  ...)
+#+END_SRC
+
+If a file is long, group related functions under section comments:
+
+#+BEGIN_SRC emacs-lisp
+;;; Frontend dispatch: read support
+
+;;; Frontend dispatch: write support
+
+;;; Internal helpers: RPC and URL utilities
+#+END_SRC
+
+This convention is not yet applied uniformly to all existing backends; new code should follow it, and refactors of old backends should add comments incrementally.
+
+Available features are:
+
+- :read for basic read support
+- :search for dispatching searches in backend native search language
+- :search-jql for dispatching searches in JQL
+- :write for editing existing bugs
+- :delete for deleting bugs (frontend key =D=)
+- :create for creating new bugs
+- :comment for support to create comments / discussions
+- :projects for projects support, either backend native or emulated
+- :project-bugs for listing open bugs in a project
+- :project-create for support to create new projects
 
 ** Mandatory functions for read support (:read)
+*** bug--backend-%s-features (arg instance)
+Declare which features this backend implements. Returns a list of feature keywords. Currently defined features are =:read=, =:write=, =:create=, and =:delete=. Experimental variants can be declared as =:experimental-<feature>= and are only offered when =bug-experimental= is non-nil.
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--backend-rally-features (_arg _instance)
+  "Features supported by Rally backend"
+  '(:read :write :create :delete))
+#+END_SRC
+
 *** bug--%s-field-name (field-name instance)
 Resolve instance specific field names for special fields. Currently defined fields are:
 
-- :bug-uuid, a unique bug identifier
-- :bug-friendly-id, a bug identifier suitable for displaying to the user
-- :bug-summary, the summary field of a bug
+- =:bug-uuid=, a unique bug identifier
+- =:bug-friendly-id=, a bug identifier suitable for displaying to the user
+- =:bug-summary=, the summary field of a bug
 
 =:bug-uuid= and =:bug-friendly-id= may be the same field on some bug tracker implementations. The implementation should just be a =cond= statement mapping bug-mode field names to instance specific field names:
 
 #+BEGIN_SRC emacs-lisp
-(defun bug--rally-field-name (field-name instance)
+(defun bug--rally-field-name (field-name _instance)
   "Resolve field names for rally"
   (cond ((equal :bug-uuid field-name)
          '_refObjectUUID)
         ((equal :bug-friendly-id field-name)
          'FormattedID)
         ((equal :bug-summary field-name)
-         'Description)))
+         'Name)))
 #+END_SRC
 
 *** bug--%s-list-columns (object instance)
 Return a list of column headers for a search result display. For bug trackers without type specific fields a static list may be suitable, as implemented for Bugzilla:
 
 #+BEGIN_SRC emacs-lisp
-(defun bug--bz-rpc-list-columns (object instance)
+(defun bug--bz-rpc-list-columns (_object _instance)
   "Return list columns for Bugzilla"
   '("id" "status" "summary" "last_change_time"))
 #+END_SRC
 
-Other bug trackers may need to evaluate the object (a string with the queried object name), and return object specific  list columns.
+Other bug trackers may need to evaluate the object (a string with the queried object name), and return object specific list columns. A column entry may be either a string (field name) or a list of strings, in which case the first present field is displayed:
+
+#+BEGIN_SRC emacs-lisp
+'("FormattedID" ("State" "ScheduleState") "Name" "LastUpdateDate")
+#+END_SRC
 
 *** bug--browse-%s-bug (id instance)
 Open the given bug in a web browser. The ID passed is the friendly ID, not UUID -- the function is expected to convert the ID, if necessary.
@@ -251,13 +318,17 @@ In most cases the implementation should not be more complex than the one for Bug
 #+END_SRC
 
 *** bug--do-%s-search (params instance)
-Query a Bugzilla backend with the [[#datastructures_query][query structure]] in =params= -- adding any missing details -- and show the result either with =bug-show= (for a single match) or =bug-list-show= (for a list), after transforming the returned data to a [[#datastructures_buglist][bug list structure]].
+Execute a search with the [[#datastructures_query][query structure]] in =params= and show the result. For a single match call =bug-open= (which calls =bug--fetch-%s-bug= and then =bug-show=); for a list call =bug-list-show= after transforming results to a [[#datastructures_buglist][bug list structure]].
+
+Some backends return duplicate results for exact-ID queries due to API limitations (e.g. Rally strips the letter prefix from FormattedID, returning all artifacts whose numeric part matches). In those cases =bug--do-%s-search= or its helper =bug--handle-%s-search-response= should detect the single-artifact case and call =bug-open= directly.
+
+The 0/1/N dispatch is backend-specific today; in the future it will move to shared frontend code in =bug--handle-search-results= (see [[#search-infrastructure][Search infrastructure]]).
 
 *** bug--fetch-%s-bug (id instance)
-Fetch a bug, identified by an instances =:bug-uuid= field. It should return a [[#datastructures_bug][bug data structure]] on success, or inform the user if no such bug has been found.
+Fetch a bug, identified by an instance's =:bug-uuid= field. It should return a [[#datastructures_bug][bug data structure]] on success, or inform the user if no such bug has been found.
 
 *** bug--parse-%s-search-query (query instance)
-Parse the string =query= (which was read from the minibuffer) into a search query as understood by the instances =bug--do-%s-search= function. It is recommended to use a [[#datastructures_query][query structure]] for this for consistency.
+Parse the string =query= (which was read from the minibuffer) into a search query as understood by the instance's =bug--do-%s-search= function. It is recommended to use a [[#datastructures_query][query structure]] for this for consistency.
 
 *** bug--rpc-%s (args instance)
 Transform the data in =args= (a [[#datastructures_query][query structure]]) into a form which can be sent to the backend, send the request using =url=, and return the server response, parsed through =bug--parse-rpc-response=. Additional data present in the query structure may be used for fine tuning the data sent to the server.
@@ -284,16 +355,16 @@ could look like this:
 #+END_SRC
 
 *** bug--rpc-%s-get-fields (object instance)
-Return the field names for a specific instance in a [[#datastructures_fieldnames][field names structure]], translating attributes between native and bug-mode format, if necessary. If the bug tracker uses per-object field names, and object is a non empty string the fields for the object should be returned.
+Return the field definitions for a specific instance in a [[#datastructures_fieldnames][field definition structure]], translating attributes between native and bug-mode format, if necessary. If the bug tracker uses per-object field names, and object is a non-empty string, the fields for the object should be returned.
+
+Field definitions must include a numeric =type= value (see [[#field-type-codes][Field type codes]]) for the frontend to know how to render and edit each field.
 
 If the bug tracker does not provide a method to query fields a field definition JSON file should be shipped with bug-mode, and returned by this function. Even if the bug tracker supports a field query using a field definition file initially may speed up backend development:
 
 #+BEGIN_SRC emacs-lisp
-(defun bug--rpc-sample-get-fields (object instance)
+(defun bug--rpc-sample-get-fields (_object _instance)
   "Read field definitions from a JSON file"
-  (let ((fields-file (concat
-                      bug-json-data-dir
-                      "/sample-fields.json")))
+  (let ((fields-file (concat bug-json-data-dir "/sample-fields.json")))
     (if (file-exists-p fields-file)
         (json-read-file fields-file)
       (error "Field definition file not found"))))
@@ -303,7 +374,7 @@ If the bug tracker does not provide a method to query fields a field definition 
 Check the =response=, which is the complete JSON string returned by the server for errors. If no error was detected return the response.
 
 #+BEGIN_SRC emacs-lisp
-(defun bug--rpc-rally-handle-error (response instance)
+(defun bug--rpc-rally-handle-error (response _instance)
   "Check data returned from Rally for errors"
   (let* ((return-document (cdr (car response)))
          (error-messages (assoc 'Errors return-document)))
@@ -311,14 +382,228 @@ Check the =response=, which is the complete JSON string returned by the server f
         (error (aref (cdr error-messages) 0)))
     response))
 
-(defun bug--rpc-bz-rpc-handle-error (response instance)
+(defun bug--rpc-bz-rpc-handle-error (response _instance)
   "Check data returned from Bugzilla for errors"
   (if (and (assoc 'error response) (assoc 'message (assoc 'error response)))
       (error (cdr (assoc 'message (assoc 'error response)))))
   response)
 #+END_SRC
 
+** Optional functions for read support
+*** bug--backend-%s-default-url (args instance)
+Return a default API URL string for this backend. Used when no =:url= is configured for the instance. Called via =bug--backend-function-optional=; returning nil means no default is provided.
+
+*** bug--rpc-%s-map-field (key instance)
+Translate a native backend field name =key= (a string or symbol) to a normalised symbol used internally by bug-mode. Called for every field in a bug response. Return nil to keep the field name unchanged.
+
+*** bug--%s-field-filters (args instance)
+Return a list of field filter lists for bug display. Each inner list is a set of field names to display in that order; an empty list means show all fields alphabetically. Index 0 is the default on first open.
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--rally-field-filters (_args _instance)
+  '(("FormattedID" "Name" "State" "ScheduleState" "Owner" "Description")
+    ("FormattedID" "Name" "State" "ScheduleState" "Owner" "Priority" "Description")
+    ()))  ; empty = show all fields
+#+END_SRC
+
+*** bug--backend-%s-show-additional-data (bug instance)
+Called after the main bug buffer has been rendered. Append any backend-specific data (e.g. discussion threads, attachments) to the current buffer. The function is called with point at the end of the rendered buffer.
+
+Rally uses this hook to fetch and render discussion posts via =bug--fetch-rally-discussion= and =bug--display-rally-discussion=.
+
+*** bug--execute-%s-search (params instance)
+Execute a search RPC and return the raw results as =(results-array . total-count)=. This is the low-level counterpart to =bug--do-%s-search= used by the frontend search candidate system (=bug--search-candidates= in =bug-search.el=) to drive interactive reference-field editing (type 98).
+
+Unlike =bug--do-%s-search=, this function does not display anything; it just returns data. The fetch fields should include at minimum what =bug--format-%s-search-candidates= needs — typically object name, friendly ID, and UUID. The function must not mutate the caller's =params= alist.
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--execute-rally-search (params instance)
+  "Execute Rally search; return (results-array . total-count)."
+  (let* ((params (copy-tree params))
+         (data (assoc 'data params)))
+    (unless (assoc 'fetch (cdr data))
+      (push '(fetch "FormattedID,Name,_refObjectUUID") (cdr data)))
+    ...
+    (cons results total)))
+#+END_SRC
+
+*** bug--format-%s-search-candidates (results)
+Format a results array (as returned by =bug--execute-%s-search=) into an alist of =(display-string . identifier)= pairs for use with =completing-read=. The =identifier= is whatever should be stored when the user selects the candidate (e.g. a UUID string for Rally, a bug ID string for Bugzilla).
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--format-rally-search-candidates (results)
+  (mapcar (lambda (r)
+            (cons (format "%s: %s"
+                          (or (cdr (assoc 'FormattedID r)) "?")
+                          (or (cdr (assoc 'Name r)) ""))
+                  (cdr (assoc '_refObjectUUID r))))
+          (append results nil)))
+#+END_SRC
+
 ** Mandatory functions for write support (:write)
+*** bug--backend-%s-get-update-id (args instance)
+Return the identifier to use when updating a bug. For some backends this is a UUID (Rally), for others a numeric ID (Bugzilla). Typically reads from the buffer-local =bug---uuid= or =bug---id=.
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--backend-rally-get-update-id (_args _instance)
+  bug---uuid)
+#+END_SRC
+
+*** bug--update-%s-bug (args instance)
+Apply an edit to a bug. =args= is =(id fields)= where =id= is the value returned by =bug--backend-%s-get-update-id= and =fields= is an alist of field names and new values. The function should transmit only the changed fields, not the entire bug. Error handling is expected to go through =bug--rpc-%s-handle-error=.
+
+** Optional functions for write support
+*** bug--field-completion-%s (field-name instance)
+Return a list (or alist) of completion candidates for =field-name= in the currently open bug. Called by =bug--completing-read-field= before falling back to generic input methods.
+
+For enum-type fields return a plain list of strings. For object-reference fields (type 98) return an alist of =(display-name . ref-value)= pairs. Rally implements this by querying the TypeDefinition API for the current artifact type.
+
+TODO: Add generic multi-select support.  Some fields (e.g. GitHub =labels=, Jira =components=, Rally tags) support multiple values, but the current frontend uses =completing-read= which only allows a single selection.  A future enhancement should provide a =completing-read-multiple= wrapper or a transient multi-picker so the user can select/deselect several items in one interaction, with the backend receiving an array of values.
+
+*** bug--field-edit-blocked-%s (field-name instance)
+Return a non-nil message string when =field-name= must not be edited directly by the user. Return nil to allow editing. Called by the frontend before opening a field for editing.
+
+Rally uses this to prevent direct FlowState edits when ScheduleState linking is enabled:
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--field-edit-blocked-rally (field-name _instance)
+  (when (and bug-rally-link-flowstate (memq field-name '(FlowState)))
+    "FlowState is linked to ScheduleState; edit ScheduleState instead"))
+#+END_SRC
+
+*** bug--linked-field-changes-%s (args instance)
+Return additional field changes to apply alongside a user edit. =args= is =(field-name new-value)=. If =field-name= drives other fields, return an alist with two keys:
+
+- =changes= — alist of field/value pairs to include in the backend update
+- =display= — alist of field/value pairs to update in the buffer display
+
+Return nil when no linked changes are needed. Rally uses this to automatically update FlowState when ScheduleState changes.
+
+** Mandatory functions for create support (:create)
+*** bug--create-%s-bug-interactive (context instance)
+Open a draft buffer for creating a new artifact. =context= is nil for standalone creation, or the current bug's data alist (=bug---data=) when invoked from an existing bug buffer — allowing the backend to pre-populate parent/project fields based on the context.
+
+The function should call =bug-new-draft (display-alist create-alist instance)= to open the buffer. =display-alist= is what the user sees and edits; =create-alist= is what gets sent to the backend on commit.
+
+Rally's implementation queries the TypeDefinition API to offer workspace-specific artifact types (including PortfolioItem sub-types) and pre-populates required fields with their first allowed value.
+
+*** bug--create-%s-new-artifact (args instance)
+Submit a completed draft buffer to the backend. =args= is =(bug-data changed-data)= where =bug-data= is the full display alist (contains =ObjectType= or equivalent) and =changed-data= contains only the fields the user edited. On success, open the newly created artifact with =bug-open=.
+
+** Optional functions for create support
+*** bug--validate-draft-%s (args instance)
+Validate a draft before submission. =args= is =(bug-data changed-data)=. Return a list of required field names that are missing or empty, or nil when everything is present. Called by the frontend before =bug--create-%s-new-artifact=; missing fields are reported to the user.
+
+*** bug--available-field-names-%s (args instance)
+Return an alist of =(display-name . element-name)= for fields that can be added to the current draft. =args= is =(type-name present-keys)=. Fields already in the buffer and hidden fields should be excluded.
+
+The frontend (=bug--bug-mode-add-field= in =bug-mode.el=) tries the backend-specific function first via =bug--instance-backend-function-optional=. If the backend does not define one, it falls back to the generic =bug--available-field-names= in =bug-common-functions.el=, which reads the field definitions returned by =bug--rpc-%s-get-fields= and filters out hidden, readonly, internal (=name= starts with =_=), and already-present fields.
+
+If a backend needs additional filtering (e.g. Rally queries the TypeDefinition API to exclude hidden fields dynamically), it should define a backend-specific wrapper with the correct infix (e.g. =bug--available-field-names-rally=) and call the shared helper after applying backend-specific logic.
+
+** Mandatory functions for delete support (:delete)
+*** bug--delete-%s-bug (object-id instance)
+Delete the artifact identified by =object-id= (the UUID or other backend-specific identifier). Return =t= on success. The frontend handles confirmation prompting; the backend just performs the operation. If the backend uses soft deletes (e.g. Rally's Recycle Bin), document that in the docstring.
+
+** Mandatory functions for project support (:projects)
+Backends that organise work into projects (or an equivalent concept such as organisations or repositories) should declare =:projects= and implement this function. The generic frontend =bug-list-projects= and =bug-select-project= (in =bug-project.el=) use it to display and select projects without knowing backend internals.
+
+*** bug--list-%s-projects (args instance)
+Return an alist of =(name . id-string)= pairs for all available projects. The =id-string= is the value the user would put in =:project-id= in instance config. Multi-level hierarchies (e.g. Rally workspaces containing projects) should be flattened: return the leaf-level objects a user would actually work in.
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--list-rally-projects (_args instance)
+  "Return available Rally projects as ((name . id-string) ...) alist."
+  (bug--rally-list-projects (bug--rally-get-workspace-oid instance) instance))
+#+END_SRC
+
+For GitHub the same contract applies, with organisations as the top-level "projects":
+
+#+BEGIN_SRC emacs-lisp
+(defun bug--list-github-projects (_args instance)
+  "Return GitHub organisations accessible to the configured token."
+  ...)
+#+END_SRC
+
+** Optional functions for any feature
+*** bug--backend-%s-create-comment (args instance)
+Open a comment/discussion composition buffer for the current artifact. =args= is the current bug ID. The backend is responsible for rendering the composition UI and sending the comment on submission.
+
+*** bug--backend-%s-find-attachment-url (args instance)
+Return a URL (or list of URLs) for attachments of the current artifact. =args= is currently unused (reads from buffer-local =bug---data=).
+
+*** bug--backend-%s-download-attachment (args instance)
+Download an attachment. =args= is currently unused.
+
+*** bug--backend-%s-open-thing (args instance)
+Open a related item (backend-specific). =args= is currently unused.
+
+* Search infrastructure
+The search code is split across three modules to avoid circular =require= dependencies:
+
+- =bug-search-common.el= — circular-require-safe base; contains =bug--do-search= which dispatches to =bug--do-%s-search= in the backend.
+- =bug-search.el= — all interactive frontend: =bug-search=, =bug-search-jql=, =bug-search-project=, =bug-search-jql-project=, =bug-stored-bugs=, =bug-edit-search=, and the candidate search helper =bug--search-candidates=.
+- =bug-list-mode.el= — list display; requires both =bug-search-common= and =bug-search=.
+
+** Call chain
+A typical native search from the minibuffer:
+
+#+BEGIN_EXAMPLE
+bug-search (query instance)
+  -> sets bug--pending-query-string
+  -> bug--parse-%s-search-query -> params
+  -> bug--do-search (params instance)
+    -> bug--do-%s-search (params instance)           [backend]
+      -> bug--handle-%s-search-response (...)
+        -> bug-open           (single result)
+        -> bug-list-show      (multiple results)
+            -> stores bug---query, bug---instance, bug---query-string
+#+END_EXAMPLE
+
+A JQL search follows the same path but adds translation:
+
+#+BEGIN_EXAMPLE
+bug-search-jql (query instance)
+  -> sets bug--pending-query-string
+  -> bug--parse-jql-query (generic parser)           [bug-jql.el]
+    -> bug--jql-translate-query -> AST with backend field names
+  -> bug--parse-%s-jql-query (backend formatter)    [backend]
+    -> native params
+  -> bug--do-search (params instance)
+    -> bug--do-%s-search (params instance)           [backend]
+#+END_EXAMPLE
+
+A project-scoped search injects the project restriction into the backend query by dynamically binding =bug---project= around the parser call:
+
+#+BEGIN_EXAMPLE
+bug-search-project (query instance)
+  -> bug--search-project-scope -> project-id
+  -> let-bind bug---project = project-id
+  -> same path as bug-search, but backend parsers see bug---project
+     and inject (Project = ...) into the native query
+#+END_EXAMPLE
+
+The =bug---query-string= buffer-local variable stores the original typed query in a search result list buffer, allowing =bug-edit-search= (bound to =e= in =bug-list-mode=) to offer it as the pre-filled default when the user wants to refine the search.  If =bug---project= is also set, =bug-edit-search= re-runs the scoped variant.
+
+** Extending search for a new backend
+For the list/display path: implement =bug--do-%s-search= and =bug--parse-%s-search-query= as described under mandatory read functions.
+
+For JQL support, additionally declare =:search-jql= in features and implement:
+
+- =bug--%s-field-name (field-name instance)= — map =:jql-*= generic field names (e.g. =:jql-summary=, =:jql-status=) to backend-specific field names. Return nil for unsupported fields so they pass through untranslated.
+- =bug--parse-%s-jql-query (query instance)= — parse a JQL string and return native search params. Usually this delegates to =bug--parse-jql-query= and =bug--jql-translate-query= in =bug-jql.el=, then formats the translated AST for the backend.
+
+For project-scoped search support, the backend parser should check the dynamically bound variable =bug---project= and inject the project restriction into the native query when it is non-nil.  The frontend commands =bug-search-project= and =bug-search-jql-project= set this variable before calling the parser.
+
+For interactive reference-field editing (type 98 object fields), additionally implement:
+
+- =bug--execute-%s-search (params instance)= — returns =(array . count)=
+- =bug--format-%s-search-candidates (results)= — returns =(("ID: Name" . uuid) ...)=
+
+These are called by =bug--search-candidates= in =bug-search.el= when the user edits an object-reference field (e.g. Parent, Iteration).
+
+A future refactoring will unify the 0/1/N dispatch currently in =bug--do-%s-search= into a shared =bug--handle-search-results= frontend function to avoid duplication between backends. When that happens, backends will implement =bug--execute-%s-search= for the RPC call and the frontend will handle display.
+
 * Data structures
 ** Bug list structure
    :PROPERTIES:
@@ -333,7 +618,7 @@ A bug list (as result of a search, for example) is an array consisting of one or
   ]
 #+END_SRC
 
-=bug-lists-show= will display all fields which are part of the list columns definition. As it accepts an override in the query string evaluating the following code will show a bug list with the elements foo, bar and baz:
+=bug-list-show= will display all fields which are part of the list columns definition. As it accepts an override in the query string evaluating the following code will show a bug list with the elements foo, bar and baz:
 
 #+BEGIN_SRC emacs-lisp
 (bug-list-show '((list-columns . ("foo" "bar" "baz")))
@@ -357,13 +642,74 @@ A bug is a simple alist containing key/value pairs. Values may be a list. A bug 
    nil)
 #+END_SRC
 
-In theory an array element of a search list could be directly displayed as bug. However, most bug trackers only return a subset of bug fields in the search query, so it almost always is required to explicitely fetch a bug.
+In theory an array element of a search list could be directly displayed as bug. However, most bug trackers only return a subset of bug fields in the search query, so it almost always is required to explicitly fetch a bug.
 
-** Field name structure
+Object-reference fields (type 98) are represented as nested alists. The frontend recognises three forms:
+
+- Has =_refObjectName= key: displays as =-> "Name"=
+- Has =_type= key but no name: displays as =-> [TypeName]=
+- Has =_ref= ending in =/null=: displays as =—= (unset)
+
+** Field definition structure
    :PROPERTIES:
    :CUSTOM_ID: datastructures_fieldnames
    :END:
+Field definitions are returned by =bug--rpc-%s-get-fields= and consumed by =bug--get-fields= and =bug--get-field-property=. The top-level structure is:
+
+#+BEGIN_SRC emacs-lisp
+((result . ((fields . (field-def field-def ...)))))
+#+END_SRC
+
+Each =field-def= is an alist with at minimum:
+
+| Key            | Type    | Description                          |
+|----------------+---------+--------------------------------------|
+| =name=         | string  | Machine-readable field name          |
+| =display_name= | string  | Human-readable label                 |
+| =type=         | integer | Numeric field type code (see below)  |
+| =is_mandatory= | bool    | Whether the field is required        |
+| =is_readonly=  | bool    | Whether the field can be edited      |
+
+*** Field type codes
+The =type= key uses these numeric codes throughout the rendering and editing pipeline:
+
+| Code | Meaning          | Rendering                              | Editing                               |
+|------+------------------+----------------------------------------+---------------------------------------|
+|    0 | Boolean          | =yes= / =no=                           | =yes= / =no= completion               |
+|    1 | String / enum    | plain text                             | minibuffer string or backend completion |
+|    5 | Date/time        | formatted via =bug-time-date-format-*= | minibuffer or calendar picker         |
+|    6 | Bug / friendly ID | plain text                            | minibuffer string                     |
+|   98 | Object reference | =-> "Name"= or =-> [Type]=             | =bug--search-candidates= loop         |
+|   99 | HTML / rich text | rendered via =shr=                     | =bug-html-edit= buffer                |
+
+Type 98 fields carry nested alists with sub-keys such as =_ref=, =_refObjectName=, =_refObjectUUID=, and =_type=. The field is considered unset when =_ref= is ="null"= or ends in =/null=.
+
 ** Query structure
    :PROPERTIES:
    :CUSTOM_ID: datastructures_query
    :END:
+A query is an alist with the following possible keys:
+
+| Key            | Description                                       |
+|----------------+---------------------------------------------------|
+| =resource=     | Backend resource type (string)                    |
+| =operation=    | Operation to perform (string)                     |
+| =object-id=    | UUID or ID of a specific object (string)          |
+| =object-type=  | Sub-resource type for read (string)               |
+| =data=         | Nested alist of query parameters or POST body     |
+| =list-columns= | Override column list for =bug-list-show=          |
+
+The =data= key has different semantics for GET vs POST:
+
+- GET (query): flat alist encoded as a URL query string, e.g. =((query "(State = \"Open\")") (fetch "Name,ID") (pagesize 100))=
+- POST (create/update): nested alist with the object type as key, e.g. =((Defect . ((Name . "Bug title") (Project . "/project/123"))))=
+
+*** Rally query structure
+For Rally the =resource= key selects the WSAPI endpoint (e.g. ="artifact"=, ="hierarchicalrequirement"=, ="defect"=). The virtual ="artifact"= resource covers stories, defects, tasks, and test cases but cannot handle cross-object queries (e.g. =Iteration.StartDate=), which require a concrete resource type.
+
+=bug--parse-rally-search-query= handles the common cases:
+
+- Empty input -> list project contents (requires =:project-id= in instance config)
+- =US1234=, =DE42=, =TA5=, etc. -> direct FormattedID lookup
+- Contains parentheses -> treated as a raw WSAPI query expression; cross-object references (=Foo.Bar=) automatically force a concrete resource type
+- Otherwise -> =Name contains= / =Notes contains= / =Description contains= OR query

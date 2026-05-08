@@ -35,11 +35,14 @@
 (require 'bug-jql)
 
 ;;;;;;
-;; Field metadata
+;;; Internal helpers: field metadata
 
 (defun bug--bz-shared-get-fields (_object instance)
   "Download the field list for Bugzilla, map types, and add synthetic
-metadata for fields returned by Bug.get that are missing from Bug.fields."
+metadata for fields returned by Bug.get that are missing from Bug.fields.
+
+This is an internal helper function for mapping Bugzilla field names to bug-mode
+names and vice versa."
   (let* ((response (bug-rpc '((resource . "Bug")
                               (operation . "fields")) instance))
          (result (cdr (assoc 'result response)))
@@ -103,14 +106,20 @@ no mapping is needed.
    (t nil)))
 
 ;;;;;;
-;; Column and field name resolution
+;;; Column and field name resolution
 
 (defun bug--bz-shared-list-columns (_object _instance)
-  "Return list columns for Bugzilla"
+  "Return list columns for Bugzilla.
+
+Frontend dispatch: bug--backend-function \"bug--%s-list-columns\",
+called from rpc/rest shim."
   '("id" "status" "summary" "last_change_time"))
 
 (defun bug--bz-shared-field-name (field-name _instance)
-  "Resolve field names for Bugzilla"
+  "Resolve field names for Bugzilla.
+
+Frontend dispatch: bug--backend-function \"bug--%s-field-name\",
+called from rpc/rest shim."
   (cond ((equal :bug-uuid field-name)
          'id)
         ((equal :bug-friendly-id field-name)
@@ -136,7 +145,7 @@ no mapping is needed.
         ((equal :jql-resolution field-name)  'resolution)))
 
 ;;;;;;
-;; Bug normalization
+;;; Internal helpers: bug normalization
 
 (defun bug--bz-shared-normalize-bug (bug)
   "Normalize Bugzilla bug data for display in bug-mode.
@@ -181,10 +190,12 @@ no mapping is needed.
           bug))
 
 ;;;;;;
-;; Search functions
+;;; Search support
 
 (defun bug--bz-shared-handle-search-response (query response instance)
-  "Parse the result of a bug search and either show a single bug or a bug list"
+  "Parse the result of a bug search and either show a single bug or a bug list.
+
+Used by the RPC/REST search shims (bug--do-%s-search)."
   (if (and
        (assoc 'result response)
        (assoc 'bugs (assoc 'result response)))
@@ -198,7 +209,10 @@ no mapping is needed.
     response))
 
 (defun bug--bz-shared-format-search-candidates (results)
-  "Format a Bugzilla bug array as ((\"ID: Summary\" . id-string) ...) alist."
+  "Format a Bugzilla bug array as ((\"ID: Summary\" . id-string) ...) alist.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--format-%s-search-candidates\" (bug--search-candidates)."
   (mapcar (lambda (bug)
             (cons (format "%s: %s"
                           (or (cdr (assoc 'id bug)) "?")
@@ -207,7 +221,10 @@ no mapping is needed.
           (append results nil)))
 
 (defun bug--bz-shared-parse-search-query (query _instance)
-  "Parse search query from minibuffer for Bugzilla"
+  "Parse search query from minibuffer for Bugzilla.
+
+Frontend dispatch: bug--backend-function \"bug--parse-%s-search-query\"
+(bug--do-search)."
   (if (string-match "^\\([^ ]+\\):\\(.+\\)$" query)
       `((,(match-string 1 query) . ,(match-string 2 query)))
     (if (string-match "[[:space:]]*[0-9]+[:space:]*" query)
@@ -218,7 +235,10 @@ no mapping is needed.
   "Parse a JQL query string and return Bugzilla search params.
 
 Basic implementation: translates simple field=value AND chains to
-Bugzilla search alists.  OR and complex nesting are not yet supported."
+Bugzilla search alists.  OR and complex nesting are not yet supported.
+
+Frontend dispatch: bug--backend-function \"bug--parse-%s-jql-query\"
+(bug-search-jql)."
   (require 'bug-jql)
   (let* ((ast (bug--jql-translate-query (bug--parse-jql-query query) instance))
          (params (bug--bz-shared-format-jql-clauses (cdr (assoc :clauses ast)) instance)))
@@ -244,7 +264,7 @@ Bugzilla search alists.  OR and complex nesting are not yet supported."
      (error "Bugzilla JQL translator does not support %s clauses" (car clause)))))
 
 ;;;;;;
-;; Comments and attachments
+;;; Comments and attachments
 
 (defun bug--bz-shared-get-comments (id instance)
   "Request comments for a bug and add them to an existing bug buffer."
@@ -314,10 +334,13 @@ Bugzilla search alists.  OR and complex nesting are not yet supported."
           (setq buffer-read-only t)))))
 
 ;;;;;;
-;; Additional data (comments + attachments sections)
+;;; Internal helpers: additional data display
 
 (defun bug--bz-shared-show-additional-data (_bug instance)
-  "Insert comment and attachment sections and load their content."
+  "Insert comment and attachment sections and load their content.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--backend-%s-show-additional-data\" (bug-show)."
   (bug--insert-section-header 'attachments)
   (bug--insert-section-header 'comments)
   (when (and bug---id bug-autoload-attachments)
@@ -326,10 +349,13 @@ Bugzilla search alists.  OR and complex nesting are not yet supported."
     (bug--bz-shared-get-comments bug---id instance)))
 
 ;;;;;;
-;; Attachment helpers
+;;; Internal helpers: attachment utilities
 
 (defun bug--bz-shared-find-attachment-url (_args instance)
-  "Construct the URL for the Bugzilla attachment near point."
+  "Construct the URL for the Bugzilla attachment near point.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--backend-%s-find-attachment-url\" (bug--find-attachment-url)."
   (save-excursion
     (let ((end (re-search-forward "$" nil t)))
       (move-beginning-of-line nil)
@@ -339,14 +365,198 @@ Bugzilla search alists.  OR and complex nesting are not yet supported."
         (error "No attachment near point")))))
 
 (defun bug--bz-shared-download-attachment (_args instance)
-  "Download the Bugzilla attachment near point to the home directory."
+  "Download the Bugzilla attachment near point to the home directory.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--backend-%s-download-attachment\" (bug--download-attachment)."
   (let ((url (bug--bz-shared-find-attachment-url nil instance))
         (dest (expand-file-name (concat "~/" (match-string 3)))))
     (url-copy-file url dest t)))
 
 (defun bug--bz-shared-open-thing (_args instance)
-  "Open the Bugzilla attachment near point in the browser."
+  "Open the Bugzilla attachment near point in the browser.
+
+Frontend dispatch: bug--backend-function-optional \"bug--backend-%s-open-thing\"
+ (bug--open-thing)."
   (browse-url (bug--bz-shared-find-attachment-url nil instance)))
+
+;;;;;;
+;;; Project support
+
+(defun bug--bz-shared-list-products (_args instance)
+  "Return Bugzilla products as an alist of (name . name).
+Fetches via `Product.get' with `type=enterable'.  Returns nil if the
+API is unavailable or no products are found.
+
+Frontend dispatch: bug--backend-function \"bug--list-%s-projects\"
+(bug-list-projects)."
+  (condition-case err
+      (let ((response (bug-rpc `((resource . "Product")
+                                 (operation . "get")
+                                 (data . ((type . "enterable"))))
+                               instance)))
+        (let ((products (or (cdr (assoc 'products
+                                        (or (cdr (assoc 'result response))
+                                            response)))
+                            nil)))
+          (when (vectorp products)
+            (mapcar (lambda (p)
+                      (let ((name (cdr (assoc 'name p))))
+                        (cons (if (symbolp name) (symbol-name name) name)
+                              (if (symbolp name) (symbol-name name) name))))
+                    (append products nil)))))
+    (error
+     (bug--debug (format "Failed to list Bugzilla products: %S" err)
+                 '(rpc-bz . 1))
+     nil)))
+
+(defun bug--bz-shared-list-product-bugs (product-id instance)
+  "Return search params for bugs in `product-id'."
+  (let ((scope (or product-id (bug--instance-property :project-id instance))))
+    (unless scope
+      (error "No product-id provided and no :project-id configured"))
+    `((product . ,scope))))
+
+;;;;;;
+;;; Internal helpers: search parameter injection
+
+(defun bug--bz-shared-search-params (params)
+  "Inject `bug---project' scope into Bugzilla search params when bound."
+  (if (and (boundp 'bug---project) bug---project)
+      (append `((product . ,bug---project)) params)
+    params))
+
+;;;;;;
+;;; Create support
+
+(defun bug--bz-shared-create-bug-interactive (context instance)
+  "Open a draft buffer for creating a new Bugzilla bug.
+
+Frontend dispatch: bug--backend-function
+\"bug--create-%s-bug-interactive\" (bug-create)."
+  (let* ((_bug-data (if (plistp context)
+                        (plist-get context :bug-data)
+                      context))
+         (preset-fields (when (plistp context)
+                          (plist-get context :preset-fields)))
+         (create-alist nil)
+         (product (or (bug--instance-property :project-id instance)
+                      (cdr (assoc 'product preset-fields)))))
+    (when product
+      (push (cons 'product product) create-alist))
+    (when preset-fields
+      (dolist (field preset-fields)
+        (push field create-alist)))
+    (bug-show
+     `((ObjectType . "bug")
+       (product . "")
+       (component . "")
+       (summary . "")
+       (version . "unspecified")
+       (description . ""))
+     instance t)
+    (setq bug---is-new t)
+    (setq bug---changed-data create-alist)
+    (bug--bug-mode-update-header)))
+
+(defun bug--bz-shared-create-new-artifact (args instance)
+  "Create a Bugzilla bug from draft buffer data.
+
+Frontend dispatch: bug--backend-function
+\"bug--create-%s-new-artifact\" (bug--bug-mode-commit)."
+  (let* ((bug-data     (car args))
+         (changed-data (cadr args))
+         (draft-buffer (current-buffer))
+         (product      (or (cdr (assoc 'product changed-data))
+                           (cdr (assoc 'product bug-data))))
+         (component    (or (cdr (assoc 'component changed-data))
+                           (cdr (assoc 'component bug-data))))
+         (summary      (or (cdr (assoc 'summary changed-data))
+                           (cdr (assoc 'summary bug-data))
+                           ""))
+         (description  (or (cdr (assoc 'description changed-data))
+                           (cdr (assoc 'description bug-data))
+                           ""))
+         (version      (or (cdr (assoc 'version changed-data))
+                           (cdr (assoc 'version bug-data))
+                           "unspecified"))
+         (created (bug--instance-backend-function
+                   "bug--create-%s-bug"
+                   `((product . ,product)
+                     (component . ,component)
+                     (summary . ,summary)
+                     (description . ,description)
+                     (version . ,version))
+                   instance)))
+    (when created
+      (let ((normalized (bug--bz-shared-normalize-bug created)))
+        (message "Created bug %s" (or (cdr (assoc 'id normalized)) ""))
+        (bug-open (cdr (assoc 'id normalized)) instance)
+        (kill-buffer draft-buffer)))))
+
+(defun bug--bz-shared-validate-draft (args _instance)
+  "Check that required Bugzilla create fields are present.
+Returns a list of missing field display names, or nil if valid.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--validate-draft-%s\" (bug--bug-mode-commit)."
+  (let* ((bug-data (car args))
+         (changed-data (cadr args))
+         (fields (append changed-data bug-data))
+         (missing nil))
+    (unless (or (cdr (assoc 'product fields))
+                (cdr (assoc 'Product fields)))
+      (push "Product" missing))
+    (unless (or (cdr (assoc 'component fields))
+                (cdr (assoc 'Component fields)))
+      (push "Component" missing))
+    (unless (or (cdr (assoc 'summary fields))
+                (cdr (assoc 'Summary fields)))
+      (push "Summary" missing))
+    missing))
+
+;;;;;;
+;;;;;;
+;;; Delete support
+
+(defun bug--bz-shared-close-bug (id instance)
+  "Close a Bugzilla bug by updating its status to CLOSED.
+Bugzilla does not support true deletion via the API.
+
+Frontend dispatch: bug--backend-function
+\"bug--delete-%s-bug\" (bug--bug-mode-delete-bug)."
+  (message "Closing bug %s..." id)
+  (bug-update id `((status . "CLOSED")
+                   (resolution . "FIXED"))
+              instance)
+  (message "Bug %s closed" id))
+
+;;;;;;
+;;; Internal helpers: repo scope detection
+
+(defun bug--bz-shared-repo-scope (parsed-remote _instance)
+  "Convert `parsed-remote' to a Bugzilla scope string.
+Returns \"owner/repo\" when the host contains \"bugzilla\"."
+  (let ((host (plist-get parsed-remote :host)))
+    (when (and host (string-match-p "bugzilla" host))
+      (let ((owner (plist-get parsed-remote :owner))
+            (repo (plist-get parsed-remote :repo)))
+        (when (and owner repo)
+          (format "%s/%s" owner repo))))))
+
+;;;;;;
+;;; Field completion
+
+(defun bug--field-completion-bz-shared (field-name _instance)
+  "Return completion candidates for `field-name' in Bugzilla bugs.
+Provides hardcoded lists for fields with a fixed set of valid values.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--field-completion-%s\" (bug--completing-read-field)."
+  (let ((field-name (if (stringp field-name) (intern field-name) field-name)))
+    (pcase field-name
+      ('status '("UNCONFIRMED" "NEW" "ASSIGNED" "REOPENED" "RESOLVED" "VERIFIED" "CLOSED"))
+      ('resolution '("FIXED" "INVALID" "WONTFIX" "DUPLICATE" "WORKSFORME" "INCOMPLETE")))))
 
 (provide 'bug-backend-bz-shared)
 ;;; bug-backend-bz-shared.el ends here

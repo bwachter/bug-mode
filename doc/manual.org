@@ -5,6 +5,7 @@
 - [[#supported-backends][Supported backends]]
   - [[#bugzilla-json-rpc][Bugzilla JSON-RPC]]
   - [[#rally-rest-api][Rally REST API]]
+- [[#basic-usage][Basic usage]]
 - [[#modes][Modes]]
   - [[#generic-modes][Generic modes]]
     - [[#bug-mode][bug-mode]]
@@ -13,6 +14,11 @@
       - [[#key-bindings-1][Key bindings]]
   - [[#rally-specific-modes][Rally specific modes]]
     - [[#bug-rally-subscription-mode][bug-rally-subscription-mode]]
+- [[#search][Search]]
+  - [[#bug-search][bug-search]]
+  - [[#bug-search-jql][bug-search-jql]]
+  - [[#jql-syntax][JQL syntax]]
+  - [[#jql-field-mapping][JQL field mapping]]
 - [[#interactive-functions][Interactive functions]]
   - [[#bug-cache-clear][bug-cache-clear]]
   - [[#bug-login-bugzilla][bug-login (/Bugzilla/)]]
@@ -21,8 +27,10 @@
   - [[#bug-rally-subscription-rally][bug-rally-subscription (/Rally/)]]
   - [[#bug-rally-list-projects-rally][bug-rally-list-projects (/Rally/)]]
   - [[#bug-rally-create-project-rally][bug-rally-create-project (/Rally/)]]
-  - [[#bug-search][bug-search]]
-  - [[#bug-search-multiple-bugzilla][bug-search-multiple (/Bugzilla/)]]
+  - [[#bug-search-1][bug-search]]
+  - [[#bug-search-jql-1][bug-search-jql]]
+  - [[#bug-search-project][bug-search-project]]
+  - [[#bug-search-jql-project][bug-search-jql-project]]
   - [[#bug-stored-bugs][bug-stored-bugs]]
 - [[#customization][Customization]]
 - [[#org-mode-integration][org-mode integration]]
@@ -35,6 +43,7 @@
   - [[#bugz-mode][bugz-mode]]
   - [[#ghel][gh.el]]
   - [[#jira-rest][jira-rest]]
+  - [[#jirael][jira.el]]
 
 * Known issues and limitations
 To get an overview of open issues, report bugs, or suggest improvements please visit the [[https://github.com/bwachter/bug-mode/issues][GitHub issue tracker]].
@@ -53,6 +62,9 @@ For historical reasons the API used for Bugzilla is the [[https://www.bugzilla.o
 A Bugzilla instance >= 3.6 with JSON-RPC enabled is required.
 ** Rally REST API
 For Rally REST/JSON based [[https://techdocs.broadcom.com/us/en/ca-enterprise-software/valueops/rally/rally-help/reference/rally-web-services-api.html][Web Services API]] in version 2 is implemented (the latest version at the moment of writing this manual).
+** GitHub REST API
+The GitHub backend uses the [[https://docs.github.com/en/rest][GitHub REST API]] to access issues.  It supports read operations, basic search, and project listing.  Configure it with =:type github= and a personal access token in =:api-key=.
+* Basic usage
 * Modes
 ** Generic modes
 *** bug-mode
@@ -103,6 +115,129 @@ Use the =bug-rally-subscription= function to display details about your Rally su
 #+CAPTION: Sample output for a Rally subscription
 [[./rally-subscription-info.png]]
 
+* Search
+  :PROPERTIES:
+  :CUSTOM_ID: search
+  :END:
+
+bug-mode provides four search commands:
+
+| Command                 | Syntax | Scope        |
+|-------------------------+--------+--------------|
+| =bug-search=            | Native | Unscoped     |
+| =bug-search-jql=        | JQL    | Unscoped     |
+| =bug-search-project=    | Native | Project      |
+| =bug-search-jql-project=| JQL    | Project      |
+
+Unscoped searches query all accessible projects.  Project-scoped searches
+restrict results to the instance's =:project-id= (or the buffer-local
+=bug---project= variable when set).  Backends that do not support project
+scoping ignore the restriction.
+
+All four commands open their results in [[#bug-list-mode][bug-list-mode]], or jump directly to
+[[#bug-mode][bug-mode]] when there is exactly one result.  With a prefix argument
+(=C-u=) any command also prompts for the instance to search.
+
+** bug-search
+   :PROPERTIES:
+   :CUSTOM_ID: bug-search-1
+   :END:
+
+=bug-search= accepts a single query string in the backend's native syntax.
+
+Bugzilla supports:
+- free-form text search (matches the summary field)
+- =key:value= pairs, e.g. =component:Test=
+- direct bug IDs
+
+Rally supports:
+- free-form text search (matches Name, Notes and Description)
+- Rally formatted IDs such as =US123= or =DE456= (opens directly)
+- full Rally WSAPI expressions using parenthesis syntax, e.g.
+  =(ScheduleState = "In-Progress") AND (Owner.Name contains "alice")=
+- an empty query to list all items in the configured project
+
+GitHub supports:
+- free-form text search (searches issue title and body)
+- direct issue numbers (e.g. =#42=)
+- =repo:owner/name= style qualifiers when no project-id is configured
+
+** bug-search-jql
+   :PROPERTIES:
+   :CUSTOM_ID: bug-search-jql
+   :END:
+
+=bug-search-jql= takes a query written in [[https://support.atlassian.com/jira-software-cloud/docs/what-is-advanced-search-in-jira-cloud/][JQL]] and translates it to each
+backend's native query language.  This allows you to use one search syntax
+across Bugzilla, Rally, and any future backends that support it.
+
+JQL queries use the standard Jira field names listed below.  Unsupported fields
+or operators are passed through untranslated, so you can mix generic and native
+field names in the same query.
+
+Supported JQL syntax:
+- Field comparison: =summary = "foo"=
+- Substring search: =text ~ "foo"=  (translated to the backend's text-search field)
+- Logical AND/OR: =status = "Open" AND priority = "High"=
+- Grouping: =(status = "Open" OR status = "In Progress") AND assignee = "alice"=
+- ORDER BY: =ORDER BY updated DESC=
+
+Not yet supported:
+- =IN= and =NOT IN= lists (Bugzilla only)
+- Parenthesized negation (=NOT (a AND b)=)
+- Functions other than bare word names (=currentUser()= works)
+
+** JQL syntax
+   :PROPERTIES:
+   :CUSTOM_ID: jql-syntax
+   :END:
+
+The JQL parser recognises the following operators:
+
+| Operator | Meaning       | Backend support                          |
+|----------+---------------+------------------------------------------|
+| ===       | equals        | Bugzilla, Rally, GitHub                  |
+| =!=      | not equals    | Rally                                    |
+| =~       | contains      | Rally, Bugzilla (maps to substring)      |
+| =!~=     | not contains  | Rally                                    |
+| =>       | greater than  | Rally                                    |
+| =<       | less than     | Rally                                    |
+| =>==     | greater/equal | Rally                                    |
+| =<==     | less/equal    | Rally                                    |
+| =IN=     | in list       | Rally                                    |
+| =NOT IN= | not in list   | Rally                                    |
+
+** JQL field mapping
+   :PROPERTIES:
+   :CUSTOM_ID: jql-field-mapping
+   :END:
+
+The JQL translator maps Jira-standard field names to backend-specific names.
+Field names are case-insensitive.  Unknown field names are passed through
+as-is, letting you use native backend fields when the generic mapping does not
+fit.
+
+| JQL field   | Bugzilla       | Rally          | GitHub     | Meaning                |
+|-------------+----------------+----------------+------------+------------------------|
+| =text=      | =summary=      | =Name=         | =title=    | full-text / summary    |
+| =summary=   | =summary=      | =Name=         | =title=    | title / name           |
+| =status=    | =status=       | =ScheduleState=| =state=    | workflow status        |
+| =assignee=  | =assigned_to=  | =Owner=        | =assignee= | person assigned        |
+| =reporter=  | =reporter=     | =SubmittedBy=  | =user=     | person who created     |
+| =creator=   | =reporter=     | =SubmittedBy=  | =user=     | alias for =reporter=   |
+| =priority=  | =priority=     | =Priority=     | (none)     | priority level         |
+| =issuetype= | =component=    | =Type=         | (none)     | work item type         |
+| =type=      | =component=    | =Type=         | (none)     | alias for =issuetype=  |
+| =project=   | =product=      | =Project=      | (none)     | project / product       |
+| =created=   | =creation_time=| =CreationDate= | =created_at=| creation timestamp    |
+| =updated=   | =last_change_time= | =LastUpdateDate= | =updated_at= | last update timestamp |
+| =description= | =description= | =Description=  | =body=     | description            |
+| =labels=    | =keywords=     | =Tags=         | =labels=   | tags / keywords        |
+| =key=       | =id=           | =FormattedID=  | =number=   | friendly identifier    |
+| =id=        | =id=           | =ObjectUUID=   | =id=       | internal identifier    |
+| =component= | =component=    | (none)         | (none)     | component / sub-project  |
+| =resolution= | =resolution=  | =Resolution=   | (none)     | resolution state       |
+
 * Interactive functions
 ** bug-cache-clear
 Clear cached data, either globally, or -- when called with prefix argument -- for a particular instance.
@@ -126,20 +261,31 @@ List all projects for the current Rally instance. =bug-rally-projects-from-works
 
 Project IDs for setting a default project can be copied from the project list.
 ** bug-search
-Search for bugs, and display them in [[#bug-list-mode][bug-list-mode]]. The exact behavior depends on the bug tracker used.
-
-Bugzilla supports
-- free form text query
-- key-value (e.g. "component:Test")
-- the name of a named search
-
-Rally supports
-- free form text query
-- complex query in Rally query syntax
-
-Both Bugzilla and Rally directly open a bug view instead of a list if the search term matches a bug identifier, or the search only returned a single result.
-** bug-search-multiple (/Bugzilla/)
-Search for bugs with multiple criteria. Same query format as bug-search.
+   :PROPERTIES:
+   :CUSTOM_ID: bug-search
+   :END:
+Search using the backend's native query syntax.  See the [[#search][Search]] section for
+the full syntax reference per backend.
+** bug-search-jql
+   :PROPERTIES:
+   :CUSTOM_ID: bug-search-jql-1
+   :END:
+Search using JQL (Jira Query Language) syntax translated to the backend's native
+query language.  See the [[#bug-search-jql][bug-search-jql]] section for the full syntax reference.
+** bug-search-project
+   :PROPERTIES:
+   :CUSTOM_ID: bug-search-project
+   :END:
+Project-scoped native search.  The query is restricted to the instance's
+`:project-id' (or the buffer-local `bug---project' when set).  See
+[[#search][Search]] for syntax details.
+** bug-search-jql-project
+   :PROPERTIES:
+   :CUSTOM_ID: bug-search-jql-project
+   :END:
+Project-scoped JQL search.  The query is restricted to the instance's
+`:project-id' (or the buffer-local `bug---project' when set).  See
+[[#bug-search-jql][bug-search-jql]] for syntax details.
 ** bug-stored-bugs
 Open a list of locally stored bugs.
 
@@ -155,13 +301,44 @@ The easiest way to change the faces used in bug mode is via =M-x customize-group
 [[./bug-mode-customization-faces.png]]
 
 * org-mode integration
-To enable basic org-mode integration do a =(require 'org-bug)= /after/ initializing bug-mode. This will provide two hyperlink types for use in org-mode. The format for both types is <bug tracker instance>/<bug identifier>. The instance identifier may not be omitted.
+To enable basic org-mode integration do a =(require 'org-bug)= /after/ initializing bug-mode.  This provides two hyperlink types:
 
-The =bug= link type provides a link to a single bug, requiring a unique identifier. For Rally a link could look like this: =bug::test-rally/adff50be-40ec-4739-8615-d77ac5429bac=.
+| Link type     | Format                        | Opens with |
+|---------------+-------------------------------+------------|
+| =bug=        | =instance/bug-id=             | =bug-open= |
+| =bug-search= | =instance[/jql][/project]/query= | see below |
 
-The =bug-search= link type provides a link to a bug search. For Rally this can be used to easily link to a user friendly bug name, like this: =bug::test-rally/US2=. A simple text search could be done like this: =bug-search::test-rally/may get eaten=.
+The instance identifier may not be omitted.
 
-The org-mode integration supports [[http://orgmode.org/manual/Capture.html][org-capture]] from bug-mode and bug-list-mode (=search result) buffers. Calling =org-capture= anywhere in a bug-mode buffer will capture a link to the bug. Calling =org-capture= in a bug-list-mode buffer will capture a link to the bug at point.
+The =bug= link type opens a single bug by its unique identifier.  For Rally:
+=bug::test-rally/adff50be-40ec-4739-8615-d77ac5429bac=.
+
+The =bug-search= link type supports both native and JQL queries, with
+optional project scoping encoded in the path:
+
+| Link path                        | Mode      | Scope          |
+|----------------------------------+-----------+----------------|
+| =instance/query=                 | Native    | Unscoped       |
+| =instance//query=              | Native    | Default project|
+| =instance/pid/query=             | Native    | Project = pid  |
+| =instance/jql/query=           | JQL       | Unscoped       |
+| =instance/jql//query=           | JQL       | Default project|
+| =instance/jql/pid/query=        | JQL       | Project = pid  |
+
+A double slash (=/=) immediately after the instance (or after =jql/=)
+selects the instance's default project (=:project-id=).  A non-empty
+project-id between slashes scopes the search to that specific project.
+
+Examples:
+- =bug-search::test-rally/may get eaten= — native text search across all projects
+- =bug-search::test-rally//Owner = "alice"= — native search in default project
+- =bug-search::test-rally/jql/status = "Open"= — JQL search across all projects
+- =bug-search::test-rally/jql//assignee = "alice"= — JQL search in default project
+
+The org-mode integration supports [[http://orgmode.org/manual/Capture.html][org-capture]] from bug-mode and bug-list-mode
+buffers.  =org-capture= in a bug-mode buffer stores a =bug:= link.  In a
+search result buffer it stores a =bug-search= link with the correct =jql=
+and project segments.
 
 * Proxy use
 We used to ship a workaround for broken https proxy support in URL (see [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=11788][bug 11788]]).
@@ -250,3 +427,5 @@ A library wrapping most of GitHubs API. For adding GitHub issues to bug-mode
 just directly querying the GitHub API might be easier.
 ** [[https://github.com/mattdeboard/jira-rest][jira-rest]]
 A library for using Jiras REST API.
+** [[https://github.com/unmonoqueteclea/jira.el][jira.el]]
+Another jira integration

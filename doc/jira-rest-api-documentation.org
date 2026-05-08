@@ -1,0 +1,724 @@
+* Jira Cloud REST API v3 — Reference for bug-mode
+:PROPERTIES:
+:CUSTOM_ID: jira-cloud-rest-api-v3-reference-for-bug-mode
+:END:
+
+*Version:* 3 (v3) *Source:* Atlassian Jira Cloud platform REST API
+
+This document covers the subset of the Jira Cloud REST API v3 most relevant
+for bug-mode backend development.  It is not a full API reference; see
+https://developer.atlassian.com/cloud/jira/platform/rest/v3 for that.
+
+The full OpenAPI specification is available at:
+https://developer.atlassian.com/cloud/jira/platform/swagger-v3.json
+
+--------------
+
+** Table of Contents
+:PROPERTIES:
+:CUSTOM_ID: table-of-contents
+:END:
+1. [[#introduction][Introduction]]
+2. [[#authentication][Authentication]]
+3. [[#base-url-and-versioning][Base URL and Versioning]]
+4. [[#rate-limits][Rate Limits]]
+5. [[#core-endpoints][Core Endpoints]]
+   - [[#search][Search]]
+   - [[#issues][Issues]]
+   - [[#comments][Comments]]
+   - [[#transitions][Transitions]]
+   - [[#projects][Projects]]
+   - [[#users][Users]]
+   - [[#metadata][Metadata]]
+6. [[#key-data-structures][Key Data Structures]]
+7. [[#instance-configuration][Instance Configuration]]
+8. [[#common-errors][Common Errors]]
+
+--------------
+
+** Introduction
+:PROPERTIES:
+:CUSTOM_ID: introduction
+:END:
+
+The Jira Cloud platform REST API is a comprehensive HTTP API exposing
+nearly all Jira functionality.  It uses JSON for request and response bodies
+and standard HTTP methods for operations.
+
+*** Key Concepts
+:PROPERTIES:
+:CUSTOM_ID: key-concepts
+:END:
+
+- *issueIdOrKey* — Issues are addressed by either their numeric ID (e.g. 12345)
+  or their project-scoped key (e.g. "PROJ-42").  Most endpoints accept either.
+- *accountId* — User identity is based on Atlassian account IDs, not usernames.
+- *expand* — Many endpoints support an =expand= parameter to include additional
+  nested data (e.g. =renderedFields=, =transitions=, =changelog=).
+- *fields* — Issue responses contain a =fields= object whose keys are field IDs
+  (e.g. =summary=, =status=, =assignee=).  Use the =fields= query parameter to
+  limit which fields are returned.
+- *JQL* — Jira Query Language is the primary way to search for issues.
+
+--------------
+
+** Authentication
+:PROPERTIES:
+:CUSTOM_ID: authentication
+:END:
+
+Jira Cloud requires token-based authentication.  Password-based basic auth
+was removed in 2018.
+
+*** API Token
+:PROPERTIES:
+:CUSTOM_ID: api-token
+:END:
+
+Generate an API token at https://id.atlassian.com/manage-profile/security/api-tokens.
+
+Use HTTP Basic Auth with your Atlassian account email as the username and
+the API token as the password:
+
+#+begin_src sh
+curl -u 'user@example.com:<API_TOKEN>' \
+  'https://your-domain.atlassian.net/rest/api/3/myself'
+#+end_src
+
+*** OAuth 2.0 (3LO)
+:PROPERTIES:
+:CUSTOM_ID: oauth-20-3lo
+:END:
+
+For third-party apps, Atlassian supports OAuth 2.0 three-legged authorization.
+See the Atlassian developer documentation for setup details.  Not typically
+used for CLI/Emacs integrations.
+
+*** Required Permissions
+:PROPERTIES:
+:CUSTOM_ID: required-permissions
+:END:
+
+The token must belong to a user with sufficient Jira project permissions:
+
+| Permission | Needed for                          |
+|------------+-------------------------------------|
+| Browse Projects | Reading issues and search results |
+| Create Issues   | POST /rest/api/3/issue              |
+| Edit Issues     | PUT /rest/api/3/issue/{key}         |
+| Delete Issues   | DELETE /rest/api/3/issue/{key}      |
+| Add Comments    | POST /rest/api/3/issue/{key}/comment |
+
+--------------
+
+** Base URL and Versioning
+:PROPERTIES:
+:CUSTOM_ID: base-url-and-versioning
+:END:
+
+*** Base URL
+:PROPERTIES:
+:CUSTOM_ID: base-url
+:END:
+
+For Jira Cloud, the base URL follows the tenant subdomain:
+
+#+begin_example
+https://<your-domain>.atlassian.net/rest/api/3/
+#+end_example
+
+For Jira Data Center (on-premise), the path is typically:
+
+#+begin_example
+https://jira.example.com/rest/api/2/
+#+end_example
+
+*Note:* bug-mode currently targets Jira Cloud (v3).  Data Center uses v2 with
+slight differences.
+
+*** Versioning
+:PROPERTIES:
+:CUSTOM_ID: versioning
+:END:
+
+The version number is embedded in the URL path (=/rest/api/3/=).  Atlassian
+may introduce breaking changes only in major version bumps.  v3 is the current
+stable version for Jira Cloud.
+
+--------------
+
+** Rate Limits
+:PROPERTIES:
+:CUSTOM_ID: rate-limits
+:END:
+
+Jira Cloud enforces rate limits per API token.  Limits are not published
+as fixed numbers; they vary based on tenant load and the complexity of the
+query.  When exceeded, the API returns HTTP 429 with a =Retry-After= header.
+
+Relevant response headers:
+
+| Header              | Meaning                              |
+|---------------------+--------------------------------------|
+| ~X-RateLimit-Limit~ | Not used by Jira Cloud               |
+| ~Retry-After~       | Seconds to wait before retry (429) |
+
+Best practice: respect 429 responses and implement exponential backoff.
+
+--------------
+
+** Core Endpoints
+:PROPERTIES:
+:CUSTOM_ID: core-endpoints
+:END:
+
+*** Search
+:PROPERTIES:
+:CUSTOM_ID: search
+:END:
+
+**** GET /rest/api/3/search
+:PROPERTIES:
+:CUSTOM_ID: get-search
+:END:
+
+Search for issues using JQL.  This is the primary read endpoint for bug-mode.
+
+*Parameters:*
+
+| Parameter      | Type    | Required | Description                          |
+|----------------+---------+----------+--------------------------------------|
+| ~jql~          | string  | no       | JQL query string                     |
+| ~startAt~      | integer | no       | Pagination offset (0-based)          |
+| ~maxResults~   | integer | no       | Max issues per page (default: 50)    |
+| ~fields~       | array   | no       | Fields to include (e.g. summary,status) |
+| ~expand~       | string  | no       | Extra data to include                |
+| ~validateQuery~| string  | no       | Validate JQL (default: true)         |
+| ~fieldsByKeys~ | boolean | no       | Use field keys instead of IDs        |
+
+*Example:*
+
+#+begin_src sh
+curl -u 'user@example.com:<TOKEN>' \
+  'https://your-domain.atlassian.net/rest/api/3/search?jql=project%3DPROJ+AND+status%3D%22In+Progress%22&fields=summary,status,assignee,priority&maxResults=50'
+#+end_src
+
+*Response fields:*
+
+| Field         | Type    | Description                    |
+|---------------+---------+--------------------------------|
+| ~total~       | integer | Total issues matching JQL      |
+| ~startAt~     | integer | Offset of this result set      |
+| ~maxResults~  | integer | Page size used                 |
+| ~issues~      | array   | Array of IssueBean objects     |
+| ~names~       | object  | Human-readable field name map  |
+| ~schema~      | object  | Field type metadata            |
+
+**** POST /rest/api/3/search
+:PROPERTIES:
+:CUSTOM_ID: post-search
+:END:
+
+Same as GET but accepts a JSON body.  Useful for very long JQL strings that
+exceed URL length limits.
+
+*Request body:*
+
+#+begin_src json
+{
+  "jql": "project = PROJ AND status = \"In Progress\"",
+  "startAt": 0,
+  "maxResults": 50,
+  "fields": ["summary", "status", "assignee", "priority"]
+}
+#+end_src
+
+*** Issues
+:PROPERTIES:
+:CUSTOM_ID: issues
+:END:
+
+**** GET /rest/api/3/issue/{issueIdOrKey}
+:PROPERTIES:
+:CUSTOM_ID: get-issue
+:END:
+
+Retrieve a single issue by ID or key.
+
+*Parameters:*
+
+| Parameter       | Type    | Required | Description                        |
+|-----------------+---------+----------+------------------------------------|
+| ~issueIdOrKey~  | string  | yes      | Issue ID or key (e.g. "PROJ-42")   |
+| ~fields~        | array   | no       | Fields to include                  |
+| ~expand~        | string  | no       | Extra data (e.g. renderedFields)   |
+| ~updateHistory~ | boolean | no       | Add to user's issue history        |
+
+*Response:* IssueBean object.
+
+**** POST /rest/api/3/issue
+:PROPERTIES:
+:CUSTOM_ID: create-issue
+:END:
+
+Create a new issue.
+
+*Request body:*
+
+#+begin_src json
+{
+  "fields": {
+    "project": {"key": "PROJ"},
+    "summary": "New bug report",
+    "issuetype": {"name": "Bug"},
+    "description": "Description here"
+  }
+}
+#+end_src
+
+*Response:*
+
+#+begin_src json
+{
+  "id": "12345",
+  "key": "PROJ-43",
+  "self": "https://your-domain.atlassian.net/rest/api/3/issue/12345"
+}
+#+end_src
+
+**** PUT /rest/api/3/issue/{issueIdOrKey}
+:PROPERTIES:
+:CUSTOM_ID: put-issue
+:END:
+
+Edit an existing issue.  Only fields included in the request body are updated.
+
+*Request body:* Same structure as create, but only changed fields needed.
+
+**** DELETE /rest/api/3/issue/{issueIdOrKey}
+:PROPERTIES:
+:CUSTOM_ID: delete-issue
+:END:
+
+Delete an issue.  Optionally delete subtasks.
+
+*Parameters:*
+
+| Parameter       | Type    | Required | Description                      |
+|-----------------+---------+----------+----------------------------------|
+| ~issueIdOrKey~  | string  | yes      | Issue to delete                  |
+| ~deleteSubtasks~| string  | no       | =true= to cascade delete         |
+
+*** Comments
+:PROPERTIES:
+:CUSTOM_ID: comments
+:END:
+
+**** GET /rest/api/3/issue/{issueIdOrKey}/comment
+:PROPERTIES:
+:CUSTOM_ID: get-comments
+:END:
+
+List comments on an issue.
+
+*Parameters:*
+
+| Parameter      | Type    | Required | Description                      |
+|----------------+---------+----------+----------------------------------|
+| ~issueIdOrKey~ | string  | yes      | Parent issue                     |
+| ~startAt~      | integer | no       | Pagination offset                |
+| ~maxResults~   | integer | no       | Page size                        |
+| ~orderBy~      | string  | no       | Sort order (e.g. =created=, =-created=) |
+| ~expand~       | string  | no       | Extra data                       |
+
+*Response:* Contains a =comments= array of comment objects.
+
+**** POST /rest/api/3/issue/{issueIdOrKey}/comment
+:PROPERTIES:
+:CUSTOM_ID: add-comment
+:END:
+
+Add a comment to an issue.
+
+*Request body:*
+
+#+begin_src json
+{
+  "body": {
+    "type": "doc",
+    "version": 1,
+    "content": [
+      {
+        "type": "paragraph",
+        "content": [{"type": "text", "text": "This is a comment."}]
+      }
+    ]
+  }
+}
+#+end_src
+
+*Note:* Jira Cloud now uses Atlassian Document Format (ADF) for rich text.
+Plain text can be sent as a simple string in some contexts, but ADF is the
+official format.
+
+*** Transitions
+:PROPERTIES:
+:CUSTOM_ID: transitions
+:END:
+
+**** GET /rest/api/3/issue/{issueIdOrKey}/transitions
+:PROPERTIES:
+:CUSTOM_ID: get-transitions
+:END:
+
+List available workflow transitions for an issue.
+
+*Response:* Contains a =transitions= array:
+
+#+begin_src json
+{
+  "transitions": [
+    {
+      "id": "31",
+      "name": "In Progress",
+      "to": {"id": "3", "name": "In Progress", "statusCategory": "indeterminate"}
+    }
+  ]
+}
+#+end_src
+
+**** POST /rest/api/3/issue/{issueIdOrKey}/transitions
+:PROPERTIES:
+:CUSTOM_ID: do-transition
+:END:
+
+Transition an issue to a new status.
+
+*Request body:*
+
+#+begin_src json
+{
+  "transition": {"id": "31"},
+  "fields": {"comment": [{"add": {"body": "Moving to In Progress"}}]}
+}
+#+end_src
+
+*** Projects
+:PROPERTIES:
+:CUSTOM_ID: projects
+:END:
+
+**** GET /rest/api/3/project
+:PROPERTIES:
+:CUSTOM_ID: get-projects
+:END:
+
+List all projects visible to the user.
+
+*Parameters:*
+
+| Parameter    | Type    | Required | Description                      |
+|--------------+---------+----------+----------------------------------|
+| ~expand~     | string  | no       | Extra data (e.g. description)    |
+| ~recent~     | integer | no       | Limit to N most recently viewed  |
+| ~properties~ | array   | no       | Project properties to include    |
+
+*Response:* Array of Project objects (lightweight; use =GET /project/{key}= for
+details).
+
+**** GET /rest/api/3/project/{projectIdOrKey}
+:PROPERTIES:
+:CUSTOM_ID: get-project
+:END:
+
+Get full project details.
+
+*Response fields:*
+
+| Field           | Type    | Description                    |
+|-----------------+---------+--------------------------------|
+| ~id~            | string  | Numeric project ID             |
+| ~key~           | string  | Project key (e.g. "PROJ")      |
+| ~name~          | string  | Human-readable name            |
+| ~description~   | string  | Project description            |
+| ~avatarUrls~    | object  | Avatar image URLs              |
+| ~projectTypeKey~| string  | =software=, =service_desk=, etc. |
+| ~components~    | array   | Project components             |
+| ~issueTypes~    | array   | Issue types available            |
+
+*** Users
+:PROPERTIES:
+:CUSTOM_ID: users
+:END:
+
+**** GET /rest/api/3/myself
+:PROPERTIES:
+:CUSTOM_ID: get-myself
+:END:
+
+Get the currently authenticated user.
+
+*Response fields:*
+
+| Field           | Type    | Description                    |
+|-----------------+---------+--------------------------------|
+| ~accountId~     | string  | Atlassian account ID           |
+| ~displayName~   | string  | Full display name              |
+| ~emailAddress~  | string  | Email (if visible)             |
+| ~active~        | boolean | Whether account is active      |
+| ~avatarUrls~    | object  | Avatar image URLs              |
+
+**** GET /rest/api/3/user/search
+:PROPERTIES:
+:CUSTOM_ID: search-users
+:END:
+
+Search for users.
+
+*Parameters:*
+
+| Parameter    | Type    | Required | Description                      |
+|--------------+---------+----------+----------------------------------|
+| ~query~      | string  | no       | Display name or email substring  |
+| ~accountId~  | string  | no       | Exact account ID                 |
+| ~startAt~    | integer | no       | Pagination offset                |
+| ~maxResults~ | integer | no       | Page size                        |
+
+*** Metadata
+:PROPERTIES:
+:CUSTOM_ID: metadata
+:END:
+
+**** GET /rest/api/3/issuetype
+:PROPERTIES:
+:CUSTOM_ID: get-issue-types
+:END:
+
+List all issue types available to the user.
+
+*Response:* Array of issue type objects:
+
+| Field        | Type    | Description                    |
+|--------------+---------+--------------------------------|
+| ~id~         | string  | Issue type ID                  |
+| ~name~       | string  | e.g. "Bug", "Story", "Task"    |
+| ~description~| string  | Human-readable description     |
+| ~iconUrl~    | string  | Icon URL                       |
+| ~subtask~    | boolean | Whether this is a subtask type |
+
+**** GET /rest/api/3/statuses/search
+:PROPERTIES:
+:CUSTOM_ID: get-statuses
+:END:
+
+Search for statuses.
+
+*Response:* Array of status objects:
+
+| Field              | Type    | Description                    |
+|--------------------+---------+--------------------------------|
+| ~id~               | string  | Status ID                      |
+| ~name~             | string  | e.g. "Open", "In Progress"     |
+| ~statusCategory~   | object  | =new=, =indeterminate=, =done= |
+
+**** GET /rest/api/3/priority/search
+:PROPERTIES:
+:CUSTOM_ID: get-priorities
+:END:
+
+Search for issue priorities.
+
+*Response:* Array of priority objects:
+
+| Field           | Type    | Description                    |
+|-----------------+---------+--------------------------------|
+| ~id~            | string  | Priority ID                    |
+| ~name~          | string  | e.g. "Highest", "High", "Medium"|
+| ~iconUrl~       | string  | Icon URL                       |
+| ~statusColor~   | string  | Color code                     |
+
+--------------
+
+** Key Data Structures
+:PROPERTIES:
+:CUSTOM_ID: key-data-structures
+:END:
+
+*** IssueBean
+:PROPERTIES:
+:CUSTOM_ID: issuebean
+:END:
+
+The primary issue representation.
+
+| Field           | Type    | Description                        |
+|-----------------+---------+------------------------------------|
+| ~id~            | string  | Numeric issue ID                   |
+| ~key~           | string  | Project key + number ("PROJ-42")   |
+| ~self~          | string  | Canonical API URL                  |
+| ~fields~        | object  | Field values keyed by field ID     |
+| ~expand~        | string  | Available expansions               |
+| ~renderedFields~| object  | HTML-rendered field values         |
+| ~transitions~   | array   | Available workflow transitions     |
+
+Common field IDs inside =fields=:
+
+| Field ID        | Type    | Description                        |
+|-----------------+---------+------------------------------------|
+| ~summary~       | string  | Issue title                        |
+| ~description~   | string  | Issue description (ADF in v3)      |
+| ~status~        | object  | Status object with ~name~, ~id~    |
+| ~assignee~      | object  | User object (or null)              |
+| ~reporter~      | object  | User object                        |
+| ~priority~      | object  | Priority object                    |
+| ~issuetype~     | object  | Issue type object                  |
+| ~created~       | string  | ISO 8601 timestamp                 |
+| ~updated~       | string  | ISO 8601 timestamp                 |
+| ~resolution~    | object  | Resolution object (or null)      |
+| ~components~    | array   | Component objects                  |
+| ~fixVersions~   | array   | Version objects                    |
+| ~labels~        | array   | String labels                      |
+| ~comment~       | object  | Contains ~comments~ array          |
+
+*** SearchResults
+:PROPERTIES:
+:CUSTOM_ID: searchresults
+:END:
+
+Wrapper for search responses.
+
+| Field           | Type    | Description                        |
+|-----------------+---------+------------------------------------|
+| ~total~         | integer | Total matching issues              |
+| ~startAt~       | integer | Pagination offset                |
+| ~maxResults~    | integer | Page size                          |
+| ~issues~        | array   | IssueBean objects                  |
+| ~names~         | object  | Human-readable field names         |
+| ~schema~        | object  | Field type metadata                |
+
+*** Project
+:PROPERTIES:
+:CUSTOM_ID: project
+:END:
+
+Project representation.
+
+| Field           | Type    | Description                        |
+|-----------------+---------+------------------------------------|
+| ~id~            | string  | Numeric project ID                 |
+| ~key~           | string  | Short key (e.g. "PROJ")            |
+| ~name~          | string  | Human-readable name                |
+| ~description~   | string  | Description text                   |
+| ~avatarUrls~    | object  | Avatar image URLs                  |
+| ~projectTypeKey~| string  | =software=, =service_desk=, etc.   |
+| ~archived~      | boolean | Whether project is archived        |
+
+*** User
+:PROPERTIES:
+:CUSTOM_ID: user
+:END:
+
+User representation.
+
+| Field           | Type    | Description                        |
+|-----------------+---------+------------------------------------|
+| ~accountId~     | string  | Atlassian account ID               |
+| ~displayName~   | string  | Full name                          |
+| ~emailAddress~  | string  | Email (may be hidden)              |
+| ~active~        | boolean | Account status                     |
+| ~avatarUrls~    | object  | Avatar image URLs                  |
+
+--------------
+
+** Instance Configuration
+:PROPERTIES:
+:CUSTOM_ID: instance-configuration
+:END:
+
+Example bug-mode instance configuration for Jira Cloud:
+
+#+BEGIN_EXAMPLE elisp
+(:jira-work
+ (:type       . jira)
+ (:url        . "https://your-domain.atlassian.net/rest/api/3")
+ (:api-key    . "user@example.com:ATATT...")   ; email:token
+ (:project-id . "PROJ"))                       ; default project key
+#+END_EXAMPLE
+
+*Note:* The =:api-key= value for Jira is a concatenation of your Atlassian
+account email and the API token, separated by a colon.  This matches the
+HTTP Basic Auth format Jira expects.
+
+** Project scopes
+
+The =:project-id= property controls the default search scope.
+
+| Value        | Meaning                              |
+|--------------+--------------------------------------|
+| ~PROJ~       | Single project key                   |
+| ~PROJ1,PROJ2~| Multiple projects (comma-separated)  |
+
+--------------
+
+** Common Errors
+:PROPERTIES:
+:CUSTOM_ID: common-errors
+:END:
+
+| Status | Meaning                          | Common Causes                          |
+|--------+----------------------------------+----------------------------------------|
+| 400    | Bad Request                      | Invalid JQL syntax, missing fields       |
+| 401    | Unauthorized                     | Invalid or missing API token           |
+| 403    | Forbidden                        | Insufficient permissions               |
+| 404    | Not Found                        | Issue/project does not exist           |
+| 409    | Conflict                         | Concurrent modification                |
+| 429    | Too Many Requests                | Rate limit exceeded                    |
+| 500    | Internal Server Error            | Jira server error                      |
+
+** Error response format
+
+#+begin_src json
+{
+  "errorMessages": ["Issue does not exist or you do not have permission to see it."],
+  "errors": {}
+}
+#+end_src
+
+--------------
+
+** Additional Resources
+:PROPERTIES:
+:CUSTOM_ID: additional-resources
+:END:
+
+*** Official Documentation
+:PROPERTIES:
+:CUSTOM_ID: official-documentation
+:END:
+
+- Jira Cloud REST API v3 reference:
+  https://developer.atlassian.com/cloud/jira/platform/rest/v3
+- OpenAPI spec (JSON):
+  https://developer.atlassian.com/cloud/jira/platform/swagger-v3.json
+- API tokens:
+  https://id.atlassian.com/manage-profile/security/api-tokens
+- Atlassian Document Format (ADF):
+  https://developer.atlassian.com/cloud/jira/platform/apis/document/structure/
+
+*** JQL Reference
+:PROPERTIES:
+:CUSTOM_ID: jql-reference
+:END:
+
+- JQL syntax and fields:
+  https://support.atlassian.com/jira-software-cloud/docs/use-advanced-search-with-jira-query-language-jql/
+
+--------------
+
+*Document Generated:* 2026-05-04
+*API Version Documented:* v3 (Jira Cloud platform)
+*Publisher:* Atlassian
+
+This documentation is compiled from the official Atlassian Jira Cloud platform
+REST API OpenAPI specification and is intended for developers building
+integrations with Jira Cloud.

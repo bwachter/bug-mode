@@ -6,23 +6,45 @@ Currently somewhat working bug trackers are:
 
 - [[https://www.bugzilla.org/][Bugzilla]]
 - [[https://www.rallydev.com/][Rally]]
+- [[https://jira.atlassian.com/][Jira]]
+- [[https://github.com][GitHub]]
+- [[https://gitlab.com][GitLab]]
+
+The backends generally support at minimum reading bugs, editing bugs and creating bugs. Backends may support extra functionality, dynamically exposed via the UI if they do:
+
+- adding comments, mapped to what comes closest to comment functionality for the backend (as an example, for Rally that's mapped to discussions)
+- search using backend native search language
+- search using JQL via a translation layer
+- project support, or an emulation of it. For Bugzilla products are mapped to projects, while for GitHub/GitLab organisations are mapped to projects
+- repository support. If the tracker is a git forge, and that is discoverable via =project.el= operations on the issues for the current repository are offered
 
 ** Quick start
 
-This is a quick start guide. Have a look at the [[./doc/manual.org][full manual]]
-for more details. If you're a developer, read [[./doc/hacking.org][this]].
+This is a quick start guide. Have a look at the [[./doc/manual.org][full manual]] for more details. If you're a developer, read [[./doc/hacking.org][this]].
 
-- call =make= to generate autoloads
-- Edit your ~/.emacs or ~/.emacs.d/init.el:
+When using this from git you'll first need to create autoloads with =make autoloads=. Release tarballs already have generated autoloads.
+
+Next you'll need to load =bug.el=: =M-x load-file=, and then navigate to =bug.el= for testing - or to load it on startup, add this to your init file:
+
 #+BEGIN_SRC emacs-lisp
 (load-file "/path/to/bug-mode/bug.el")
 #+END_SRC
-- =M-x customize-group RET bug= and adjust at least the the list of instances and the name of the default instance. The instance plist configuration could look like this:
+
+=bug.el= loads the autoloads file, and correctly sets up the load path.
+
+The main entry point is =bug-menu=, so =M-x bug-menu= will pop up a transient with options. Without configuration only the instance listing is interesting - from there you'll be able to interactively add bug tracker instances. It's recommended to bind =bug-menu= to a keybinding, like =C-c  b=:
+
 #+BEGIN_SRC emacs-lisp
-(:foo (:url "https://foo.example" :type bz-rpc)
- :bar (:url "https://bar.example" :authinfo "~/.netrc" :type bz-rpc)
- :rally (:api-key "_yourapikey" :type rally))
+(global-set-key "\C-cb" 'bug-menu)
 #+END_SRC
-- =M-x customize-group RET bug-faces= if you don't like the default faces
-- Store your credentials in authinfo format in =~/.authinfo=, or specify a database location with the =:authinfo= property
-- For using Rally, generate [[https://rally1.rallydev.com/login/accounts/index.html#/keys][API Keys]] if your subscription allows it, and set the =:api-key property=. With no API key configured username/password from authinfo are used as well.
+
+If you prefer the customisation interface over the interactive approach you can do =M-x customize-group RET bug= and adjust at least the the list of instances. The instance plist configuration could look like this:
+
+#+BEGIN_SRC emacs-lisp
+(:bz-instance (:url "https://foo.example" :type bz-rpc :api-key-file "~/path/to/file.gpg")
+ :rally (:api-key-file "~/path/to/rally-file.gpg" :type rally))
+#+END_SRC
+
+API keys, stored in GPG encrypted files, are the recommended authentication method for all backends. For other ways of specifying API keys, or other authentication methods supported by some backends check the [[./doc/manual.org][full manual]].
+
+If you don't like the default faces you can customise them with =M-x customize-group RET bug-faces=.

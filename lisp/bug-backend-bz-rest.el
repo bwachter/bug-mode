@@ -46,7 +46,7 @@
   '(:read :search :search-jql))
 
 ;;;;;;
-;; REST transport
+;;; Internal helpers: REST transport
 
 (defun bug--rpc-bz-rest--url (resource operation data instance)
   "Build the REST URL for a Bugzilla request.
@@ -182,7 +182,7 @@ available, log in transparently and retry the request once."
   (bug--bz-shared-field-name field-name instance))
 
 ;;;;;;
-;; search functions
+;;; Search support
 
 ;;;###autoload
 (defun bug--do-bz-rest-search (params instance)
@@ -196,7 +196,10 @@ available, log in transparently and retry the request once."
    instance))
 
 (defun bug--execute-bz-rest-search (params instance)
-  "Execute a Bugzilla REST search and return (bugs-array . count)."
+  "Execute a Bugzilla REST search and return (bugs-array . count).
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--execute-%s-search\" (bug--search-candidates)."
   (let ((response (bug-rpc `((resource . "Bug")
                              (operation . "search")
                              (data . ,params))
@@ -210,27 +213,38 @@ available, log in transparently and retry the request once."
 
 ;;;###autoload
 (defun bug--format-bz-rest-search-candidates (results)
-  "Delegate to shared candidate formatter."
+  "Delegate to shared candidate formatter.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--format-%s-search-candidates\" (bug--search-candidates)."
   (bug--bz-shared-format-search-candidates results))
 
 ;;;###autoload
 (defun bug--parse-bz-rest-search-query (query instance)
-  "Delegate to shared query parser."
+  "Delegate to shared query parser.
+
+Frontend dispatch: bug--backend-function
+\"bug--parse-%s-search-query\" (bug--do-search)."
   (bug--bz-shared-parse-search-query query instance))
 
 ;;;###autoload
 (defun bug--parse-bz-rest-jql-query (query instance)
   "Parse a JQL query string into Bugzilla REST search params.
 
-Delegates to the shared JQL parser in `bug-backend-bz-shared.el'."
+Delegates to the shared JQL parser in `bug-backend-bz-shared.el'.
+
+Frontend dispatch: bug--backend-function
+\"bug--parse-%s-jql-query\" (bug-search-jql)."
   (bug--bz-shared-parse-jql-query query instance))
 
 ;;;;;;
-;; bug-mode functions
+;;; Bug display and write support
 
 ;;;###autoload
 (defun bug--fetch-bz-rest-bug (id instance)
-  "Retrieve a single bug from Bugzilla via REST."
+  "Retrieve a single bug from Bugzilla via REST.
+
+Frontend dispatch: bug--backend-function \"bug--fetch-%s-bug\" (bug-open)."
   (let ((response
          (bug-rpc `((resource . "Bug")
                     (operation . "get")
@@ -252,7 +266,10 @@ Delegates to the shared JQL parser in `bug-backend-bz-shared.el'."
 ARGS is a list containing (ID FIELDS) where:
   ID is the numeric bug ID
   FIELDS is an alist of field names and values to update
-INSTANCE is the Bugzilla instance."
+INSTANCE is the Bugzilla instance.
+
+Frontend dispatch: bug--backend-function
+\"bug--update-%s-bug\" (bug--bug-mode-commit)."
   (let* ((id (car args))
          (fields (cadr args)))
     (bug-rpc `((resource . "Bug")
@@ -263,24 +280,36 @@ INSTANCE is the Bugzilla instance."
 
 ;;;###autoload
 (defun bug--browse-bz-rest-bug (id instance)
-  "Open the current bugzilla bug in browser"
+  "Open the current bugzilla bug in browser.
+
+Frontend dispatch: bug--backend-function
+\"bug--browse-%s-bug\" (bug--browse-bug)."
   (let ((url (concat (bug--instance-property :url instance) "/show_bug.cgi?id=" id)))
     (browse-url url)))
 
 (defun bug--backend-bz-rest-get-update-id (_args _instance)
-  "Return the Bugzilla bug ID for use as the update identifier."
+  "Return the Bugzilla bug ID for use as the update identifier.
+
+Frontend dispatch: bug--backend-function
+\"bug--backend-%s-get-update-id\" (bug--bug-mode-commit)."
   bug---id)
 
 ;;;###autoload
 (defun bug--bz-rest-comment-source-format (_args _instance)
   "Return the source format for Bugzilla `rest' comments.
 
-Bugzilla `rest' comments are plain text."
+Bugzilla `rest' comments are plain text.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--%s-comment-source-format\" (bug--bug-mode-open-rich-editor)."
   'text)
 
 ;;;###autoload
 (defun bug--backend-bz-rest-create-comment (_args instance)
-  "Open a Bugzilla comment composition buffer for the current bug."
+  "Open a Bugzilla comment composition buffer for the current bug.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--backend-%s-create-comment\" (bug--bug-mode-create-comment)."
   (let ((fmt (bug--instance-backend-function "bug--%s-comment-source-format" nil instance)))
     (bug--bug-mode-open-rich-editor 'comment nil "" fmt #'bug--backend-bz-rest-commit-comment)))
 
