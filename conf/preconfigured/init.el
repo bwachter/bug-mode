@@ -15,22 +15,25 @@
                     (or load-file-name default-directory))))
 
 ;; Sample instance configurations (replace with real credentials to test)
-(setq bug-instance-plist
-      '(:github-demo
-        (:type github
-               :api-key-file "~/.config/bug-mode/github-key.gpg")
-        :gitlab-demo
-        (:type gitlab
-               :api-key-file "~/.config/bug-mode/gitlab-key.gpg")
-        :rally-demo
-        (:type rally
-               :api-key-file "~/.config/bug-mode/rally-key.gpg")
-        :bugzilla-demo
-        (:type bz-rpc
-               :url "https://bugzilla.example.com"
-               :api-key-file "~/.config/bug-mode/bz-key.gpg")))
-
-(setq bug-default-instance :github-demo)
+(setq bug-instances-list
+      '(
+        (github-demo .
+                     (:type github
+                            :api-key-file "~/.config/bug-mode/github-key.gpg"))
+        (gitlab-demo .
+                     (:type gitlab
+                            :api-key-file "~/.config/bug-mode/gitlab-key.gpg"))
+        (rally-demo .
+                    (:type rally
+                           :api-key-file "~/.config/bug-mode/rally-key.gpg"))
+        (bugzilla-demo-rpc .
+                       (:type bz-rpc
+                              :url "http://localhost:18080"
+                              :api-key-file "~/.config/bug-mode/bz-key.gpg"))
+        (bugzilla-demo .
+                       (:type bz-rest
+                              :url "http://localhost:18080"
+                              :api-key-file "~/.config/bug-mode/bz-key.gpg"))))
 
 (global-set-key "\C-cb" 'bug-menu)
 
