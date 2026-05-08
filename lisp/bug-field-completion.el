@@ -35,6 +35,12 @@ Dispatches to the backend-specific `bug--field-completion-<backend>' function.
 Returns a list of strings, or nil if no completion is available."
   (bug--instance-backend-function-optional "bug--field-completion-%s" field-name instance))
 
+;; TODO: Add generic multi-select support (see doc/hacking.org field-completion docs).
+;; Some fields support multiple values (e.g. labels, components) but the current
+;; frontend uses `completing-read' which only allows a single selection.
+;; A future enhancement should provide a `completing-read-multiple' wrapper or
+;; a transient multi-picker so the user can select/deselect several items.
+
 (defun bug--completing-read-field (field-name current-value instance)
   "Prompt for a new value of `field-name' using backend-provided completion.
 
