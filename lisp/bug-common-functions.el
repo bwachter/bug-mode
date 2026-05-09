@@ -183,6 +183,36 @@ With prefix argument, also prompts for the instance."
           ))
     (bug--cache-get cache-key instance)))
 
+(defun bug--available-field-names (instance present)
+  "Return an alist of (display-name . field-name) for addable fields.
+
+`present' is a list of symbols or strings already in the buffer.
+Excludes hidden fields, internal fields (names starting with `_'),
+and fields already present.  Result is sorted by display name.
+
+This is the generic fallback used when no backend-specific
+`bug--available-field-names-<backend>' function exists (e.g.
+GitHub, GitLab, Jira).  Rally provides its own implementation
+because Rally artifact types have per-type schemas."
+  (let ((field-hash (bug--get-fields instance))
+        (present-strings (mapcar (lambda (k) (if (symbolp k) (symbol-name k) k)) present))
+        (result nil))
+    (when field-hash
+      (maphash
+       (lambda (key field)
+         (let* ((visible (cdr (assoc 'visible field)))
+                (display (cdr (assoc 'display_name field)))
+                (readonly (cdr (assoc 'is_readonly field)))
+                (readonly-p (and readonly (not (equal readonly :json-false)))))
+           (when (and visible
+                      (not readonly-p)
+                      (not (string-prefix-p "_" key))
+                      (not (member key present-strings))
+                      (not (string-empty-p (or display ""))))
+             (push (cons display key) result))))
+       field-hash))
+    (sort result (lambda (a b) (string< (car a) (car b))))))
+
 (defun bug--field-name (field-name instance)
   "Return the instance-specific internal field name for `field-name'.
 
