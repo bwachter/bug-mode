@@ -1,0 +1,32 @@
+* Changelog for bug-mode
+
+** 0.1.0
+
+- update documentation, include API summaries of some backends for easy access
+- remove all legacy workarounds, start using transient. Ideally should be used on Emacs 30, but 29 might work.
+- implement write and create functionality
+- implement project functionality
+- add support for API keys as recommended auth method
+- introduce debug level and subsystem identifiers to debug framework for fine grained debug control
+- add JQL search support
+- improve org-mode links: search now can contain project scoping
+- move comments/discussion closer to being done properly
+- add caching for cacheable fields
+- add rich editor to handle HTML or Markdown, depending on backend
+- transients with instance feature checks to enable/disable options are the main user interface now
+- various multi instance fixes
+- cleaner backend/frontend separation in most areas
+- new backends:
+  - GitHub
+  - GitLab
+  - Rally
+  - Bugzilla REST
+
+** 0.0.2
+
+- some code cleanup, adjusting to newer Emacs versions
+- preliminary work on Rally iteration display
+
+** 0.0.1
+
+A mosly documented version with Bugzilla and Rally support, mostly read only.

@@ -1,0 +1,29 @@
+on:
+  release:
+    types: [created]
+  push:
+    branches: [ master ]
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: run-tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+        persist-credentials: false
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get -y install emacs
+
+    - name: Byte compile, test and tar
+      run: |
+        #make test
+        make clean compile tar
+        make CHANGELOG.md CHANGELOG-current.md

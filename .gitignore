@@ -1,4 +1,5 @@
 /lisp/bug-autoloads.el
 *.elc
+*.md
 eln-cache/
 transient/
