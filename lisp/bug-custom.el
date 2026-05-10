@@ -74,34 +74,19 @@ compatible behaviour)."
   :type 'sexp
   :group 'bug)
 
-(defcustom bug-instance-plist nil
-  "A list of bug tracker instances to use.
+(defcustom bug-instances-list nil
+  "List of available bug tracker instances.
+Each element is a cons cell (INSTANCE-NAME . INSTANCE-PLIST).
+
+Security: Use :api-key-file instead of :api-key to load credentials from
+an encrypted file (supports transparent GPG decryption for .gpg files).
 
 Example:
-\='(:work   (:url \"https://bz.work.example\" :type bz-rpc)
-  :secure (:url \"https://bz.secure.example\" :authinfo \"~/.netrc\" :type bz-rpc)
-  :fun    (:url \"https://bz.fun.example\"
-           :type bz-rpc
-           :login \"username\" :password \"password\")
-  :rally  (:api-key-file \"~/rally-api-key.gpg\" :type rally))
-
-The :work instance is either without auth, with auth-data in ~/.authinfo, or
-behind basic auth with the url-package prompting for credentials
-
-The :secure instance uses regular bz auth, with credentials stored in ~/.netrc.
-
-The :fun instance uses regular bz auth, with credentials stored inside the
-configuration, which you should try to avoid for security reasons.
-
-The :rally instance uses an api key, securely stored as a gpg encrypted file.
-It'd also be possible to specify the key directly as :api-key, but it is not
-recommended. All backends support api keys, so if the server supports that you
-should use that over username/password.
-
-:type is a mandatory option defining the backend type, valid values include `bz'
-and `rally'
-"
-  :type 'sexp
+  \='((work-rally . (:type rally :url \"https://work.atlassian.net\"))
+    (personal-bz . (:type bz-rpc :url \"https://bugs.example.com\"))
+    (client-rally . (:type rally :api-key-file \"~/.rally-api-key.gpg\"
+     :project-id \"123\")))"
+  :type '(alist :key-type symbol :value-type plist)
   :group 'bug)
 
 (defcustom bug-update-mode 'on-commit
@@ -117,30 +102,12 @@ and `rally'
                  (const :tag "Update on commit" on-commit))
   :group 'bug)
 
-(defcustom bug-instances-list nil
-  "List of available bug tracker instances.
-Each element is a cons cell (INSTANCE-NAME . INSTANCE-PLIST).
-
-This provides an alternative to `bug-instance-plist' with better
-support for instance isolation and project-based configuration.
-
-Security: Use :api-key-file instead of :api-key to load credentials from
-an encrypted file (supports transparent GPG decryption for .gpg files).
-
-Example:
-  \='((work-rally . (:type rally :url \"https://work.atlassian.net\"))
-    (personal-bz . (:type bz-rpc :url \"https://bugs.example.com\"))
-    (client-rally . (:type rally :api-key-file \"~/.rally-api-key.gpg\"
-     :project-id \"123\")))"
-  :type '(alist :key-type symbol :value-type plist)
-  :group 'bug)
-
 (defcustom bug-project-instances-alist nil
   "Alist mapping project directories to bug tracker instances.
 Each element is (PROJECT-ROOT . INSTANCE-NAME).
 
 PROJECT-ROOT can be a string (exact match) or a regexp pattern.
-INSTANCE-NAME should exist in `bug-instances-list' or `bug-instance-plist'.
+INSTANCE-NAME should exist in `bug-instances-list'.
 
 This allows automatic instance selection based on the current project.
 Can also be set via .dir-locals.el for per-directory configuration.

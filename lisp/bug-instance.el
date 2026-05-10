@@ -83,7 +83,7 @@ error when the function doesn't exist."
   "Without optional argument returns all features of a backend. Otherwise
 checks with `memq' if `feature' is present"
   (let* ((features (bug--instance-backend-function "bug--backend-%s-features"
-                                          nil instance)))
+                                                   nil instance)))
     (if feature
         (if (and (keywordp feature)
                  (string-prefix-p "experimental-" (substring (symbol-name feature) 1)))
@@ -173,10 +173,10 @@ whether an operation should be offered to the user."
                                 (instance-name (oref obj current-instance-name)))
                            (bug-create instance-name)))
      :if (lambda ()
-                (let* ((obj (transient-prefix-object))
-                       (instance-name (oref obj current-instance-name)))
-                  (or (not instance-name)
-                      (bug--instance-backend-feature instance-name :create)))))]
+           (let* ((obj (transient-prefix-object))
+                  (instance-name (oref obj current-instance-name)))
+             (or (not instance-name)
+                 (bug--instance-backend-feature instance-name :create)))))]
    ["Rally"
     :if (lambda ()
           (let* ((obj (transient-prefix-object))
@@ -219,8 +219,7 @@ whether an operation should be offered to the user."
             (progn
               (insert "\nNo instances configured.\n\n"
                       "Configure instances via:\n"
-                      "  M-x customize-variable RET bug-instances-list\n"
-                      "  M-x customize-variable RET bug-instance-plist\n"))
+                      "  M-x customize-variable RET bug-instances-list\n"))
           (make-vtable
            :face 'bug-header-field
            :columns '((:name "Name" :width 20)
@@ -278,30 +277,22 @@ See `bug-instance-switch' for details."
 Only this instance will be accessible for new operations until switched again.
 Existing buffers with different instances continue to work but show warnings.
 
-INSTANCE-NAME can come from either `bug-instances-list' or `bug-instance-plist'."
+INSTANCE-NAME should exist in `bug-instances-list'."
   (interactive (list (bug--instance-query)))
   (setq bug-active-instance (bug--instance-to-symbolp instance-name))
   (message "Switched to instance: %s" bug-active-instance))
 
 (defun bug--instance-get-all ()
-  "Get all configured instances from both bug-instances-list and
-bug-instance-plist.
+  "Get all configured instances from `bug-instances-list'.
 
 Returns an alist of (NAME . PLIST) pairs."
-  (append
-   ;; From bug-instances-list (already in correct format)
-   bug-instances-list
-   ;; From bug-instance-plist (extract cons cells)
-   (cl-loop for record in bug-instance-plist
-            when (and (not (listp record)) (keywordp record))
-            collect (cons record (plist-get bug-instance-plist record)))))
+  bug-instances-list)
 
 (defun bug--instance-query (&optional required-feature)
   "Prompt for an instance, optionally filtered by `required-feature'.
 
-Reads instances from both `bug-instances-list' and `bug-instance-plist'.
-When `required-feature' is a keyword, only instances whose backend declares
-that feature are offered.
+Reads instances from `bug-instances-list'.  When `required-feature' is a
+keyword, only instances whose backend declares that feature are offered.
 
 Returns the instance symbol directly (without prompting) when exactly one
 qualifying instance exists."
@@ -326,27 +317,31 @@ qualifying instance exists."
      (t
       (intern (completing-read "Instance: " names nil t))))))
 
-(defun bug-instance-get-active ()
+(defun bug-instance-get-current ()
   "Get the currently active instance following resolution hierarchy.
 
 Resolution order:
-1. Buffer-local bug---instance (if set and buffer exists)
-2. Project-specific instance (via `bug-project-instances-alist')
-3. bug-active-instance (if set)
-4. bug-default-instance (backward compatibility)
+1. Transient-local instance (when inside a dynamic transient menu)
+2. Buffer-local bug---instance (if set and buffer exists)
+3. Project-specific instance (via `bug-project-instances-alist')
+4. bug-active-instance (if set)
+5. bug-default-instance (backward compatibility)
 
 Returns instance symbol or nil if no instance is explicitly configured.
 When nil is returned, callers should prompt the user to select an instance."
   (or
-   ;; 1. Buffer-local instance (only in bug-related buffers)
+   ;; 1. Transient-local instance (set via bug--transient-switch-instance)
+   (and (boundp 'transient--prefix)
+        transient--prefix
+        (plist-get (oref transient--prefix scope) :instance))
+   ;; 2. Buffer-local instance (only in bug-related buffers)
    (and (boundp 'bug---instance) bug---instance)
-   ;; 2. Project-specific instance
+   ;; 3. Project-specific instance
    (bug--get-project-instance)
-   ;; 3. Active instance (when set)
+   ;; 4. Active instance (when set)
    bug-active-instance
-   ;; 4. Default instance (backward compatibility)
+   ;; 5. Default instance (backward compatibility)
    bug-default-instance))
-
 
 (defun bug--instance-check-access (instance)
   "Check if INSTANCE can be accessed based on active instance restrictions.
@@ -374,22 +369,14 @@ Shows a warning if the buffer-local instance differs from active instance."
   "Return the value for a PROPERTY of the instance INSTANCE, or the default
 instance if INSTANCE is empty.
 
-Checks both `bug-instances-list' and `bug-instance-plist'.
+Checks `bug-instances-list'.
 
 Special handling:
 - :api-key - If not present, checks for :api-key-file and reads the key from
              that file
 - :url - For Rally instances, falls back to bug-rally-url if not specified"
   (let* ((instance (bug--instance-to-symbolp instance))
-         ;; bug-instances-list uses plain symbols; bug-instance-plist uses keywords
-         (plain-sym (if (keywordp instance)
-                        (intern (substring (symbol-name instance) 1))
-                      instance))
-         (keyword-sym (if (keywordp instance)
-                          instance
-                        (intern (concat ":" (symbol-name instance)))))
-         (property-list (or (cdr (assoc plain-sym bug-instances-list))
-                            (plist-get bug-instance-plist keyword-sym))))
+         (property-list (cdr (assoc instance bug-instances-list))))
     (cond
      ;; Special handling for API key - check for file-based key
      ((equal property :api-key)
@@ -408,26 +395,27 @@ Special handling:
 if instance is nil.
 
 When instance is nil, uses the instance resolution hierarchy via
-`bug-instance-get-active' which checks:
+`bug-instance-get-current' which checks:
 1. Buffer-local bug---instance
 2. Project-specific instance
 3. bug-active-instance
 4. bug-default-instance
 
 If no instance is explicitly configured, prompts the user to select one
-from the available instances in bug-instances-list or bug-instance-plist."
-  (let* ( ; check if instance already is correct type, if not, convert string to symbol
-         (instance (if instance
-                       (cond ((symbolp instance) instance)
+from the available instances in `bug-instances-list'."
+  (let* ((instance (if instance
+                       (cond ((keywordp instance)
+                              (intern (substring (symbol-name instance) 1)))
+                             ((symbolp instance) instance)
                              ((stringp instance)
                               (intern (if (string-prefix-p ":" instance)
-                                          instance
-                                        (concat ":" instance))))
+                                          (substring instance 1)
+                                        instance)))
                              (t instance))
                      ;; Use the full resolution hierarchy when instance is nil
-                     (or (bug-instance-get-active)
+                     (or (bug-instance-get-current)
                          ;; If no explicit instance, prompt user to select one
-                         (when (or bug-instances-list bug-instance-plist)
+                         (when bug-instances-list
                            (bug--instance-query feature))))))
     instance))
 

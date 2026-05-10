@@ -2,6 +2,8 @@
 
 ** 0.1.0
 
+This is the "get issue planning for the next release working on Github"-release. Apart from adding the GitHub backend it contains a lot of code cleanup, to enable writing backends with little or no changes to frontend code.
+
 - update documentation, include API summaries of some backends for easy access
 - remove all legacy workarounds, start using transient. Ideally should be used on Emacs 30, but 29 might work.
 - implement write and create functionality
@@ -18,9 +20,7 @@
 - cleaner backend/frontend separation in most areas
 - new backends:
   - GitHub
-  - GitLab
-  - Rally
-  - Bugzilla REST
+  - Bugzilla REST (very experimental)
 
 ** 0.0.2
 
