@@ -31,6 +31,7 @@
 (require 'bug-persistent-data)
 (require 'bug-vars)
 (require 'bug-instance)
+(require 'bug-project)
 (require 'bug-custom)
 (require 'bug-repo)
 (require 'bug-jql)
@@ -118,11 +119,11 @@ Returns nil when no results are found or the backend lacks support."
 
 (defun bug--search-project-scope (instance)
   "Return the project scope for INSTANCE.
-Uses `bug---project' if bound and non-nil, otherwise the instance's
-`:project-id' property or a value auto-detected from git remotes via
-`bug--repo-scope'.  Returns nil if no project is configured."
-  (let ((result (or (and (boundp 'bug---project) bug---project)
-                    (bug--repo-scope instance))))
+
+Delegates to `bug-project-get-current' which follows the resolution
+hierarchy: transient-local, buffer-local, instance property, then
+auto-detected from git remotes.  Returns nil if no project is configured."
+  (let ((result (bug-project-get-current instance)))
     (bug--debug (format "bug--search-project-scope: instance=%S bug---project=%S result=%S"
                         instance (and (boundp 'bug---project) bug---project) result))
     result))
@@ -199,11 +200,11 @@ Uses `bug---query-string' as the default.  Project scoping is preserved."
   (interactive)
   (let* ((current-query (if (boundp 'bug---query-string)
                             bug---query-string ""))
-         (instance (if (boundp 'bug---instance) bug---instance nil))
-         (scoped (and (boundp 'bug---project) bug---project))
+         (instance (bug-instance-get-current))
+         (project (bug-project-get-current instance))
          (new-query (read-string "Search query: " current-query)))
     (unless (string-empty-p new-query)
-      (if scoped
+      (if project
           (bug-search-project new-query instance)
         (bug-search new-query instance)))))
 
@@ -215,11 +216,11 @@ Uses `bug---query-jql' as the default.  Project scoping is preserved."
   (interactive)
   (let* ((current-query (if (boundp 'bug---query-jql)
                             bug---query-jql ""))
-         (instance (if (boundp 'bug---instance) bug---instance nil))
-         (scoped (and (boundp 'bug---project) bug---project))
+         (instance (bug-instance-get-current))
+         (project (bug-project-get-current instance))
          (new-query (bug--jql-read-with-hints "JQL query: " current-query)))
     (unless (string-empty-p new-query)
-      (if scoped
+      (if project
           (bug-search-jql-project new-query instance)
         (bug-search-jql new-query instance)))))
 
