@@ -43,7 +43,7 @@
 ;;;###autoload
 (defun bug--backend-bz-rest-features (_arg _instance)
   "Features supported by Bugzilla REST backend"
-  '(:read :search :search-jql))
+  '(:read :write :create :delete :comment :search :search-jql :projects :project-bugs))
 
 ;;;;;;
 ;;; Internal helpers: REST transport
@@ -61,6 +61,8 @@ and URL is the full request URL."
           (pcase operation
             ((or "get" "update")
              (format "/rest/bug/%s" id))
+            ("create"
+             "/rest/bug")
             ((or "comments" "attachments")
              (format "/rest/bug/%s/%s" id (if (string= operation "comments") "comment" operation)))
             ("add_comment"
@@ -75,6 +77,7 @@ and URL is the full request URL."
     (cons
      (pcase operation
        ((or "get" "comments" "attachments" "fields" "search" "login") "GET")
+       ("create" "POST")
        ((or "update" "add_comment") "PUT")
        (_ "GET"))
      (concat base-url path))))
@@ -186,14 +189,17 @@ available, log in transparently and retry the request once."
 
 ;;;###autoload
 (defun bug--do-bz-rest-search (params instance)
-  "Execute a search query in Bugzilla via REST."
-  (bug--bz-shared-handle-search-response
-   params
-   (bug-rpc `((resource . "Bug")
-              (operation . "search")
-              (data . ,params))
-            instance)
-   instance))
+  "Execute a search query in Bugzilla via REST.
+
+Frontend dispatch: bug--backend-function \"bug--do-%s-search\" (bug--do-search)."
+  (let ((scoped-params (bug--bz-shared-search-params params)))
+    (bug--bz-shared-handle-search-response
+     scoped-params
+     (bug-rpc `((resource . "Bug")
+                (operation . "search")
+                (data . ,scoped-params))
+              instance)
+     instance)))
 
 (defun bug--execute-bz-rest-search (params instance)
   "Execute a Bugzilla REST search and return (bugs-array . count).
@@ -353,6 +359,101 @@ Frontend dispatch: bug--backend-function-optional
 (defun bug--backend-bz-rest-open-thing (args instance)
   "Delegate to shared thing opener."
   (bug--bz-shared-open-thing args instance))
+
+;;;;;;
+;;; Create support
+
+;;;###autoload
+(defun bug--create-bz-rest-bug (data instance)
+  "Create a new Bugzilla bug via REST.
+
+`data' is an alist of field names and values.  Returns the created
+bug alist on success.
+
+Frontend dispatch: bug--backend-function
+\"bug--create-%s-bug\" (bug--bug-mode-commit)."
+  (let ((response (bug-rpc `((resource . "Bug")
+                             (operation . "create")
+                             (data . ,data))
+                           instance)))
+    (let ((result (or (cdr (assoc 'result response)) response)))
+      (when (and result (assoc 'id result))
+        (let ((id (cdr (assoc 'id result))))
+          (bug--fetch-bz-rest-bug (number-to-string id) instance))))))
+
+;;;###autoload
+(defun bug--create-bz-rest-bug-interactive (context instance)
+  "Open a draft buffer for creating a new Bugzilla bug.
+
+Frontend dispatch: bug--backend-function
+\"bug--create-%s-bug-interactive\" (bug-create)."
+  (bug--bz-shared-create-bug-interactive context instance))
+
+;;;###autoload
+(defun bug--create-bz-rest-new-artifact (args instance)
+  "Create a Bugzilla bug from draft buffer data.
+
+Frontend dispatch: bug--backend-function
+\"bug--create-%s-new-artifact\" (bug--bug-mode-commit)."
+  (bug--bz-shared-create-new-artifact args instance))
+
+;;;###autoload
+(defun bug--validate-draft-bz-rest (args instance)
+  "Check that required Bugzilla create fields are present.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--validate-draft-%s\" (bug--bug-mode-commit)."
+  (bug--bz-shared-validate-draft args instance))
+
+;;;;;;
+;;; Delete support
+
+;;;###autoload
+(defun bug--delete-bz-rest-bug (id instance)
+  "Close a Bugzilla bug via status update.
+Bugzilla does not support true deletion via the API.
+
+Frontend dispatch: bug--backend-function
+\"bug--delete-%s-bug\" (bug--bug-mode-delete-bug)."
+  (bug--bz-shared-close-bug id instance))
+
+;;;;;;
+;;; Project support
+
+;;;###autoload
+(defun bug--list-bz-rest-projects (args instance)
+  "Return Bugzilla products accessible to the user.
+
+Frontend dispatch: bug--backend-function
+\"bug--list-%s-projects\" (bug-list-projects)."
+  (bug--bz-shared-list-products args instance))
+
+;;;###autoload
+(defun bug--list-bz-rest-project-bugs (project-id instance)
+  "Return search params for bugs in `project-id'.
+
+Frontend dispatch: bug--backend-function
+\"bug--list-%s-project-bugs\" (bug-list-project-bugs)."
+  (bug--bz-shared-list-product-bugs project-id instance))
+
+;;;;;;
+;;; Internal helpers: repo scope detection
+
+;;;###autoload
+(defun bug--backend-bz-rest-repo-scope (parsed-remote instance)
+  "Convert `parsed-remote' to a Bugzilla scope string."
+  (bug--bz-shared-repo-scope parsed-remote instance))
+
+;;;;;;
+;;; Field completion
+
+;;;###autoload
+(defun bug--field-completion-bz-rest (field-name instance)
+  "Return completion candidates for `field-name' in Bugzilla bugs.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--field-completion-%s\" (bug--completing-read-field)."
+  (bug--field-completion-bz-shared field-name instance))
 
 (provide 'bug-backend-bz-rest)
 ;;; bug-backend-bz-rest.el ends here
