@@ -41,13 +41,13 @@ test-emacs:
 	@$(EMACS) -nw $(EMACS_EMPTY)
 
 test-emacs-gui:
-	@(EMACS) $(EMACS_EMPTY)
+	@$(EMACS) $(EMACS_EMPTY)
 
 test-emacs-preconfigured:
-	@(EMACS) -nw $(EMACS_PRECONFIG)
+	@$(EMACS) -nw $(EMACS_PRECONFIG)
 
 test-emacs-preconfigured-gui:
-	@(EMACS) $(EMACS_PRECONFIG)
+	@$(EMACS) $(EMACS_PRECONFIG)
 
 tep: test-emacs-preconfigured
 tepg: test-emacs-preconfigured-gui

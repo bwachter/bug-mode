@@ -50,13 +50,16 @@
       (let (backend)
         (setq backend (replace-regexp-in-string "^bug-backend-" "" backend-file))
         (setq backend (replace-regexp-in-string ".el$" "" backend))
-        (push backend backends)))
+        ;; bz-shared is a shared library, not a real backend
+        (unless (equal backend "bz-shared")
+          (push backend backends))))
     backends))
 
 (require 'bug-autoloads)
 (require 'bug-custom)
 (require 'bug-persistent-data)
 (require 'bug-repo)
+(require 'bug-transient-builder)
 
 ;;;;;;
 ;; startup code to read persistent data
@@ -64,7 +67,7 @@
 
 ;; Unhandled, as they are still bz specific, and need work:
 ;; bug-login/bug-logout
-(transient-define-prefix bug-menu ()
+(transient-define-prefix bug-menu-static ()
   "Top level bug mode menu"
   [:pad-keys t
              ["Instances"
@@ -90,9 +93,22 @@
                                                         (bug--instance-to-symbolp nil :project-bugs)))
                                           (scope (or (cdr single)
                                                      (bug--repo-scope instance))))
-                                     (bug-list-project-bugs scope instance))))]
+                                     (bug-list-project-bugs scope instance))))
+              ("c" "Repo create" (lambda ()
+                                   (interactive)
+                                   (let* ((matches (bug--repo-matching-instances))
+                                          (single (and (= 1 (length matches))
+                                                       (car matches)))
+                                          (instance (or (car single)
+                                                        (bug--instance-to-symbolp nil :create)))
+                                          (scope (or (cdr single)
+                                                     (bug--repo-scope instance))))
+                                     (bug-create `(:project-id ,scope) instance))))]
              ["Misc"
               ("R" "Clear metadata cache" bug-cache-clear)]])
+
+(bug-transient-define-prefix bug-menu
+  :blocks '(instances bug search repo misc))
 
 (provide 'bug)
 ;;; bug.el ends here

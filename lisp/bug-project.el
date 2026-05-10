@@ -29,63 +29,13 @@
 (require 'bug-common-functions)
 (require 'bug-search-common)
 (require 'bug-vars)
-(require 'transient)
+(require 'bug-instance)
+(require 'bug-transient-builder)
+(require 'bug-repo)
 (require 'vtable)
 
-;; TODO, we probably should add a transient here too, for stuff like copy id
-(defclass bug-project-prefix (transient-prefix)
-  ((current-project-name :initarg :current-project-name :initform nil)
-   (current-project-id :initarg :current-project-id :initform nil))
-  "Custom transient class tracking project specific bug attributes.")
-
-;;; bytecompiler stubs for functions in the transient (and only those)
-;;  make sure they can be autoloaded!
-
-(declare-function bug-rally-subscription "bug-rally-subscription")
-(declare-function bug-create "bug-mode")
-
-(transient-define-prefix bug--project-mode-menu ()
-  "Transient for bug-project-mode"
-  :class 'bug-project-prefix
-  :init-value (lambda (obj)
-                (let ((entry (vtable-current-object)))
-                  (oset obj current-project-name (car entry))
-                  (oset obj current-project-id (cdr entry))))
-  [[:description
-    (lambda ()
-      (let ((obj (transient-prefix-object)))
-        (format "Project%s"
-                (if-let ((name (oref obj current-project-name)))
-                    (format " %s" name)
-                  ""))))
-    ("p" "Copy project ID" (lambda ()
-                             (interactive)
-                             (let* ((obj (transient-prefix-object))
-                                    (project-id (oref obj current-project-id)))
-                               (kill-new project-id)
-                               (message "Copied ID: %s" project-id)))
-     :if (lambda ()
-           (let ((obj (transient-prefix-object)))
-             (oref obj current-project-id))))
-    ("l" "List bugs for project" (lambda ()
-                                   (interactive)
-                                   (let* ((obj (transient-prefix-object))
-                                          (project-id (oref obj current-project-id)))
-                                     (bug-list-project-bugs project-id bug---instance))))]
-   ["Interact"
-    ("i"  "Info"  bug--bug-mode-info)
-    ("c"  "Create bug" (lambda ()
-                         (interactive)
-                         (bug-create bug---instance))
-     :if (lambda () (and
-                     (bound-and-true-p bug---instance)
-                     (bug--instance-feature bug---instance :create))))]
-   ["Rally"
-    :if (lambda () (and (bound-and-true-p bug---instance)
-                        (equal 'rally (bug--instance-backend-type bug---instance))))
-    ("s" "Subscription" (lambda ()
-                          (interactive)
-                          (bug-rally-subscription bug---instance)))]])
+(bug-transient-define-prefix bug--project-mode-menu
+  :blocks '(project interact rally))
 
 (defvar bug-project-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -191,6 +141,33 @@ With a prefix argument, prompts for which instance to use."
   (unless (bug--instance-feature instance :project-create)
     (error "Backend does not support project creation"))
   (bug--instance-backend-function "bug--create-%s-project" name instance))
+
+;;;###autoload
+(defun bug-project-get-current (&optional instance)
+  "Get the currently active project scope following resolution hierarchy.
+
+Resolution order:
+1. Transient-local project (when inside a dynamic transient menu)
+2. Buffer-local `bug---project' (if set and buffer exists)
+3. Instance's `:project-id' property
+4. Auto-detected from git remotes via `bug--repo-scope'
+
+Optional `instance' is used for steps 3 and 4; if nil, resolves via
+`bug-instance-get-current'.
+
+Returns project scope string or nil if no project is configured."
+  (or
+   ;; 1. Transient-local project
+   (and (boundp 'transient--prefix)
+        transient--prefix
+        (plist-get (oref transient--prefix scope) :project))
+   ;; 2. Buffer-local project
+   (and (boundp 'bug---project) bug---project)
+   ;; 3. Instance-specific project
+   (let ((inst (or instance (bug-instance-get-current))))
+     (and inst (bug--instance-property :project-id inst)))
+   ;; 4. Auto-detected from repository
+   (bug--repo-scope (or instance (bug-instance-get-current)))))
 
 (provide 'bug-project)
 ;;; bug-project.el ends here

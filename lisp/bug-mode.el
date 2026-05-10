@@ -29,7 +29,6 @@
 ;;(bug-rpc "HierarchicalRequirement.create" '((data . (HierarchicalRequirement . ((Name . "Test name"))))))
 
 (require 'cl-lib)
-(require 'transient)
 
 (require 'bug-vars)
 (require 'bug-rpc)
@@ -43,29 +42,10 @@
 (require 'bug-search)
 (require 'bug-project)
 (require 'bug-instance)
+(require 'bug-transient-builder)
 
-(transient-define-prefix bug--mode-menu ()
-  "Transient for bug-mode"
-
-  [[:description (lambda () (format "Bug %s" bug---uuid))
-                 ("B" "Open in browser" bug--bug-mode-browse-bug)
-                 ("r" "Remember bug"   bug--bug-mode-remember-bug)]
-   ["Edit"
-    :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-feature bug---instance :write)))
-    ("a" "Add new field" bug--bug-mode-add-field)
-    ("c" "Add new comment" bug--bug-mode-create-comment)
-    ("e" "Edit field" bug--bug-mode-edit-thing-near-point)]
-   ["Create"
-    :if (lambda () (and (bound-and-true-p bug---instance) (bug--instance-feature bug---instance :create)))
-    ("C"  "Create related bug" bug--bug-mode-create-related)]
-   ["View"
-    ("v"  "Toggle field filter" bug--bug-mode-toggle-field-filter)]
-   ["Interact"
-    ("i"  "Info"  bug--bug-mode-info)
-    ("d"  "Download attachment" bug--bug-mode-download-attachment)
-    ("D"  "Delete this bug" bug--bug-mode-delete-bug
-     :if (lambda () (and (bound-and-true-p bug---instance)
-                         (bug--instance-feature bug---instance :del))))]])
+(bug-transient-define-prefix bug--mode-menu
+  :blocks '(bug interact misc view))
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))

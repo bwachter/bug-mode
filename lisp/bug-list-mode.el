@@ -36,7 +36,7 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'transient)
+(require 'bug-transient-builder)
 (require 'bug-rpc)
 (require 'bug-search-common)
 (require 'bug-common-functions)
@@ -46,49 +46,8 @@
 (require 'bug-vars)
 (require 'bug-rally-subscription-mode)
 
-(defclass bug-list-prefix (transient-prefix)
-  ((current-bug-uuid :initarg :current-bug-uuid :initform nil)
-   (current-bug-id :initarg :current-bug-id :initform nil))
-  "Custom transient class tracking project specific bug attributes.")
-
-(transient-define-prefix bug--list-mode-menu ()
-  "Transient for bug-list-mode"
-  :class 'bug-list-prefix
-  :init-value (lambda (obj)
-                (let ((bug-details (bug-list-mode-bug-near-point)))
-                  (oset obj current-bug-id (alist-get 'bug-id bug-details))
-                  (oset obj current-bug-uuid (alist-get 'bug-uuid bug-details))))
-  [[:description
-    (lambda () (format "Bug%s"
-                       (if-let ((entry (tabulated-list-get-entry)))
-                           (format " %s" (elt entry 0))
-                         "")))
-    ("B" "Open in browser" bug--bug-mode-browse-bug)
-    ("r" "Remember bug"   bug--bug-mode-remember-bug)]
-   ["Interact"
-    ("i"  "Info"  bug--bug-mode-info)
-    ;; TODO, we properly need to pass bug data here
-    ("C"  "Create related bug" bug--bug-mode-create-related
-     :if (lambda () (and (bound-and-true-p bug---instance)
-                         (bug--instance-feature bug---instance :create))))
-    ("D"  "Delete this bug" bug--bug-mode-delete-bug
-     :if (lambda () (and (bound-and-true-p bug---instance)
-                         (bug--instance-feature bug---instance :del))))]
-   ["Search"
-    ("e" "Edit current search" bug-edit-search)
-    ("J" "Edit JQL search" bug-edit-jql-search
-     :if (lambda () (and (boundp 'bug---query-jql)
-                         bug---query-jql
-                         (not (string-empty-p bug---query-jql)))))]
-   ["Rally"
-    :if (lambda () (and (bound-and-true-p bug---instance)
-                        (equal 'rally (bug--instance-backend-type bug---instance))))
-    ("s" "Subscription" (lambda ()
-                          (interactive)
-                          (bug-rally-subscription bug---instance)))]])
-
-(declare-function bug-edit-search "bug-search")
-(declare-function bug-edit-jql-search "bug-search")
+(bug-transient-define-prefix bug--list-mode-menu
+  :blocks '(bug interact search repo misc))
 
 (defvar bug-list-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -251,7 +210,8 @@ at or near point. If no valid bug was found bug-id and bug-uuid are `nil'"
                     (save-excursion
                       (forward-line 0)
                       (get-text-property (point) 'bug-id))))
-        (bug-instance (or (and (boundp 'bug---instance) bug---instance) bug-default-instance)))
+        (bug-instance (or (and (boundp 'bug---instance) bug---instance)
+                          (bug-instance-get-current))))
     `((bug-id . ,bug-id)(bug-uuid . ,bug-uuid)(instance . ,bug-instance))))
 
 ;; functions usually called through keybindings in bug-list-mode

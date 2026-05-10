@@ -22,6 +22,7 @@ SOURCES += bug-vars.el
 SOURCES += bug-instance.el
 SOURCES += bug-project.el
 SOURCES += bug-repo.el
+SOURCES += bug-transient-builder.el
 SOURCES += org-bug.el
 ELC = $(SOURCES:.el=.elc)
 

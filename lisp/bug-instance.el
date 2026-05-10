@@ -33,6 +33,9 @@
 (require 'transient)
 (require 'project)
 (require 'bug-custom)
+(require 'bug-transient-builder)
+
+(declare-function bug-list-projects "bug-project.el" (&optional instance))
 
 (defun bug--instance-backend-function (format-string &optional args instance)
   "Call a backend specific function, selected based on the backend specified by
@@ -126,67 +129,8 @@ whether an operation should be offered to the user."
         (memq feature effective)
       effective)))
 
-(defclass bug-instance-prefix (transient-prefix)
-  ((current-instance-name :initarg :current-instance-name :initform nil)
-   (current-instance-type :initarg :current-instance-type :initform nil))
-  "Custom transient class tracking three specific bug attributes.")
-
-;;; bytecompiler stubs for functions in the transient (and only those)
-;;  make sure they can be autoloaded!
-
-(declare-function bug-list-projects "bug-project")
-(declare-function bug-rally-subscription "bug-rally-subscription")
-(declare-function bug-create "bug-mode")
-
-(transient-define-prefix bug--instance-mode-menu ()
-  "Transient for bug-instance-mode"
-  :class 'bug-instance-prefix
-  :init-value (lambda (obj)
-                (let ((entry (vtable-current-object)))
-                  (oset obj current-instance-name (car entry))
-                  (oset obj current-instance-type (plist-get (cdr entry) :type))))
-  [[:description
-    (lambda ()
-      (let ((obj (transient-prefix-object)))
-        (format "Instance%s"
-                (if-let ((name (oref obj current-instance-name)))
-                    (format " %s" name)
-                  ""))))
-    ("a" "Activate instance" (lambda ()
-                               (interactive)
-                               (let ((obj (transient-prefix-object)))
-                                 (bug-instance-activate (oref obj current-instance-name))
-                                 (bug-list-instances)))
-     :if (lambda ()
-           (let ((obj (transient-prefix-object)))
-             (oref obj current-instance-name))))
-    ("d" "Deactivate instance" (lambda ()
-                                 (interactive)
-                                 (bug-instance-deactivate)
-                                 (bug-list-instances)))]
-   ["Interact"
-    ("i"  "Info"  bug--bug-mode-info)
-    ;; offer creation, unless point is on an instance not supporting creation
-    ("c"  "Create bug" (lambda ()
-                         (interactive)
-                         (let* ((obj (transient-prefix-object))
-                                (instance-name (oref obj current-instance-name)))
-                           (bug-create instance-name)))
-     :if (lambda ()
-           (let* ((obj (transient-prefix-object))
-                  (instance-name (oref obj current-instance-name)))
-             (or (not instance-name)
-                 (bug--instance-backend-feature instance-name :create)))))]
-   ["Rally"
-    :if (lambda ()
-          (let* ((obj (transient-prefix-object))
-                 (instance-name (oref obj current-instance-name)))
-            (and instance-name
-                 (equal 'rally (bug--instance-backend-type instance-name)))))
-    ("s" "Subscription" (lambda ()
-                          (interactive)
-                          (let ((obj (transient-prefix-object)))
-                            (bug-rally-subscription (oref obj current-instance-name)))))]])
+(bug-transient-define-prefix bug--instance-mode-menu
+  :blocks '(instances interact rally))
 
 (defvar bug-instance-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
