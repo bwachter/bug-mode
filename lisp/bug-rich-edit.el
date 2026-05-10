@@ -37,13 +37,15 @@
 (defun bug--html-to-org (html)
   "Convert HTML string to org-mode markup.
 
-Uses pandoc if available, then libxml, then strips tags as a last resort."
+Uses pandoc if available, then libxml, then strips tags as a last resort.
+Pandoc stderr is discarded so warnings do not contaminate the output."
   (or (when (executable-find "pandoc")
         (with-temp-buffer
           (insert (or html ""))
           (when (zerop (call-process-region (point-min) (point-max)
-                                            "pandoc" t t nil
-                                            "-f" "html" "-t" "org" "–syntax-highlighting=none"))
+                                            "pandoc" t '(t "/dev/null") nil
+                                            "-f" "html" "-t" "org"
+                                            "--quiet" "--wrap=none"))
             (string-trim (buffer-string)))))
       (bug--html-to-org-libxml (or html ""))))
 
@@ -106,35 +108,42 @@ Uses pandoc if available, then libxml, then strips tags as a last resort."
 (defun bug--markdown-to-org (markdown)
   "Convert Markdown string to org-mode markup.
 
-Uses pandoc if available, otherwise returns the markdown text as-is
-(it is largely human-readable without conversion)."
+Markdown is largely readable as-is in org-mode, so the default
+fallback returns the text unchanged.  When pandoc is available it
+is used for a cleaner conversion, with stderr discarded so warnings
+do not contaminate the output."
   (or (when (executable-find "pandoc")
         (with-temp-buffer
           (insert (or markdown ""))
           (when (zerop (call-process-region (point-min) (point-max)
-                                            "pandoc" t t nil
-                                            "-f" "markdown" "-t" "org" "–syntax-highlighting=none"))
+                                            "pandoc" t '(t "/dev/null") nil
+                                            "-f" "markdown" "-t" "org"
+                                            "--quiet" "--wrap=none"))
             (string-trim (buffer-string)))))
       (or markdown "")))
 
 (defun bug--org-to-markdown (org)
   "Convert org-mode markup string to Markdown.
 
-Uses pandoc if available, otherwise falls back to ox-md."
-  (or (when (executable-find "pandoc")
-        (with-temp-buffer
-          (insert (or org ""))
-          (when (zerop (call-process-region (point-min) (point-max)
-                                            "pandoc" t t nil
-                                            "-f" "org" "-t" "markdown" "–syntax-highlighting=none"))
-            (string-trim (buffer-string)))))
-      (progn
+Uses ox-md (Emacs built-in) by default.  Pandoc is tried only if
+ox-md is unavailable, with stderr discarded so warnings do not
+contaminate the output."
+  (or (progn
         (require 'ox-md)
         (let ((org-export-with-toc nil)
               (org-export-with-section-numbers nil))
           (string-trim
            (org-export-string-as (or org "") 'md t
-                                 '(:with-toc nil :section-numbers nil)))))))
+                                 '(:with-toc nil :section-numbers nil)))))
+      (when (executable-find "pandoc")
+        (with-temp-buffer
+          (insert (or org ""))
+          (when (zerop (call-process-region (point-min) (point-max)
+                                            "pandoc" t '(t "/dev/null") nil
+                                            "-f" "org" "-t" "markdown"
+                                            "--quiet" "--wrap=none"))
+            (string-trim (buffer-string)))))
+      ""))
 
 ;;;;;;
 ;; Edit buffer
