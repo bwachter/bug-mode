@@ -19,12 +19,12 @@
 ;; or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
 ;; for more details. http://www.gnu.org/copyleft/gpl.html
 ;;
-;;; History:
+;; ;;; History:
 ;;
 ;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
-;;; Code:
+;; ;;; Code:
 
 (require 'bug-common-functions)
 
@@ -45,17 +45,17 @@
   "Test functions for caching data"
   (bug--with-dummy-config
    (should-error (bug--cache-put 'foo "bar") :type 'wrong-number-of-arguments)
-   (should (equal '(:bug-2 ((foo . "bar")))
+   (should (equal '(bug-2 ((foo . "bar")))
                   (bug--cache-put 'foo "bar" nil)))
-   (should (equal '(:bug-2 ((foobar . "baz") (foo . "bar")))
+   (should (equal '(bug-2 ((foobar . "baz") (foo . "bar")))
                   (bug--cache-put 'foobar "baz" nil)))
-   (should (equal '(:bug-2 ((foobar . "baz") (foo . "barbaz")))
+   (should (equal '(bug-2 ((foobar . "baz") (foo . "barbaz")))
                   (progn (bug--cache-put 'foo "barbaz" nil) bug--cache)))
-   (should (equal '(:bug-2 ((foobar . "baz") (foo . "barbaz")) :new ((bar . "baz")))
-                  (bug--cache-put 'bar "baz" ':new)))
-   (should (equal '(:new ((bar . "baz")))
-                  (progn (bug-cache-clear ':bug-2) bug--cache)))
-   (should (equal nil (progn (bug-cache-clear) bug--cache)))
+   (should (equal '(bug-2 ((foobar . "baz") (foo . "barbaz")) new ((bar . "baz")))
+                  (bug--cache-put 'bar "baz" 'new)))
+   (should (equal '(new ((bar . "baz")))
+                  (progn (bug-cache-clear 'bug-2) bug--cache)))
+   (should (equal nil (progn (bug-cache-clear 'new) bug--cache)))
    ))
 
 ;; bug--get-fields
@@ -66,15 +66,15 @@
 (ert-deftest test-bug-instance-to-symbolp ()
   "Test bug--instance-to-symbolp"
   (bug--with-dummy-config
-   (should (equal ':bug-2
+   (should (equal 'bug-2
                   (bug--instance-to-symbolp nil)))
-   (should (equal ':test
+   (should (equal 'test
                   (bug--instance-to-symbolp ':test)))
    (should (equal 'test
                   (bug--instance-to-symbolp 'test)))
-   (should (equal ':test
+   (should (equal 'test
                   (bug--instance-to-symbolp "test")))
-   (should (equal ':test
+   (should (equal 'test
                   (bug--instance-to-symbolp ":test")))
    ))
 

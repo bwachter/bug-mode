@@ -1,4 +1,4 @@
-;;; test-bug-html-edit.el --- tests for bug-html-edit -*- lexical-binding: t; -*-
+;;; test-bug-html-edit.el --- tests for bug-rich-edit -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (c) 2010-2015 bug-mode developers
 ;;
@@ -21,7 +21,7 @@
 ;;
 ;;; Code:
 
-(require 'bug-html-edit)
+(require 'bug-rich-edit)
 
 ;;;;;;
 ;; Helper

@@ -19,12 +19,12 @@
 ;; or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
 ;; for more details. http://www.gnu.org/copyleft/gpl.html
 ;;
-;;; History:
+;; ;;; History:
 ;;
 ;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
-;;; Code:
+;; ;;; Code:
 
 (defconst bug--test-data-dir
   (concat
@@ -33,18 +33,18 @@
   "Location of test data files.")
 
 (defmacro bug--with-dummy-config (&rest body)
-  `(let ((bug-instance-plist `(:bug-1 (:url "https://bz.tracker1.example"
-                                            :type bz
-                                            :authinfo ,(concat bug--test-data-dir "netrc"))
-                                      :bug-2 (:url "https://bz.tracker2.example"
-                                                   :type bz
-                                                   :authinfo ,(concat bug--test-data-dir "netrc"))
-                                      :rally-1 (:api-key "thisIsNotAnApiKey"
-                                                         :type rally)
-                                      :rally-2 (:authinfo ,(concat bug--test-data-dir "netrc")
-                                                          :type rally)
-                                      ))
-         (bug-default-instance :bug-2))
+  `(let ((bug-instances-list
+          '((bug-1 . (:url "https://bz.tracker1.example"
+                       :type bz
+                       :authinfo ,(concat bug--test-data-dir "netrc")))
+            (bug-2 . (:url "https://bz.tracker2.example"
+                       :type bz
+                       :authinfo ,(concat bug--test-data-dir "netrc")))
+            (rally-1 . (:api-key "thisIsNotAnApiKey"
+                         :type rally))
+            (rally-2 . (:authinfo ,(concat bug--test-data-dir "netrc")
+                         :type rally))))
+         (bug-default-instance 'bug-2))
      (cl-letf (((symbol-function 'url-retrieve-synchronously)
                 (lambda (&rest _)
                   (error "Network access not available in unit tests"))))

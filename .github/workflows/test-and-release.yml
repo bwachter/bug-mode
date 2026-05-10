@@ -24,6 +24,6 @@ jobs:
 
     - name: Byte compile, test and tar
       run: |
-        #make test
+        make test
         make clean compile tar
         make CHANGELOG.md CHANGELOG-current.md

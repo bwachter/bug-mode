@@ -173,13 +173,12 @@
   "Test project reference generation"
   (bug--with-dummy-config
    ;; Test with configured project-id
-   (let ((bug-instance-plist
-          '(:rally-with-project
-            (:type rally
-                   :api-key "test-key"
-                   :project-id "12345"))))
+   (let ((bug-instances-list
+          '((rally-with-project . (:type rally
+                                  :api-key "test-key"
+                                  :project-id "12345")))))
      (should (equal "/project/12345"
-                    (bug--rally-get-project-ref :rally-with-project))))))
+                    (bug--rally-get-project-ref 'rally-with-project))))))
 
 (ert-deftest test-bug-backend-rally-url-with-security-token ()
   "Test that write operations get security token appended for basic auth"

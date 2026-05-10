@@ -52,19 +52,19 @@
   "Test property gathering"
   (bug--with-dummy-config
    ;; check if dummy default property is set
-   (should (equal bug-default-instance :bug-2))
+   (should (equal bug-default-instance 'bug-2))
    ;; check if stringp->symbolp conversion behaves as expected
-   (should (equal (bug--instance-to-symbolp :foo) :foo))
-   (should (equal (bug--instance-to-symbolp "foo") :foo))
-   (should (equal (bug--instance-to-symbolp ":foo") :foo))
+   (should (equal (bug--instance-to-symbolp :foo) 'foo))
+   (should (equal (bug--instance-to-symbolp "foo") 'foo))
+   (should (equal (bug--instance-to-symbolp ":foo") 'foo))
    ;; check retrieving a non-default property
-   (should (equal (bug--instance-property :url :bug-1)
+   (should (equal (bug--instance-property :url 'bug-1)
                   "https://bz.tracker1.example"))
    (should (equal (bug--instance-property :url "bug-1")
                   "https://bz.tracker1.example"))
    ;; check if retrieving default properties works
    (should (equal (bug--instance-property :url nil)
-                  (bug--instance-property :url :bug-2)))))
+                  (bug--instance-property :url 'bug-2)))))
 
 (ert-deftest bug-test-verify-backend-function-completeness ()
   "Check if all backends implement all mandatory functions"

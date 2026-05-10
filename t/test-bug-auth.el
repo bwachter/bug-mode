@@ -19,12 +19,12 @@
 ;; or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
 ;; for more details. http://www.gnu.org/copyleft/gpl.html
 ;;
-;;; History:
+;; ;;; History:
 ;;
 ;; This file is maintained at https://github.com/bwachter/bug-mode/
 ;; Check the git history for details.
 ;;
-;;; Code:
+;; ;;; Code:
 
 (require 'bug-auth)
 
@@ -32,12 +32,12 @@
   "Test functions for handling authentication"
   (bug--with-dummy-config
    (should (equal '("bz1-user" "AiNee8cu")
-                  (bug-credentials :bug-1)))
+                  (bug--auth-credentials 'bug-1)))
    (should (equal '("bz2-user" nil)
-                  (bug-credentials :bug-2)))
+                  (bug--auth-credentials 'bug-2)))
    (should (equal '("rally-user" "rally-password")
-                  (bug-credentials :rally-2)))
-   (should-error (bug-credentials :bug-nil))
+                  (bug--auth-credentials 'rally-2)))
+   (should-error (bug--auth-credentials 'bug-nil))
    ))
 
 ;; TODO:
