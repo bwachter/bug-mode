@@ -131,10 +131,11 @@ list are hidden regardless of other checks."
     (unless (bug--field-filtered-p instance name)
       (setq visible nil)
       (bug--debug (format "  field %S: hidden (field filter)" name) '(fields . 2)))
-    ;; Don't display Discussion/Description fields inline - handle separately
+    ;; Don't display meta/special fields inline
     (when (or (string= name "Discussion")
               (string= name "Description")
-              (string= name "internals"))
+              (string= name "internals")
+              (string= name "ObjectType"))
       (setq visible nil)
       (bug--debug (format "  field %S: hidden (special field)" name) '(fields . 2)))
     (bug--debug (format "  field %S: %s" name (if visible "VISIBLE" "hidden")) '(fields . 3))
@@ -201,7 +202,11 @@ data is already present in the buffer and should not be re-fetched."
 
     (bug--debug (format "bug-show: %d fields in raw data" (length bug)) '(fields . 1))
     (let* ((backend-visible-fields (bug--instance-backend-function-optional "bug--%s-visible-fields" bug (bug--instance-to-symbolp instance)))
-           (visible-fields (filter (lambda (prop) (bug--visible-field-p prop instance backend-visible-fields)) bug)))
+           (visible-fields (filter (lambda (prop)
+                                     (and (bug--visible-field-p prop instance backend-visible-fields)
+                                          (not (member (car prop)
+                                                       '(Description description "Description" "description")))))
+                                   bug)))
       (bug--debug (format "bug-show: %d fields visible after filtering" (length visible-fields)) '(fields . 1))
       (insert
        (mapconcat
@@ -413,10 +418,11 @@ be edited immediately with \\[bug--bug-mode-edit-thing-near-point]."
                                                 (and (stringp v) (string-empty-p v)))))
                                         bug---data)))
          (candidates (when type-name
-                       (bug--instance-backend-function-optional
-                        "bug--available-field-names-%s"
-                        (list type-name present)
-                        bug---instance))))
+                       (or (bug--instance-backend-function-optional
+                            "bug--available-field-names-%s"
+                            (list type-name present)
+                            bug---instance)
+                           (bug--available-field-names bug---instance present)))))
     (if (null candidates)
         (message "No additional fields available")
       (let* ((display-names (mapcar #'car candidates))
@@ -487,28 +493,52 @@ If the bug is a new artifact this will create it in the backend."
       (message "Changes committed successfully.")))))
 
 (defun bug--bug-mode-locate-field (field-name)
-  "Try to locate a field `field-name' at point or at the current line. If found
-a position in the field is returned -- which may be just between fields, so
-the caller needs to ensure that code using this position operates on the correct
-field (e.g. by using constrain-to-field).
+  "Try to locate a field `field-name' at point or on the current line.
+
+When `field-name' is non-nil, returns a position whose `field' text
+property equals `field-name'.  When `field-name' is nil, searches
+for the nearest position with a non-nil `field' property instead.
 
 If no (valid) field was found `nil' is returned."
-  (let ((field-pos nil))
-
-    (if (equal field-name (get-text-property (point) 'field))
-        ;; the field at point is of the right type, no search required
-        (setq field-pos (point))
+  (let ((field-pos nil)
+        (at-field (get-text-property (point) 'field)))
+    (cond
+     ;; At point and matches exactly
+     ((and field-name (equal field-name at-field))
+      (setq field-pos (point)))
+     ;; No specific field requested, but we're sitting on a field
+     ((and (null field-name) at-field)
+      (setq field-pos (point)))
+     ;; Search forward on the line for a match
+     (t
       (save-excursion
-        ;; search from beginning of line to the next field change,
-        ;; and compare if it's the correct type. If not we don't
-        ;; make another attempt at locating the field (most likely
-        ;; that case should not happen anyway)
         (forward-line 0)
-        (let ((pos (next-single-property-change (point) 'field)))
-          (when (and pos
-                     (equal field-name (get-text-property pos 'field)))
-            (setq field-pos pos)))))
-    field-pos))
+        (let ((end (line-end-position))
+              (pos (point)))
+          (while (and pos (< pos end) (not field-pos))
+            (let ((prop (get-text-property pos 'field)))
+              (cond
+               ;; Named search: looking for a specific field
+               ((and field-name (equal field-name prop))
+                (setq field-pos pos))
+               ;; Unnamed search: accept any non-nil field
+               ((and (null field-name) prop)
+                (setq field-pos pos))
+               (t
+                (setq pos (next-single-property-change pos 'field end)))))
+          ;; If still not found, search backward on the line
+          (unless field-pos
+            (setq pos (point))
+            (while (and pos (> pos (point-min)) (not field-pos))
+              (let ((prop (get-text-property pos 'field)))
+                (cond
+                 ((and field-name (equal field-name prop))
+                  (setq field-pos pos))
+                 ((and (null field-name) prop)
+                  (setq field-pos pos))
+                 (t
+                  (setq pos (previous-single-property-change pos 'field (point-min)))))))))))
+    field-pos))))
 
 (defun bug--bug-mode-edit-field (field-name field-type field-value)
   "Query new value for a field. Returns the new value, or the old
@@ -559,25 +589,28 @@ Tries backend-provided completion first; falls back to type-specific input."
   (interactive)
   (unless (bug--instance-feature bug---instance :write)
     (error "Backend does not support editing"))
-  (let ((field-name (or (get-text-property (point) 'bug-field-name)
-                        (save-excursion
-                          (forward-line 0)
-                          (get-text-property (point) 'bug-field-name)))))
-    ;; TODO: bail out if field is read-only as well
-    (if (and (equal field-name nil)
-             (not (equal nil (bug--bug-mode-locate-field field-name))))
-        ;; no field found? Bail out.
-        (message "Unable to locate an editable field near point")
-      ;; Check if the backend blocks direct editing of this field
-      (let ((blocked-msg (bug--instance-backend-function-optional
-                          "bug--field-edit-blocked-%s"
-                          field-name bug---instance)))
-        (if blocked-msg
-            (message "%s" blocked-msg)
-          ;; field found and not blocked: query for a new value
-          (let* ((field-pos (bug--bug-mode-locate-field field-name))
-                 (field-type (or (bug--get-field-property field-name 'type bug---instance)
-                                 (get-text-property field-pos 'bug-field-type))))
+  (let* ((field-name (or (get-text-property (point) 'bug-field-name)
+                         (save-excursion
+                           (forward-line 0)
+                           (get-text-property (point) 'bug-field-name))))
+         (field-pos (bug--bug-mode-locate-field field-name)))
+    ;; When no explicit field marker at point, search nearby for any field.
+    ;; If we find one, adopt its name so we can edit it.
+    (when (and (null field-name) field-pos)
+      (setq field-name (get-text-property field-pos 'bug-field-name)))
+    ;; If still nothing found, bail out.
+    (when (null field-pos)
+      (message "Unable to locate an editable field near point")
+      (cl-return-from bug--bug-mode-edit-thing-near-point))
+    ;; Check if the backend blocks direct editing of this field
+    (let ((blocked-msg (bug--instance-backend-function-optional
+                         "bug--field-edit-blocked-%s"
+                         field-name bug---instance)))
+      (if blocked-msg
+          (message "%s" blocked-msg)
+        ;; field found and not blocked: query for a new value
+        (let ((field-type (or (bug--get-field-property field-name 'type bug---instance)
+                              (get-text-property field-pos 'bug-field-type))))
             (setq field-pos (constrain-to-field (+ 1 field-pos)
                                                 field-pos t))
             (if (memql field-type '(99 100))
@@ -589,15 +622,20 @@ Tries backend-provided completion first; falls back to type-specific input."
               (let* ((field-value (string-trim (field-string field-pos)))
                      (new-value
                       (bug--bug-mode-edit-field field-name field-type field-value))
-                     ;; Object completions return (ref-url . display-name); normalize
-                     ;; so new-ref goes to the backend and new-data-value is stored
-                     ;; locally in a form that renders as "-> Name".
+                     ;; Completions may return (value . display-name) for alists.
+                     ;; For object-reference fields (type 98) we store the object
+                     ;; structure locally so it renders as "-> Name".  For other
+                     ;; field types (e.g. milestone on GitHub) we store just the
+                     ;; display name string locally while sending the raw value to
+                     ;; the backend.
                      (new-ref
                       (if (consp new-value) (car new-value) new-value))
                      (new-data-value
-                      (if (consp new-value)
-                          `((_ref . ,new-ref) (_refObjectName . ,(cdr new-value)))
-                        new-value)))
+                      (cond
+                       ((not (consp new-value)) new-value)
+                       ((equal field-type 98)
+                        `((_ref . ,new-ref) (_refObjectName . ,(cdr new-value))))
+                       (t (cdr new-value)))))
                 (unless (and (stringp new-value) (string= field-value new-value))
                   ;; Collect any backend-linked field changes (e.g. FlowState <> ScheduleState)
                   (let* ((linked (bug--instance-backend-function-optional
@@ -681,7 +719,7 @@ Tries backend-provided completion first; falls back to type-specific input."
                                        (if (string-empty-p fv) " " fv))
                                      'field fname))))))
                     (bug--bug-mode-update-header)
-                    (setq buffer-read-only t)))))))))))
+                    (setq buffer-read-only t))))))))))
 
 ;;;###autoload
 (defun bug--bug-mode-peek-completions ()
