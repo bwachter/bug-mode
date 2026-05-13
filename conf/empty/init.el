@@ -6,6 +6,8 @@
 ;;
 ;;; Code:
 
+(setq native-comp-jit-compilation nil)
+
 (load-file
  (expand-file-name "../../bug.el"
                    (file-name-directory

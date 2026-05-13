@@ -9,6 +9,8 @@
 ;;
 ;;; Code:
 
+(setq native-comp-jit-compilation nil)
+
 (load-file
  (expand-file-name "../../bug.el"
                    (file-name-directory
@@ -36,6 +38,13 @@
                               :api-key-file "~/.config/bug-mode/bz-key.gpg"))))
 
 (global-set-key "\C-cb" 'bug-menu)
+
+(setq bug-debug t)
+
+(setq bug-debug-subsystems '((fields . 2)
+			     (edit . 2)
+                             (rpc-rally . 1)
+                             (search . 1)))
 
 (message "bug-mode loaded with preconfigured demo instances")
 
