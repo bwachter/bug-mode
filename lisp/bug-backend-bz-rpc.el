@@ -44,6 +44,21 @@
 (defun bug--backend-bz-rpc-features (_arg _instance)
   "Features supported by Bugzilla JSON-RPC backend"
   '(:read :write :create :delete :comment :search :search-jql :projects :project-bugs))
+;;;###autoload
+(defun bug--backend-bz-rpc-wizard-config (_args _instance)
+  "Return wizard configuration for the Bugzilla JSON-RPC backend."
+  '(:label "Bugzilla (JSON-RPC)"
+           :fields ((:url       :optional nil
+                                :prompt "Bugzilla URL (e.g. https://bugzilla.mozilla.org)")
+                    (:api-key-file :auth t :optional t
+                                   :prompt "API key file path (optional, GPG-encrypted)")
+                    (:project-id :optional t
+                                 :prompt "Default product name"))
+           :help "Bugzilla supports either an API key or username/password auth.\n\n"
+           "For API key:\n"
+           "1. Log into Bugzilla -> Preferences -> API Keys\n"
+           "2. Generate a key and store it in a GPG-encrypted file\n\n"
+           "For password auth use ~/.authinfo or ~/.netrc instead of :api-key.\n"))
 
 ;;;###autoload
 (defun bug--rpc-bz-rpc--send (args instance)

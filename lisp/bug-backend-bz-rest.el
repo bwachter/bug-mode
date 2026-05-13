@@ -44,6 +44,20 @@
 (defun bug--backend-bz-rest-features (_arg _instance)
   "Features supported by Bugzilla REST backend"
   '(:read :write :create :delete :comment :search :search-jql :projects :project-bugs))
+;;;###autoload
+(defun bug--backend-bz-rest-wizard-config (_args _instance)
+  "Return wizard configuration for the Bugzilla REST backend."
+  '(:label "Bugzilla (REST)"
+           :fields ((:url       :optional nil
+                                :prompt "Bugzilla URL (e.g. https://bugzilla.mozilla.org)")
+                    (:api-key-file :auth t :optional t
+                                   :prompt "API key file path (optional, GPG-encrypted)")
+                    (:project-id :optional t
+                                 :prompt "Default product name"))
+           :help "Bugzilla REST uses the same API keys as JSON-RPC.\n\n"
+           "1. Log into Bugzilla -> Preferences -> API Keys\n"
+           "2. Generate a key and store it in a GPG-encrypted file\n\n"
+           "For password auth use ~/.authinfo or ~/.netrc instead of :api-key.\n"))
 
 ;;;;;;
 ;;; Internal helpers: REST transport

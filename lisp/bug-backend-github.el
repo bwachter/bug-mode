@@ -48,7 +48,25 @@
 ;;;###autoload
 (defun bug--backend-github-features (_arg _instance)
   "Features supported by the GitHub backend."
-  '(:read :search :projects :project-bugs))
+  '(:read :write :create :delete :comment :search :projects :project-bugs))
+;;;###autoload
+(defun bug--backend-github-wizard-config (_args _instance)
+  "Return wizard configuration for the GitHub backend."
+  '(:label "GitHub"
+           :fields ((:url       :optional t :default "https://api.github.com"
+                                :prompt "API base URL")
+                    (:project-id :optional t
+                                 :prompt "Default project (owner/repo, e.g. bwachter/bug-mode)")
+                    (:api-key-file :auth t
+                                   :prompt "API key file path (GPG-encrypted recommended)"))
+           :help "GitHub authentication uses a Personal Access Token (PAT).\n\n"
+           "1. Open https://github.com/settings/tokens\n"
+           "2. Generate a new token with at least these scopes:\n"
+           "   - repo (for private repositories)\n"
+           "   - read:org (for project listing)\n"
+           "3. Store the token in a GPG-encrypted file:\n"
+           "   echo 'ghp_...' | gpg --encrypt --recipient you@example.com > ~/.config/bug-mode/github-key.gpg\n"
+           "4. Enter that file path below.\n"))
 
 ;;;###autoload
 (defun bug--backend-github-default-url (_args _instance)
@@ -69,6 +87,8 @@
 ;;;###autoload
 (defun bug--rpc-github (args instance)
   "Send a request to the GitHub REST API and return the parsed response.
+
+Frontend dispatch: bug--backend-function \"bug--rpc-%s\" (bug-rpc).
 
 `args' is an alist with the following keys:
 - resource:  API path relative to the base URL
@@ -102,6 +122,9 @@
 ;;;###autoload
 (defun bug--rpc-github-handle-error (response _instance)
   "Check a GitHub API response for errors.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--rpc-%s-handle-error\" (bug-rpc).
 
 GitHub error responses are alists with a `message' key."
   (when (and (listp response) (assoc 'message response))
@@ -154,12 +177,18 @@ GitHub error responses are alists with a `message' key."
 
 ;;;###autoload
 (defun bug--rpc-github-get-fields (_object _instance)
-  "Return static field definitions for GitHub issues."
+  "Return static field definitions for GitHub issues.
+
+Frontend dispatch: bug--backend-function
+\"bug--rpc-%s-get-fields\" (bug--get-fields)."
   `((result . ((fields . ,bug--github-issue-fields)))))
 
 ;;;###autoload
 (defun bug--github-visibility-info (_args _instance)
   "Return the visibility metadata mapping for GitHub fields.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--%s-visibility-info\" (bug--visible-field-p).
 
 Returns (property-name . hidden-value), where `property-name' is the
 key in the field alist and `hidden-value' is the value that means
@@ -169,6 +198,9 @@ the field should not be displayed."
 ;;;###autoload
 (defun bug--github-comment-source-format (_args _instance)
   "Return the source format for GitHub issue comments.
+
+Frontend dispatch: bug--backend-function-optional
+\"bug--%s-comment-source-format\" (bug--bug-mode-open-rich-editor).
 
 GitHub issue bodies and comments are written in Markdown."
   'markdown)

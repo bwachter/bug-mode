@@ -61,6 +61,18 @@ API is unavailable.  Used as the baseline in `bug--rally-get-draft-fields'.")
 (defun bug--backend-rally-features (_arg _instance)
   "Features supported by Rally backend"
   '(:read :search :search-jql :write :comment :create :delete :projects :project-bugs :project-create))
+;;;###autoload
+(defun bug--backend-rally-wizard-config (_args _instance)
+  "Return wizard configuration for the Rally backend."
+  '(:label "Rally (Broadcom)"
+           :fields ((:url       :optional t :default "https://rally1.rallydev.com/slm/webservice/v2.0"
+                                :prompt "Rally WSAPI URL")
+                    (:api-key-file :auth t
+                                   :prompt "API key file path (GPG-encrypted recommended)"))
+           :help "Rally uses an API key for authentication.\n\n"
+           "1. Open Rally -> Profile -> API Keys\n"
+           "2. Generate a key and store it in a GPG-encrypted file\n"
+           "3. Enter the file path below.\n"))
 
 ;;;###autoload
 (defun bug--backend-rally-default-url (_args _instance)
