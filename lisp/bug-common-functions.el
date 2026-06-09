@@ -156,10 +156,12 @@ With prefix argument, also prompts for the instance."
                         (intern (concat "fields-" (prin1-to-string object t)))
                       'fields))
          (instance (bug--instance-to-symbolp instance))
-         (fields (if (bug--cache-get cache-key instance) nil
+         (cached (bug--cache-get cache-key instance))
+         (fields (if cached nil
                    (bug--instance-backend-function "bug--rpc-%s-get-fields" object instance)))
          (vis-info (bug--instance-backend-function-optional "bug--%s-visibility-info" nil instance))
          (field-hash (make-hash-table :test 'equal)))
+    (bug--debug (format "get-fields: cache-key=%S cached=%S" cache-key (not (null cached))) '(fields . 1))
     (if fields
         (progn
           (mapc (lambda (field)
