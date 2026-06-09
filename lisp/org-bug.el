@@ -47,12 +47,12 @@
 Link format: instance[/jql][/project-id]/query
 
 The path is parsed as follows:
-  instance/query              → native, unscoped
-  instance//query             → native, default project scope
-  instance/pid/query          → native, project-scoped to pid
-  instance/jql/query          → JQL, unscoped
-  instance/jql//query         → JQL, default project scope
-  instance/jql/pid/query      → JQL, project-scoped to pid
+  instance/query              -> native, unscoped
+  instance//query             -> native, default project scope
+  instance/pid/query          -> native, project-scoped to pid
+  instance/jql/query          -> JQL, unscoped
+  instance/jql//query         -> JQL, default project scope
+  instance/jql/pid/query      -> JQL, project-scoped to pid
 
 The optional /jql/ segment selects JQL translation.
 A double slash (//) after instance (or after /jql/) means
@@ -91,21 +91,60 @@ A project-id between slashes means project-scoped to that project."
           (bug-search query bug-instance))))))
 
 (defun org-bug-store-link ()
-  "Store a link to a bug."
+  "Store a link to a bug or search query."
   (when (memq major-mode '(bug-mode bug-list-mode))
-    (let* ((bug-details (org-bug-get-details))
-           (bug-instance (cdr (assoc 'instance bug-details)))
-           (bug-id (cdr (assoc 'bug-id bug-details)))
-           (bug-uuid (cdr (assoc 'bug-uuid bug-details)))
-           (link-type (if bug-uuid "bug" "bug-search"))
-           (link (concat link-type
-                         ":" (prin1-to-string bug-instance t) "/"
-                         (prin1-to-string (or bug-uuid bug-id) t)))
-           (description (format "Bug %s" (prin1-to-string bug-id t))))
-      (org-link-store-props
-       :type link-type
-       :link link
-       :description description))))
+    (let* ((bug-instance (if (boundp 'bug---instance)
+                             bug---instance (bug-instance-get-current)))
+           (bug-uuid (if (boundp 'bug---uuid) bug---uuid nil))
+           (bug-id (if (boundp 'bug---id) bug---id nil))
+           (project (and (boundp 'bug---project) bug---project))
+           (query-jql (and (boundp 'bug---query-jql) bug---query-jql))
+           (query-string (and (boundp 'bug---query-string) bug---query-string)))
+      (cond
+       ;; Single bug with UUID (bug-mode or bug-list-mode at point)
+       (bug-uuid
+        (let ((link (concat "bug:"
+                            (prin1-to-string bug-instance t) "/"
+                            (prin1-to-string bug-uuid t))))
+          (org-link-store-props
+           :type "bug"
+           :link link
+           :description (format "Bug %s" (prin1-to-string bug-id t)))))
+       ;; Search result buffer with JQL query
+       (query-jql
+        (let ((link (concat "bug-search:"
+                            (prin1-to-string bug-instance t) "/jql/"
+                            (if project
+                                (concat project "/")
+                              "")
+                            query-jql)))
+          (org-link-store-props
+           :type "bug-search"
+           :link link
+           :description (format "JQL search: %s" query-jql))))
+       ;; Search result buffer with native query
+       (query-string
+        (let ((link (concat "bug-search:"
+                            (prin1-to-string bug-instance t) "/"
+                            (if project
+                                (concat project "/")
+                              "")
+                            query-string)))
+          (org-link-store-props
+           :type "bug-search"
+           :link link
+           :description (format "Search: %s" query-string))))
+       ;; Fallback: bug at point in list buffer
+       (t
+        (let ((details (org-bug-get-details)))
+          (let ((link (concat "bug:"
+                              (prin1-to-string (cdr (assoc 'instance details)) t) "/"
+                              (prin1-to-string (or (cdr (assoc 'bug-uuid details))
+                                                   (cdr (assoc 'bug-id details))) t))))
+            (org-link-store-props
+             :type "bug"
+             :link link
+             :description (format "Bug %s" (prin1-to-string (cdr (assoc 'bug-id details)) t))))))))))
 
 (defun org-bug-get-details ()
   "Find bug details from current bug-list-mode or bug-mode buffer"
@@ -113,7 +152,7 @@ A project-id between slashes means project-scoped to that project."
          (bug-list-mode-bug-near-point))
         ((eq major-mode 'bug-mode)
          (let* ((bug-instance (if (boundp 'bug---instance)
-                                  bug---instance bug-default-instance))
+                                  bug---instance (bug-instance-get-current)))
                 (bug-uuid (if (boundp 'bug---uuid)
                               bug---uuid nil))
                 (bug-id (if (boundp 'bug---id)
