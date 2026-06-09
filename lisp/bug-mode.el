@@ -558,12 +558,35 @@ if no field can be found."
 (defun bug--bug-mode-field-value-pos (field-name)
   "Return the buffer position where the value of FIELD-NAME starts.
 
-Searches the current line for the first position whose `field' text
-property equals FIELD-NAME.  Returns nil if not found."
+Searches forward from the beginning of the current line.  For
+multi-line fields (e.g. Description) the value may begin on a
+subsequent line.  Returns nil if not found."
   (save-excursion
     (forward-line 0)
-    (let ((inhibit-field-text-motion t))
-      (text-property-any (point) (line-end-position) 'field field-name))))
+    (let ((inhibit-field-text-motion t)
+          (pos nil)
+          (done nil))
+      ;; Try current line first
+      (setq pos (text-property-any (point) (line-end-position) 'field field-name))
+      (when pos
+        (setq done t))
+      ;; Not on current line: search forward line by line, stopping
+      ;; when we hit a different field's label or end of buffer.
+      (while (and (not done) (not (eobp)))
+        (forward-line 1)
+        (let ((line-bol (save-excursion (forward-line 0) (point)))
+              (line-eol (let ((inhibit-field-text-motion t)) (line-end-position)))
+              (line-name (save-excursion
+                           (forward-line 0)
+                           (get-text-property (point) 'bug-field-name))))
+          ;; Stop if we've reached a different field's label line
+          (when (and line-name (not (equal line-name field-name)))
+            (setq done t))
+          (unless done
+            (setq pos (text-property-any line-bol line-eol 'field field-name))
+            (when pos
+              (setq done t)))))
+      pos)))
 
 (defun bug--bug-mode-edit-field (field-name field-type field-value)
   "Query new value for a field. Returns the new value, or the old
