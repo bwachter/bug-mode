@@ -141,6 +141,71 @@ list are hidden regardless of other checks."
     (bug--debug (format "  field %S: %s" name (if visible "VISIBLE" "hidden")) '(fields . 3))
     visible))
 
+(defun bug--bug-mode-format-field-line (prop instance)
+  "Insert a single field line at point.
+
+`prop' is a cons cell (field-name . value).  The label is formatted with
+`bug--format-field-name' and the value with `bug--format-field-value'.
+The `field' text property is set only on the value portion (not the
+label) so `constrain-to-field' and `delete-field' operate on the value
+alone.  Empty values are displayed as a single space so the property has
+a character to attach to."
+  (let* ((field-name (car prop))
+         (fv (or (bug--format-field-value prop instance t) ""))
+         (val-str (propertize (if (string-empty-p fv) " " fv)
+                              'field field-name
+                              'bug-field-type (bug--get-field-property field-name 'type instance)
+                              'bug-field-name field-name
+                              'rear-nonsticky t)))
+    (insert (bug--format-field-name prop instance))
+    (insert val-str)
+    (bug--debug (format "format-line: %S val-start=%d val-end=%d field-at-start=%S"
+                        field-name (- (point) (length val-str)) (point)
+                        (get-text-property (- (point) (length val-str)) 'field))
+                '(fields . 1))))
+
+(defun bug--bug-mode-insert-description (description-prop instance)
+  "Insert the Description field block if it should be visible.
+
+`description-prop' is a cons cell (Description . value).  The block is
+shown for new-artifact drafts or when the value is non-empty.  Text
+properties are set on the value portion."
+  (when (and description-prop
+             (or bug---is-new
+                 (and (cdr description-prop)
+                      (not (string-match "^[[:space:]]*$"
+                                         (prin1-to-string (cdr description-prop) t))))))
+    (insert "\n"
+            (bug--format-field-name description-prop instance)
+            "\n\n"
+            (let ((fv (or (bug--format-field-value description-prop instance t) "")))
+              (propertize (if (string-empty-p fv) " " fv)
+                          'field (car description-prop)
+                          'bug-field-type (bug--get-field-property (car description-prop) 'type instance)
+                          'bug-field-name (car description-prop)
+                          'rear-nonsticky t)))))
+
+(defun bug--bug-mode-insert-field-value (field-name data-value instance)
+  "Insert a formatted field value at point and set text properties.
+
+Formats `data-value' with `bug--format-field-value', ensures at least a
+single space is inserted (so the `field' property has a character), sets
+`field' and `rear-nonsticky' properties on the inserted text, and
+returns the end position."
+  (let* ((formatted (or (bug--format-field-value (cons field-name data-value) instance t)
+                        ""))
+         (val-str (propertize (if (string-empty-p formatted) " " formatted)
+                              'field field-name
+                              'rear-nonsticky t))
+         (val-len (length val-str))
+         (insert-pos (point)))
+    (insert val-str)
+    (bug--debug (format "insert-value: %S pos=%d-%d field=%S"
+                        field-name insert-pos (+ insert-pos val-len)
+                        (get-text-property insert-pos 'field))
+                '(edit . 1))
+    (+ insert-pos val-len)))
+
 (defun bug-show (bug instance &optional no-additional-data)
   "Display an existing bug buffer in bug-mode.
 
@@ -208,36 +273,17 @@ data is already present in the buffer and should not be re-fetched."
                                                        '(Description description "Description" "description")))))
                                    bug)))
       (bug--debug (format "bug-show: %d fields visible after filtering" (length visible-fields)) '(fields . 1))
-      (insert
-       (mapconcat
-        (lambda (prop)
-          (concat
-           (bug--format-field-name prop instance)
-           (let ((fv (bug--format-field-value prop instance t)))
-             (propertize (if (string-empty-p fv) " " fv)
-                         'field (car prop)
-                         'bug-field-type (bug--get-field-property (car prop) 'type instance)
-                         'bug-field-name (car prop)))))
-        visible-fields
-        "\n")))
+      (let ((first t))
+        (dolist (prop visible-fields)
+          (unless first
+            (insert "\n"))
+          (setq first nil)
+          (bug--bug-mode-format-field-line prop instance))))
 
-    ;; Display Description separately after other fields.
-    ;; For new-artifact drafts, show it even when empty so the user can fill it in.
-    (let ((description-prop (or (assoc "Description" bug)
-                                (assoc 'Description bug))))
-      (when (and description-prop
-                 (or bug---is-new
-                     (and (cdr description-prop)
-                          (not (string-match "^[[:space:]]*$"
-                                             (prin1-to-string (cdr description-prop) t))))))
-        (insert "\n"
-                (bug--format-field-name description-prop instance)
-                "\n\n"
-                (let ((fv (bug--format-field-value description-prop instance t)))
-                  (propertize (if (string-empty-p fv) " " fv)
-                              'field (car description-prop)
-                              'bug-field-type (bug--get-field-property (car description-prop) 'type instance)
-                              'bug-field-name (car description-prop))))))
+    (bug--bug-mode-insert-description
+     (or (assoc "Description" bug)
+         (assoc 'Description bug))
+     instance)
 
     (unless no-additional-data
       (bug--instance-backend-function-optional "bug--backend-%s-show-additional-data" bug instance))
@@ -436,7 +482,8 @@ be edited immediately with \\[bug--bug-mode-edit-thing-near-point]."
                         (bug--format-field-name field-prop bug---instance)
                         (propertize " " 'field field-sym
                                     'bug-field-type field-type
-                                    'bug-field-name field-sym))))
+                                    'bug-field-name field-sym
+                                    'rear-nonsticky t))))
         ;; Add to bug---data so filter and subsequent re-renders include it
         (push field-prop bug---data)
         ;; Insert into buffer before Description, or at end of field block
@@ -492,59 +539,38 @@ If the bug is a new artifact this will create it in the backend."
       (bug--bug-mode-update-header)
       (message "Changes committed successfully.")))))
 
-(defun bug--bug-mode-locate-field (field-name)
-  "Try to locate a field `field-name' at point or on the current line.
+(defun bug--bug-mode-field-name ()
+  "Return the name of the field at or near point.
 
-When `field-name' is non-nil, returns a position whose `field' text
-property equals `field-name'.  When `field-name' is nil, searches
-for the nearest position with a non-nil `field' property instead.
-
-If no (valid) field was found `nil' is returned."
-  (let ((field-pos nil)
-        (at-field (get-text-property (point) 'field)))
-    (cond
-     ;; At point and matches exactly
-     ((and field-name (equal field-name at-field))
-      (setq field-pos (point)))
-     ;; No specific field requested, but we're sitting on a field
-     ((and (null field-name) at-field)
-      (setq field-pos (point)))
-     ;; Search forward on the line for a match
-     (t
+Looks for the `bug-field-name' text property first at point, then at
+the beginning of the current line, then on previous lines.  Returns nil
+if no field can be found."
+  (or (get-text-property (point) 'bug-field-name)
       (save-excursion
         (forward-line 0)
-        (let ((end (line-end-position))
-              (pos (point)))
-          (while (and pos (< pos end) (not field-pos))
-            (let ((prop (get-text-property pos 'field)))
-              (cond
-               ;; Named search: looking for a specific field
-               ((and field-name (equal field-name prop))
-                (setq field-pos pos))
-               ;; Unnamed search: accept any non-nil field
-               ((and (null field-name) prop)
-                (setq field-pos pos))
-               (t
-                (setq pos (next-single-property-change pos 'field end)))))
-          ;; If still not found, search backward on the line
-          (unless field-pos
-            (setq pos (point))
-            (while (and pos (> pos (point-min)) (not field-pos))
-              (let ((prop (get-text-property pos 'field)))
-                (cond
-                 ((and field-name (equal field-name prop))
-                  (setq field-pos pos))
-                 ((and (null field-name) prop)
-                  (setq field-pos pos))
-                 (t
-                  (setq pos (previous-single-property-change pos 'field (point-min)))))))))))
-    field-pos))))
+        (get-text-property (point) 'bug-field-name))
+      (save-excursion
+        (while (and (not (bobp))
+                    (null (get-text-property (point) 'bug-field-name)))
+          (forward-line -1))
+        (get-text-property (point) 'bug-field-name))))
+
+(defun bug--bug-mode-field-value-pos (field-name)
+  "Return the buffer position where the value of FIELD-NAME starts.
+
+Searches the current line for the first position whose `field' text
+property equals FIELD-NAME.  Returns nil if not found."
+  (save-excursion
+    (forward-line 0)
+    (let ((inhibit-field-text-motion t))
+      (text-property-any (point) (line-end-position) 'field field-name))))
 
 (defun bug--bug-mode-edit-field (field-name field-type field-value)
   "Query new value for a field. Returns the new value, or the old
 value if nothing has changed or editing is unsupported for the field type.
 
 Tries backend-provided completion first; falls back to type-specific input."
+  (bug--debug (format "edit-field: name=%S type=%S value=%S" field-name field-type field-value) '(edit . 1))
   (unless (bug--instance-feature bug---instance :write)
     (error "Backend does not support editing"))
   (or (bug--completing-read-field field-name field-value bug---instance)
@@ -552,9 +578,9 @@ Tries backend-provided completion first; falls back to type-specific input."
        ;; TODO: type 0 (bool) without backend completion should offer yes/no
        ;; TODO: type 5 (date) without backend completion should offer calendar picker
        ((memql field-type '(nil 0 1 5 6))
-        (let ((_my-history (list field-value)))
-          (read-string (concat (prin1-to-string field-name) ": ")
-                       "" 'my-history)))
+        (bug--debug "edit-field: read-string fallback" '(edit . 1))
+        (read-string (concat (prin1-to-string field-name) ": ")
+                     field-value))
        ((equal field-type 98)
         (let ((result field-value)
               (searching t))
@@ -589,37 +615,39 @@ Tries backend-provided completion first; falls back to type-specific input."
   (interactive)
   (unless (bug--instance-feature bug---instance :write)
     (error "Backend does not support editing"))
-  (let* ((field-name (or (get-text-property (point) 'bug-field-name)
-                         (save-excursion
-                           (forward-line 0)
-                           (get-text-property (point) 'bug-field-name))))
-         (field-pos (bug--bug-mode-locate-field field-name)))
-    ;; When no explicit field marker at point, search nearby for any field.
-    ;; If we find one, adopt its name so we can edit it.
-    (when (and (null field-name) field-pos)
-      (setq field-name (get-text-property field-pos 'bug-field-name)))
+  (let* ((field-name (bug--bug-mode-field-name))
+         (field-pos (when field-name
+                      (bug--bug-mode-field-value-pos field-name))))
     ;; If still nothing found, bail out.
-    (when (null field-pos)
-      (message "Unable to locate an editable field near point")
-      (cl-return-from bug--bug-mode-edit-thing-near-point))
-    ;; Check if the backend blocks direct editing of this field
-    (let ((blocked-msg (bug--instance-backend-function-optional
-                         "bug--field-edit-blocked-%s"
-                         field-name bug---instance)))
-      (if blocked-msg
-          (message "%s" blocked-msg)
-        ;; field found and not blocked: query for a new value
-        (let ((field-type (or (bug--get-field-property field-name 'type bug---instance)
-                              (get-text-property field-pos 'bug-field-type))))
-            (setq field-pos (constrain-to-field (+ 1 field-pos)
-                                                field-pos t))
+    (if (null field-pos)
+        (message "Unable to locate an editable field near point")
+      ;; Check if the backend blocks direct editing of this field
+      (let ((blocked-msg (bug--instance-backend-function-optional
+                          "bug--field-edit-blocked-%s"
+                          field-name bug---instance)))
+        (if blocked-msg
+            (message "%s" blocked-msg)
+          ;; field found and not blocked: query for a new value
+          (let ((field-type (or (bug--get-field-property field-name 'type bug---instance)
+                                (get-text-property field-pos 'bug-field-type))))
             (if (memql field-type '(99 100))
                 ;; Rich-text field: open editor asynchronously
                 (bug--bug-mode-open-rich-editor
                  field-name field-pos
                  (or (cdr (assoc field-name bug---data)) "")
                  (if (equal field-type 100) 'markdown 'html))
-              (let* ((field-value (string-trim (field-string field-pos)))
+              ;; Find exact value boundaries on this line using text-property-any.
+              ;; This is independent of field-pos and works regardless of whether
+              ;; point is on the label, inside the value, or at a boundary.
+              (let* ((line-start (save-excursion (forward-line 0) (point)))
+                     (line-end (let ((inhibit-field-text-motion t)) (line-end-position)))
+                     (val-start (text-property-any line-start line-end 'field field-name))
+                     (val-end (when val-start
+                                (or (text-property-not-all val-start line-end 'field field-name)
+                                    line-end)))
+                     (field-value (if val-start
+                                      (string-trim (buffer-substring val-start val-end))
+                                    ""))
                      (new-value
                       (bug--bug-mode-edit-field field-name field-type field-value))
                      ;; Completions may return (value . display-name) for alists.
@@ -650,8 +678,8 @@ Tries backend-provided completion first; falls back to type-specific input."
                           (setf (cdr (assoc (car disp) bug---data)) (cdr disp))
                         (push disp bug---data)))
                     (setq buffer-read-only nil)
-                    (goto-char field-pos)
-                    (delete-field field-pos)
+                    (goto-char val-start)
+                    (delete-region val-start val-end)
 
                     (cond
                      ;; Immediate update mode: write to backend immediately.
@@ -719,7 +747,7 @@ Tries backend-provided completion first; falls back to type-specific input."
                                        (if (string-empty-p fv) " " fv))
                                      'field fname))))))
                     (bug--bug-mode-update-header)
-                    (setq buffer-read-only t))))))))))
+                    (setq buffer-read-only t)))))))))))
 
 ;;;###autoload
 (defun bug--bug-mode-peek-completions ()
@@ -728,10 +756,7 @@ Tries backend-provided completion first; falls back to type-specific input."
 Useful for debugging: shows what the backend returns for this field without
 relying on any cached attribute definitions or allowed-value lists."
   (interactive)
-  (let ((field-name (or (get-text-property (point) 'bug-field-name)
-                        (save-excursion
-                          (forward-line 0)
-                          (get-text-property (point) 'bug-field-name)))))
+  (let ((field-name (bug--bug-mode-field-name)))
     (if (not field-name)
         (message "No field at point")
       ;; Clear all cached completion data for this backend/instance so we always
