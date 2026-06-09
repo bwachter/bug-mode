@@ -185,8 +185,8 @@ whether an operation should be offered to the user."
                                      ((eq name bug-default-instance) "[DEFAULT]")
                                      (t ""))))
                        (pcase (vtable-column vtable column)
-                         ("Name" (symbol-name name))
-                         ("Type" (symbol-name type))
+                         ("Name" (if (symbolp name) (symbol-name name) (format "%s" name)))
+                         ("Type" (if (symbolp type) (symbol-name type) (format "%s" type)))
                          ("Status" status)
                          ("URL/Details" url))))
            :actions `("RET" ,(lambda (inst-info)
@@ -229,8 +229,15 @@ INSTANCE-NAME should exist in `bug-instances-list'."
 (defun bug--instance-get-all ()
   "Get all configured instances from `bug-instances-list'.
 
-Returns an alist of (NAME . PLIST) pairs."
-  bug-instances-list)
+Returns an alist of (NAME . PLIST) pairs with NAME always a symbol.
+String keys are normalized to symbols so downstream consumers that
+expect symbols (e.g. `symbol-name', `eq') do not fail."
+  (mapcar (lambda (entry)
+            (let ((name (car entry)))
+              (if (stringp name)
+                  (cons (intern name) (cdr entry))
+                entry)))
+          bug-instances-list))
 
 (defun bug--instance-query (&optional required-feature)
   "Prompt for an instance, optionally filtered by `required-feature'.
@@ -273,19 +280,24 @@ Resolution order:
 
 Returns instance symbol or nil if no instance is explicitly configured.
 When nil is returned, callers should prompt the user to select an instance."
-  (or
-   ;; 1. Transient-local instance (set via bug--transient-switch-instance)
-   (and (boundp 'transient--prefix)
-        transient--prefix
-        (plist-get (oref transient--prefix scope) :instance))
-   ;; 2. Buffer-local instance (only in bug-related buffers)
-   (and (boundp 'bug---instance) bug---instance)
-   ;; 3. Project-specific instance
-   (bug--get-project-instance)
-   ;; 4. Active instance (when set)
-   bug-active-instance
-   ;; 5. Default instance (backward compatibility)
-   bug-default-instance))
+  (let ((raw
+         (or
+          ;; 1. Transient-local instance (set via bug--transient-switch-instance)
+          (and (boundp 'transient--prefix)
+               transient--prefix
+               (plist-get (oref transient--prefix scope) :instance))
+          ;; 2. Buffer-local instance (only in bug-related buffers)
+          (and (boundp 'bug---instance) bug---instance)
+          ;; 3. Project-specific instance
+          (bug--get-project-instance)
+          ;; 4. Active instance (when set)
+          bug-active-instance
+          ;; 5. Default instance (backward compatibility)
+          bug-default-instance)))
+    ;; Normalize strings to symbols so downstream consumers don't crash.
+    (cond ((symbolp raw) raw)
+          ((stringp raw) (intern raw))
+          (t nil))))
 
 (defun bug--instance-check-access (instance)
   "Check if INSTANCE can be accessed based on active instance restrictions.
