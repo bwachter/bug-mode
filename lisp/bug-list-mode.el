@@ -72,14 +72,22 @@
   (setq bug---query query)
   (setq bug---instance instance)
   (setq bug---query-string
-        (or (if (hash-table-p query)
-                (gethash "native-query" query)
-              (cdr (assoc 'native-query query)))
-            ""))
+        (let ((val (if (hash-table-p query)
+                       (gethash "native-query" query)
+                     (cdr (assoc 'native-query query)))))
+          ;; Backends may store query values as plain lists rather than cons
+          ;; cells (e.g. (query "value") instead of (query . "value")).
+          ;; Ensure we always store a string.
+          (cond ((stringp val) val)
+                ((and (listp val) (= 1 (length val)) (stringp (car val))) (car val))
+                (t ""))))
   (setq bug---query-jql
-        (if (hash-table-p query)
-            (gethash "native-query-jql" query)
-          (cdr (assoc 'native-query-jql query))))
+        (let ((val (if (hash-table-p query)
+                       (gethash "native-query-jql" query)
+                     (cdr (assoc 'native-query-jql query)))))
+          (cond ((stringp val) val)
+                ((and (listp val) (= 1 (length val)) (stringp (car val))) (car val))
+                (t nil))))
   (setq bug---project
         (if (hash-table-p query)
             (gethash "native-project" query)

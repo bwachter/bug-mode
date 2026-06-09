@@ -93,14 +93,20 @@ translation layer from JQL to the backend's native query language."
     (setq instance (bug--instance-to-symbolp nil :search-jql)))
   (bug--debug-log-time "start")
   (bug--debug (format "search jql: %S instance=%S" query instance) '(search . 1))
-  (let ((params (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)))
+  (let* ((params (bug--instance-backend-function "bug--parse-%s-jql-query" query instance))
+         ;; Some backends store nested query data as plain lists
+         ;; ((query "value") ...) rather than cons cells
+         ;; ((query . "value") ...).  (cdr (assoc ...)) returns a list
+         ;; in that case; unwrap it.
+         (query-raw (or (cdr (assoc 'query params))
+                        (cdr (assoc 'query (cdr (assoc 'data params))))))
+         (query-native (if (and (listp query-raw) (= 1 (length query-raw)))
+                           (car query-raw)
+                         query-raw)))
     (bug--debug (format "search jql params: %S" params) '(search . 2))
     (bug--do-search
      (append `((native-query-jql . ,query)
-               (native-query .
-                             ,(or (cdr (assoc 'query params))
-                                  (cdr (assoc 'query (cdr (assoc 'data params))))
-                                  query)))
+               (native-query . ,(or query-native query)))
              params)
      instance)))
 
@@ -181,15 +187,17 @@ restricted to the current project (`bug---project') or the instance's
     (bug--debug (format "search jql-project: %S instance=%S project=%S"
                         query instance project-scope) '(search . 1))
     (let* ((bug---project project-scope)
-           (params (bug--instance-backend-function "bug--parse-%s-jql-query" query instance)))
+           (params (bug--instance-backend-function "bug--parse-%s-jql-query" query instance))
+           (query-raw (or (cdr (assoc 'query params))
+                          (cdr (assoc 'query (cdr (assoc 'data params)))))))
       (bug--debug (format "search jql-project params: %S" params) '(search . 2))
       (bug--do-search
        (append `((native-project . ,project-scope)
                  (native-query-jql . ,query)
-                 (native-query .
-                               ,(or (cdr (assoc 'query params))
-                                    (cdr (assoc 'query (cdr (assoc 'data params))))
-                                    query)))
+                 (native-query . ,(or (if (and (listp query-raw) (= 1 (length query-raw)))
+                                          (car query-raw)
+                                        query-raw)
+                                      query)))
                params)
        instance))))
 
