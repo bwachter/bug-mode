@@ -33,9 +33,12 @@
 
 (require 'cl-lib)
 (require 'transient)
-;;(require 'bug-instance)
 (require 'bug-vars)
 
+;; this sits somewhat on top of everything else, so requiring modules we use
+;; would cause circular dependencies. We stub required functions out for the
+;; byte compiler - but by the time we want to call any of them it's safe to
+;; assume the relevant files got loaded by other means.
 (declare-function bug-search "bug-search" (query &optional instance))
 (declare-function bug-search-project "bug-search" (query &optional instance))
 (declare-function bug-search-jql "bug-search" (query &optional instance))
@@ -43,6 +46,7 @@
 (declare-function bug--jql-read-with-hints "bug-search" (prompt &optional initial-content default-content))
 (declare-function bug-project-get-current "bug-project" (&optional instance))
 (declare-function bug--instance-query "bug-instance" &optional required-feature)
+(declare-function bug--instance-to-symbolp "bug-instance" (&optional instance feature))
 (declare-function bug-instance-get-current "bug-instance")
 
 ;; ------------------------------------------------------------------------------
@@ -158,8 +162,9 @@ Dispatches to `bug-search-project' when a project is set in the transient
 scope, otherwise to `bug-search'.  Pre-fills the current buffer's native
 query string as the minibuffer default when available."
   (interactive)
-  (let* ((instance (bug--transient-get-instance))
-         (project (bug--transient-get-project))
+  (let* ((instance (or (bug--transient-get-instance)
+                       (bug--instance-to-symbolp nil :search)))
+         (project (bug-project-get-current instance))
          (default-query (if (boundp 'bug---query-string) bug---query-string nil))
          (query (read-string "Search query: " default-query nil nil t)))
     (unless (string-empty-p query)
@@ -173,8 +178,9 @@ Dispatches to `bug-search-jql-project' when a project is set in the
 transient scope, otherwise to `bug-search-jql'.  Pre-fills the current
 buffer's JQL query string as the minibuffer default when available."
   (interactive)
-  (let* ((instance (bug--transient-get-instance))
-         (project (bug--transient-get-project))
+  (let* ((instance (or (bug--transient-get-instance)
+                       (bug--instance-to-symbolp nil :search-jql)))
+         (project (bug-project-get-current instance))
          (default-query (if (boundp 'bug---query-jql) bug---query-jql nil))
          (query (bug--jql-read-with-hints "JQL query: " default-query)))
     (unless (string-empty-p query)
@@ -195,7 +201,7 @@ failing back to the global active instance."
                      (oref transient--prefix scope)))
          (inst (or (plist-get scope :instance)
                    (bug-instance-get-current))))
-    (format "Instance: %s" (if inst (symbol-name inst) "-"))))
+    (format "Instance: %s" (if inst (if (symbolp inst) (symbol-name inst) (format "%s" inst)) "-"))))
 
 (defun bug--transient-project-label ()
   "Return a label string for the project infix.
@@ -435,6 +441,7 @@ Signals an error if duplicates are found."
  (lambda ()
    `["Interact"
      ("i" "Info" bug--bug-mode-info)
+     ("F" "Field" bug--bug-mode-jump-to-field-value)
      ("c" "Create bug" (lambda ()
                          (interactive)
                          (let ((instance (bug--transient-get-instance)))
@@ -516,14 +523,25 @@ Signals an error if duplicates are found."
  'search
  (lambda ()
    `["Search"
-     ("s" "Search" bug--transient-search)
+     ("s" "Search" bug--transient-search
+      :inapt-if (lambda ()
+                  (let ((inst (bug--transient-get-instance)))
+                    (or inst
+                        (and inst
+                             (not (bug--instance-feature inst :search)))))))
      ("j" "JQL search" bug--transient-search-jql
-      :inapt-if (lambda () (not (and (bug--transient-get-instance)
-                                     (bug--instance-feature (bug--transient-get-instance) :search-jql)))))
-     ("S" "Edit search" bug-edit-search)
+      :inapt-if (lambda ()
+                  (let ((inst (bug--transient-get-instance)))
+                    (or inst
+                        (and inst
+                             (not (bug--instance-feature inst :search-jql)))))))
+     ("S" "Edit search" bug-edit-search
+      :inapt-if (lambda () (not (and (boundp 'bug---query-string)
+                                     (stringp bug---query-string)
+                                     (not (string-empty-p bug---query-string))))))
      ("J" "Edit JQL search" bug-edit-jql-search
       :inapt-if (lambda () (not (and (boundp 'bug---query-jql)
-                                     bug---query-jql
+                                     (stringp bug---query-jql)
                                      (not (string-empty-p bug---query-jql))))))])
  "s" "j" "e" "J")
 

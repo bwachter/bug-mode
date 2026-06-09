@@ -45,7 +45,7 @@
 (require 'bug-transient-builder)
 
 (bug-transient-define-prefix bug--mode-menu
-  :blocks '(bug interact misc view))
+  :blocks '(bug edit interact misc view))
 
 (defvar bug-mode-map
   (let ((keymap (copy-keymap special-mode-map)))
@@ -780,6 +780,23 @@ relying on any cached attribute definitions or allowed-value lists."
             (completing-read (format "%s (peek, RET/C-g to dismiss): " field-name)
                              display-items nil nil nil nil)))))))
 
+(defun bug--bug-mode-jump-to-field-value ()
+  "Move point to the start of the current field's value.
+
+If point is on the label or inside the value, jumps to the first
+character of the value portion (where the `field' text property
+matches the field name).  Useful for debugging text property
+placement."
+  (interactive)
+  (let* ((field-name (bug--bug-mode-field-name))
+         (field-pos (when field-name
+                      (bug--bug-mode-field-value-pos field-name))))
+    (if field-pos
+        (progn
+          (goto-char field-pos)
+          (message "%s" field-name))
+      (message "No field found near point"))))
+
 ;;;###autoload
 (defun bug--bug-mode-info ()
   "Display some information about thing at or near point
@@ -809,6 +826,7 @@ This is mostly useful for debugging text properties"
               "field = "
               (prin1-to-string field)
               "; "
+              "field-name = "
               (prin1-to-string field-name)
               " = "
               (prin1-to-string (cdr (assoc field-name bug---data)))
